@@ -33,32 +33,24 @@ if uploaded_file is not None:
                 "각 위험요소에 대한 예방대책을 항목별로 깔끔하게 작성해 주세요."
             )
 
-            # 💡 내 계정에서 사용 가능한 Gemini 모델 중 가장 빠른 Flash 모델을 자동으로 찾아냅니다!
-            all_models = [m.name.replace("models/", "") for m in client.models.list()]
+            # 내 계정에서 사용 가능한 최신 모델명을 자동으로 탐색하여 호출
+            available_models = [m.name.replace("models/", "") for m in client.models.list()]
             
-            # flash 모델 우선 선택, 없으면 첫번째 지원 모델 선택
-            flash_models = [m for m in all_models if "flash" in m and "text" not in m]
-            target_model = flash_models[0] if flash_models else all_models[0]
+            # flash 모델 최우선 선택
+            flash_models = [m for m in available_models if "flash" in m and "text" not in m]
+            target_model = flash_models[0] if flash_models else available_models[0]
 
-            # 선택된 모델로 즉시 분석 실행
             response = client.models.generate_content(
                 model=target_model,
                 contents=[image, prompt]
             )
 
             status_box.empty()
-            st.success(f"분석이 완료되었습니다! (사용된 모델: {target_model})")
+            st.success(f"분석이 완료되었습니다! (연결 모델: {target_model})")
             st.markdown("---")
             st.subheader("📋 분석 결과")
             st.write(response.text)
 
-        except Exception as e:
-            status_box.empty()
-            err_msg = str(e)
-            if "API_KEY_INVALID" in err_msg or "API key not valid" in err_msg:
-                st.error("❌ Secrets에 입력하신 API Key가 올바르지 않습니다. 키를 다시 확인해 주세요.")
-            else:
-                st.error(f"오류가 발생했습니다: {e}")
         except Exception as e:
             status_box.empty()
             err_msg = str(e)
