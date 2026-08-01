@@ -33,8 +33,8 @@ if uploaded_file is not None:
                 "각 위험요소에 대한 예방대책을 항목별로 깔끔하게 작성해 주세요."
             )
 
-            # 탐색 과정 없이 검증된 최우선 모델 사용
-            target_model = "gemini-1.5-flash"
+            # 구글 최신 기본 추천 모델 사용
+            target_model = "gemini-2.5-flash"
             
             try:
                 response = client.models.generate_content(
@@ -42,8 +42,8 @@ if uploaded_file is not None:
                     contents=[image, prompt]
                 )
             except Exception:
-                # 메인 모델 실패 시 백업 모델로 1회 재시도
-                target_model = "gemini-1.5-pro"
+                # 2.5 실패 시 2.0 모델로 재시도
+                target_model = "gemini-2.0-flash"
                 response = client.models.generate_content(
                     model=target_model,
                     contents=[image, prompt]
