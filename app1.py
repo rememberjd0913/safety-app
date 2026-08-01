@@ -33,14 +33,24 @@ if uploaded_file is not None:
                 "각 위험요소에 대한 예방대책을 항목별로 깔끔하게 작성해 주세요."
             )
 
-            # 구글 표준 최신 모델
+            # 계정에서 현재 즉시 사용 가능한 최신 모델 자동으로 1개 감지
+            available_models = [
+                m.name.replace("models/", "") 
+                for m in client.models.list() 
+                if "generateContent" in getattr(m, "supported_generation_methods", []) or True
+            ]
+            
+            # flash 계열 우선 선택, 없으면 첫 번째 모델 선택
+            flash_models = [m for m in available_models if "flash" in m]
+            target_model = flash_models[0] if flash_models else available_models[0]
+
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=target_model,
                 contents=[image, prompt]
             )
 
             status_box.empty()
-            st.success("분석이 완료되었습니다!")
+            st.success(f"분석이 완료되었습니다! (연결 모델: {target_model})")
             st.markdown("---")
             st.subheader("📋 분석 결과")
             st.write(response.text)
