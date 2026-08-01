@@ -33,22 +33,29 @@ if uploaded_file is not None:
                 "각 위험요소에 대한 예방대책을 항목별로 깔끔하게 작성해 주세요."
             )
 
-            # v1beta / google-genai 최신 표준 모델 순차 시도
-            candidate_models = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.0-pro-exp-02-05"]
-            
+            # 1. 내 API 키로 호출 가능한 정식 모델 목록 가져오기
+            all_models = list(client.models.list())
+            valid_model_names = [m.name.replace("models/", "") for m in all_models]
+
+            # 2. 이미지 분석(generateContent)이 가능한 모델 추출
             response = None
             used_model = ""
 
-            for m_name in candidate_models:
+            for m_name in valid_model_names:
+                # 텍스트 전용, 임베딩, 오디오 전용 모델은 제외
+                if any(skip in m_name for skip in ["embed", "text-", "bison", "imagen", "audio", "realtime"]):
+                    continue
+                
                 try:
+                    status_box.info(f"⏳ 연결 시도 중... ({m_name})")
                     response = client.models.generate_content(
                         model=m_name,
                         contents=[image, prompt]
                     )
                     used_model = m_name
-                    break
+                    break  # 성공하면 즉시 탈출
                 except Exception:
-                    continue
+                    continue  # 에러 발생 시 다음 모델 시도
 
             if response:
                 status_box.empty()
@@ -58,7 +65,13 @@ if uploaded_file is not None:
                 st.write(response.text)
             else:
                 status_box.empty()
-                st.error("❌ 연결 가능한 Gemini 모델을 찾지 못했습니다. API 키 권한을 확인해 주세요.")
+                st.error(
+                    "❌ 사용 가능한 모델 연결에 실패했습니다.\n\n"
+                    "**[해결 방법]**\n"
+                    "1. Google AI Studio(https://aistudio.google.com/)에 접속합니다.\n"
+                    "2. `Create API Key` -> **`Create API Key in new project`**로 새 키를 만듭니다.\n"
+                    "3. Streamlit Cloud의 `Secrets`에 새 키를 붙여넣고 저장하세요."
+                )
 
         except Exception as e:
             status_box.empty()
