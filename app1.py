@@ -33,21 +33,11 @@ if uploaded_file is not None:
                 "각 위험요소에 대한 예방대책을 항목별로 깔끔하게 작성해 주세요."
             )
 
-            # 구글 최신 기본 추천 모델 사용
-            target_model = "gemini-2.5-flash"
-            
-            try:
-                response = client.models.generate_content(
-                    model=target_model,
-                    contents=[image, prompt]
-                )
-            except Exception:
-                # 2.5 실패 시 2.0 모델로 재시도
-                target_model = "gemini-2.0-flash"
-                response = client.models.generate_content(
-                    model=target_model,
-                    contents=[image, prompt]
-                )
+            # 구글 표준 최신 모델
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[image, prompt]
+            )
 
             status_box.empty()
             st.success("분석이 완료되었습니다!")
