@@ -33,32 +33,17 @@ if uploaded_file is not None:
                 "각 위험요소에 대한 예방대책을 항목별로 깔끔하게 작성해 주세요."
             )
 
-            # 💡 가장 안정적인 기본 모델 후보군을 순서대로 시도합니다.
-            candidate_models = ["gemini-1.5-flash", "gemini-flash", "gemini-1.5-pro"]
-            
-            response = None
-            used_model = ""
+            # 표준 기본 모델 사용
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=[image, prompt]
+            )
 
-            for model_name in candidate_models:
-                try:
-                    response = client.models.generate_content(
-                        model=model_name,
-                        contents=[image, prompt]
-                    )
-                    used_model = model_name
-                    break  # 성공 시 즉시 반복문 탈출
-                except Exception:
-                    continue  # 에러 발생 시 다음 후보 모델로 시도
-
-            if response:
-                status_box.empty()
-                st.success(f"분석이 완료되었습니다! (연결 모델: {used_model})")
-                st.markdown("---")
-                st.subheader("📋 분석 결과")
-                st.write(response.text)
-            else:
-                status_box.empty()
-                st.error("❌ 연결 가능한 Gemini 모델을 찾지 못했습니다. API 키 권한이나 플랜을 확인해 주세요.")
+            status_box.empty()
+            st.success("분석이 완료되었습니다!")
+            st.markdown("---")
+            st.subheader("📋 분석 결과")
+            st.write(response.text)
 
         except Exception as e:
             status_box.empty()
