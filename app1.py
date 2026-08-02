@@ -235,7 +235,7 @@ st.markdown(f"""
         </div>
         <div class="mascot-badge">안전모·조끼 착용 완료!</div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
-        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">각 세트별 조치 전·후 사진과 현장 설명을 등록해 주세요.</p>
+        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">각 세트별 조치 전·후 사진(여러 장 가능)과 현장 설명을 등록해 주세요.</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -277,7 +277,7 @@ with main_tab1:
             <div>{PURU_HELMET_SVG}</div>
             <div>
                 <strong style="color:#007A33;">[푸루의 입력 가이드]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">하단 탭에서 <strong>🔴 조치 전</strong> / <strong>🟢 조치 후</strong> 사진 및 조치 상세 내역을 입력해 주세요!</span>
+                <span style="font-size:0.92rem; color:#334155;">하단 탭에서 <strong>🔴 조치 전</strong> / <strong>🟢 조치 후</strong> 사진(여러 장 동시 선택 가능) 및 조치 상세 내역을 입력해 주세요!</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -296,16 +296,33 @@ with main_tab1:
             col_before, col_after = st.columns(2)
             
             with col_before:
-                st.caption("🔴 **안전 조치 전 (Before)**")
-                img_before = st.file_uploader(f"세트 {idx} - 조치 전 사진", type=["jpg", "png", "jpeg"], key=f"before_{idx}")
-                if img_before:
-                    st.image(img_before, use_container_width=True)
+                st.caption("🔴 **안전 조치 전 (Before) - 여러 장 등록 가능**")
+                imgs_before = st.file_uploader(
+                    f"세트 {idx} - 조치 전 사진들", 
+                    type=["jpg", "png", "jpeg"], 
+                    accept_multiple_files=True, 
+                    key=f"before_{idx}"
+                )
+                if imgs_before:
+                    st.write(f"📸 업로드된 사진: **{len(imgs_before)}장**")
+                    # 업로드된 이미지 미리보기 (그리드 스타일)
+                    cols = st.columns(min(len(imgs_before), 3))
+                    for img_i, img_file in enumerate(imgs_before):
+                        cols[img_i % 3].image(img_file, use_container_width=True)
                     
             with col_after:
-                st.caption("🟢 **안전 조치 후 (After)**")
-                img_after = st.file_uploader(f"세트 {idx} - 조치 후 사진", type=["jpg", "png", "jpeg"], key=f"after_{idx}")
-                if img_after:
-                    st.image(img_after, use_container_width=True)
+                st.caption("🟢 **안전 조치 후 (After) - 여러 장 등록 가능**")
+                imgs_after = st.file_uploader(
+                    f"세트 {idx} - 조치 후 사진들", 
+                    type=["jpg", "png", "jpeg"], 
+                    accept_multiple_files=True, 
+                    key=f"after_{idx}"
+                )
+                if imgs_after:
+                    st.write(f"📸 업로드된 사진: **{len(imgs_after)}장**")
+                    cols = st.columns(min(len(imgs_after), 3))
+                    for img_i, img_file in enumerate(imgs_after):
+                        cols[img_i % 3].image(img_file, use_container_width=True)
             
             desc = st.text_area(
                 f"✍️ 세트 {idx} - 작업 위치 및 조치 내용 설명", 
@@ -314,11 +331,11 @@ with main_tab1:
             )
             
             # 유효 데이터 저장
-            if img_before or img_after or desc.strip():
+            if imgs_before or imgs_after or desc.strip():
                 set_inputs[idx] = {
                     "set_num": idx,
-                    "img_before": img_before,
-                    "img_after": img_after,
+                    "imgs_before": imgs_before if imgs_before else [],
+                    "imgs_after": imgs_after if imgs_after else [],
                     "desc": desc
                 }
 
@@ -337,7 +354,7 @@ with main_tab1:
                 st.markdown(f"""
                     <div style="text-align:center; padding:15px; background:#E6F4EA; border-radius:12px; margin-bottom:15px; border: 1.5px solid #10B981;">
                         <div style="display:flex; justify-content:center; gap:10px;">{PURU_HELMET_SVG}{GRU_HELMET_SVG}</div>
-                        <p style="margin-top:10px; color:#007A33; font-weight:bold;">푸루 & 그루 AI가 [{selected_dept} {selected_site}] 총 {len(active_sets)}개 세트의 전·후 사진을 비교 분석하고 있습니다...</p>
+                        <p style="margin-top:10px; color:#007A33; font-weight:bold;">푸루 & 그루 AI가 [{selected_dept} {selected_site}] 총 {len(active_sets)}개 세트의 전·후 사진들을 종합 비교 분석하고 있습니다...</p>
                     </div>
                 """, unsafe_allow_html=True)
             
@@ -346,10 +363,11 @@ with main_tab1:
                 
                 prompt_text = (
                     f"당신은 한국환경공단(KECO) {selected_dept} {selected_site}의 현장 안전 전문 AI 검수원입니다.\n"
-                    "제공된 각 세트별 '안전 조치 전(Before)' 사진과 '안전 조치 후(After)' 사진, 그리고 담당자의 조치 설명을 비교 검토하세요.\n"
-                    "각 세트별로 다음 사항을 정밀 분석해 주세요:\n"
-                    "1. 조치 전 위험 요소 판단\n"
-                    "2. 조치 후 적정성 평가 (안전 기준 준수 여부)\n"
+                    "제공된 각 세트별 '안전 조치 전(Before)' 사진들과 '안전 조치 후(After)' 사진들, 그리고 담당자의 조치 설명을 종합 비교 검토하세요.\n"
+                    "각 세트별로 여러 장의 사진이 제공될 수 있으므로 전 후의 모든 각도와 상태를 다각도로 평가해 주세요.\n\n"
+                    "각 세트별 분석 가이드라인:\n"
+                    "1. 조치 전 위험 요소 판단 (제공된 전 사진들 종합 검토)\n"
+                    "2. 조치 후 적정성 평가 (제공된 후 사진들 및 안전 기준 준수 여부)\n"
                     "3. 추가 개선 필요 사항 및 종합 의견\n\n"
                 )
                 
@@ -359,13 +377,23 @@ with main_tab1:
                 for s in active_sets:
                     num = s["set_num"]
                     desc_txt = s["desc"]
-                    ai_input.append(f"\n--- [세트 {num} 설명]: {desc_txt} ---\n")
-                    summary_detail_list.append(f"[세트{num}] {desc_txt}")
+                    b_count = len(s["imgs_before"])
+                    a_count = len(s["imgs_after"])
                     
-                    if s["img_before"]:
-                        ai_input.append(Image.open(s["img_before"]).convert("RGB"))
-                    if s["img_after"]:
-                        ai_input.append(Image.open(s["img_after"]).convert("RGB"))
+                    ai_input.append(f"\n--- [세트 {num}] 설명: {desc_txt} (조치 전 사진: {b_count}장, 조치 후 사진: {a_count}장) ---\n")
+                    summary_detail_list.append(f"[세트{num}] {desc_txt} (전:{b_count}장/후:{a_count}장)")
+                    
+                    # 조치 전 이미지들 전부 추가
+                    if s["imgs_before"]:
+                        ai_input.append(f"\n[세트 {num} - 조치 전(Before) 이미지들]:")
+                        for img_b in s["imgs_before"]:
+                            ai_input.append(Image.open(img_b).convert("RGB"))
+                            
+                    # 조치 후 이미지들 전부 추가
+                    if s["imgs_after"]:
+                        ai_input.append(f"\n[세트 {num} - 조치 후(After) 이미지들]:")
+                        for img_a in s["imgs_after"]:
+                            ai_input.append(Image.open(img_a).convert("RGB"))
 
                 # 모델 자동 검색 및 실행
                 all_models = list(client.models.list())
