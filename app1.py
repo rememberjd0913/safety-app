@@ -87,6 +87,14 @@ st.markdown("""
         margin-bottom: 15px;
         font-size: 0.93rem;
     }
+    .item-card {
+        background-color: #FFFFFF;
+        border: 1.5px solid #CBD5E1;
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
     div.stButton > button {
         background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
         color: white !important;
@@ -133,7 +141,7 @@ def save_to_google_sheet(dept_name, site_name, set_count, analysis_summary, summ
         sheet = client.open_by_key(sheet_id).sheet1
         
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sheet.append_row([now_str, dept_name, site_name, f"{set_count}개 사진", analysis_summary, summary_detail])
+        sheet.append_row([now_str, dept_name, site_name, f"{set_count}개 항목", analysis_summary, summary_detail])
         return True
     except Exception as e:
         st.error(f"구글 시트 저장 중 오류: {e}")
@@ -164,7 +172,6 @@ def analyze_hazard_auto(api_key, img_file):
         "3. **권장 조치 사항:** (1문장)"
     )
 
-    # 1. 최신 표준 모델 명단 일차 시도
     candidate_models = [
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
@@ -185,7 +192,6 @@ def analyze_hazard_auto(api_key, img_file):
             last_error = e
             continue
 
-    # 2. 계정 권한 모델 목록을 동적으로 가져와 재시도
     try:
         available_models = [
             m.name.replace("models/", "") 
@@ -218,7 +224,15 @@ else:
     st.stop()
 
 
-# --- 4. 헤더 UI ---
+# --- 4. 세션 상태 초기화 (동적 추가/삭제용) ---
+if "item_count" not in st.session_state:
+    st.session_state.item_count = 1  # 기본 1개부터 시작
+
+if "ai_results" not in st.session_state:
+    st.session_state.ai_results = {}  # {item_idx: {img_idx: result_text}}
+
+
+# --- 5. 헤더 UI ---
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 수도권서부환경본부</h2>
@@ -232,12 +246,12 @@ st.markdown(f"""
     <div class="mascot-banner">
         <div style="margin-bottom: 8px;">{image_html}</div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
-        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">조치 전 사진 등록 후 바로 위험요인 AI 분석을 받아보세요.</p>
+        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">필요한 만큼 점검 항목을 추가하고, 여러 장의 사진을 한 번에 올려보세요.</p>
     </div>
 """, unsafe_allow_html=True)
 
 
-# --- 5. 메인 탭 ---
+# --- 6. 메인 탭 ---
 main_tab1, main_tab2 = st.tabs(["안전 점검 등록", "부서별 점검 이력"])
 
 with main_tab1:
@@ -265,93 +279,135 @@ with main_tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    st.subheader("📸 안전 점검 사진 및 AI 위험 분석 (최대 4개)")
-    
-    set_tabs = st.tabs(["1번 사진", "2번 사진", "3번 사진", "4번 사진"])
-    
-    if "ai_results" not in st.session_state:
-        st.session_state.ai_results = {}
+    st.subheader("📸 안전 점검 사진 등록 및 AI 위험 분석")
+    st.caption("💡 각 항목마다 여러 장의 사진을 다중 선택하여 동시에 첨부할 수 있습니다.")
 
     form_data = {}
 
-    for idx, set_tab in enumerate(set_tabs, start=1):
-        with set_tab:
-            st.markdown(f"#### 🔹 [{idx}번 사진] 현장 조치 입력 및 분석")
+    # 동적으로 생성된 항목 수만큼 반복
+    for idx in range(1, st.session_state.item_count + 1):
+        st.markdown(f"""
+            <div class="item-card">
+                <h4 style="margin-top:0; color:#007A33;">🔹 [점검 항목 #{idx}]</h4>
+        """, unsafe_allow_html=True)
+        
+        col_b, col_a = st.columns(2)
+        
+        # --- [조치 전 섹션 - 다중 파일 업로드] ---
+        with col_b:
+            st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 가능")
+            before_img_files = st.file_uploader(
+                f"#{idx} 조치 전 사진 첨부 (여러 장 선택 가능)",
+                type=["jpg", "jpeg", "png"],
+                accept_multiple_files=True,
+                key=f"before_imgs_{idx}"
+            )
             
-            col_b, col_a = st.columns(2)
-            
-            # --- [조치 전 섹션] ---
-            with col_b:
-                st.markdown("##### 🔴 조치 전 (Before)")
-                before_img_file = st.file_uploader(
-                    f"[{idx}번] 조치 전 사진 첨부",
-                    type=["jpg", "jpeg", "png"],
-                    key=f"before_img_{idx}"
-                )
+            if before_img_files:
+                st.write(f"📷 첨부된 조치 전 사진: **{len(before_img_files)}장**")
+                # 이미지 미리보기 (2열 Grid)
+                cols = st.columns(min(len(before_img_files), 2))
+                for img_i, img_f in enumerate(before_img_files):
+                    cols[img_i % 2].image(img_f, caption=f"조치 전 #{img_i+1}", use_container_width=True)
                 
-                if before_img_file:
-                    st.image(before_img_file, caption=f"{idx}번 조치 전 사진", use_container_width=True)
-                    
-                    if st.button(f"🔍 [{idx}번] 조치 전 위험요인 AI 분석", key=f"btn_ai_{idx}", use_container_width=True):
-                        with st.spinner("푸루 AI가 최적 모델로 위험요인을 분석 중..."):
+                # AI 분석 버튼
+                if st.button(f"🔍 [항목 #{idx}] 조치 전 사진 전체 AI 분석", key=f"btn_ai_{idx}", use_container_width=True):
+                    with st.spinner("푸루 AI가 조치 전 사진들의 위험요인을 분석 중..."):
+                        if idx not in st.session_state.ai_results:
+                            st.session_state.ai_results[idx] = {}
+                        
+                        for img_i, img_f in enumerate(before_img_files, start=1):
                             try:
-                                result_text = analyze_hazard_auto(api_key, before_img_file)
-                                st.session_state.ai_results[idx] = result_text
+                                result_text = analyze_hazard_auto(api_key, img_f)
+                                st.session_state.ai_results[idx][img_i] = result_text
                             except Exception as e:
-                                st.error(f"분석 오류: {e}")
+                                st.session_state.ai_results[idx][img_i] = f"분석 오류: {e}"
 
-                if idx in st.session_state.ai_results:
+            # AI 분석 결과 출력
+            if idx in st.session_state.ai_results and st.session_state.ai_results[idx]:
+                st.markdown("**🤖 AI 위험 분석 결과:**")
+                for img_i, res_text in st.session_state.ai_results[idx].items():
                     st.markdown(f"""
                         <div class="analysis-box">
-                            {st.session_state.ai_results[idx].replace('\n', '<br>')}
+                            <strong>[사진 #{img_i}]</strong><br>
+                            {res_text.replace('\n', '<br>')}
                         </div>
                     """, unsafe_allow_html=True)
 
-            # --- [조치 후 섹션] ---
-            with col_a:
-                st.markdown("##### 🟢 조치 후 (After)")
-                after_img_file = st.file_uploader(
-                    f"[{idx}번] 조치 후 사진 첨부",
-                    type=["jpg", "jpeg", "png"],
-                    key=f"after_img_{idx}"
-                )
-                if after_img_file:
-                    st.image(after_img_file, caption=f"{idx}번 조치 후 사진", use_container_width=True)
-
-            desc = st.text_area(
-                f"✍️ [{idx}번] 현장 조치 내용 및 설명", 
-                placeholder=f"예: {idx}번 - A동 개구부 안전난간 설치 완료", 
-                key=f"desc_{idx}"
+        # --- [조치 후 섹션 - 다중 파일 업로드] ---
+        with col_a:
+            st.markdown("##### 🟢 조치 후 (After) - 다중 선택 가능")
+            after_img_files = st.file_uploader(
+                f"#{idx} 조치 후 사진 첨부 (여러 장 선택 가능)",
+                type=["jpg", "jpeg", "png"],
+                accept_multiple_files=True,
+                key=f"after_imgs_{idx}"
             )
+            if after_img_files:
+                st.write(f"📷 첨부된 조치 후 사진: **{len(after_img_files)}장**")
+                cols = st.columns(min(len(after_img_files), 2))
+                for img_i, img_f in enumerate(after_img_files):
+                    cols[img_i % 2].image(img_f, caption=f"조치 후 #{img_i+1}", use_container_width=True)
+
+        desc = st.text_area(
+            f"✍️ [항목 #{idx}] 현장 조치 내용 및 설명", 
+            placeholder=f"예: 항목 #{idx} - 개구부 안전난간 설치 및 추락방지망 추가 고정 완료", 
+            key=f"desc_{idx}"
+        )
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        if before_img_files or after_img_files or desc.strip():
+            # AI 분석 텍스트 취합
+            ai_summary_list = []
+            if idx in st.session_state.ai_results:
+                for img_i, res_text in st.session_state.ai_results[idx].items():
+                    ai_summary_list.append(f"(사진#{img_i}) {res_text}")
             
-            if before_img_file or after_img_file or desc.strip():
-                form_data[idx] = {
-                    "before": bool(before_img_file),
-                    "after": bool(after_img_file),
-                    "desc": desc.strip(),
-                    "ai_analysis": st.session_state.ai_results.get(idx, "분석 미실행")
-                }
+            form_data[idx] = {
+                "before_count": len(before_img_files) if before_img_files else 0,
+                "after_count": len(after_img_files) if after_img_files else 0,
+                "desc": desc.strip(),
+                "ai_analysis": "\n".join(ai_summary_list) if ai_summary_list else "분석 미실행"
+            }
+
+    # --- 동적 항목 추가 / 삭제 버튼 ---
+    btn_col1, btn_col2 = st.columns(2)
+    with btn_col1:
+        if st.button("➕ 점검 항목 추가하기", use_container_width=True):
+            st.session_state.item_count += 1
+            st.rerun()
+
+    with btn_col2:
+        if st.session_state.item_count > 1:
+            if st.button("➖ 마지막 항목 삭제", use_container_width=True):
+                # 마지막 항목 데이터 정리
+                last_idx = st.session_state.item_count
+                if last_idx in st.session_state.ai_results:
+                    del st.session_state.ai_results[last_idx]
+                st.session_state.item_count -= 1
+                st.rerun()
 
     st.markdown("---")
 
     # 최종 제출 버튼
-    if st.button(f"💾 [{selected_dept} {selected_site}] 점검 내역 구글 시트 저장 및 완료", use_container_width=True):
+    if st.button(f"💾 [{selected_dept} {selected_site}] 전체 점검 내역 구글 시트 저장 및 완료", use_container_width=True):
         if not form_data:
-            st.warning("⚠️ 최소 1개 이상의 사진이나 설명글을 작성해 주세요.")
+            st.warning("⚠️ 최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
         else:
             all_ai_summaries = []
             details = []
             
             for k, v in form_data.items():
                 if v['ai_analysis'] != "분석 미실행":
-                    all_ai_summaries.append(f"[{k}번]:\n{v['ai_analysis']}")
-                details.append(f"[{k}번] 전:{'O' if v['before'] else 'X'}, 후:{'O' if v['after'] else 'X'} ({v['desc'][:15]})")
+                    all_ai_summaries.append(f"[항목 #{k}]:\n{v['ai_analysis']}")
+                details.append(f"[항목 #{k}] 전:{v['before_count']}장, 후:{v['after_count']}장 ({v['desc'][:15]})")
             
             combined_ai = "\n\n".join(all_ai_summaries) if all_ai_summaries else "조치 전 AI 분석 미실행"
             combined_detail = " | ".join(details)
             
             if save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail):
-                st.success(f"🎉 [{selected_dept} {selected_site}] 점검 내역이 성공적으로 저장되었습니다!")
+                st.success(f"🎉 [{selected_dept} {selected_site}] 총 {len(form_data)}개 점검 항목이 구글 시트에 성공적으로 저장되었습니다!")
 
 # ---------------- Tab 2: 이력 조회 ----------------
 with main_tab2:
