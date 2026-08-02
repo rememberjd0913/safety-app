@@ -10,7 +10,6 @@ from PIL import Image
 # --- 페이지 기본 설정 (한국환경공단 맞춤) ---
 st.set_page_config(
     page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 조치 전·후 스마트 점검",
-    page_icon="puru_guru.png",  # 브라우저 탭 파비콘 이미지 설정
     layout="centered",
     initial_sidebar_state="collapsed"
 )
@@ -217,8 +216,8 @@ with main_tab1:
     st.markdown("""
         <div class="mascot-card">
             <div>
-                <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">점검을 진행할 <strong>담당 부서</strong>와 <strong>현장 번호</strong>를 선택해 주세요.</span>
+                <strong style="color:#EC4899;">[푸루의 현장 안내]</strong><br>
+                <span style="font-size:0.92rem; color:#334155;">점검을 진행할 <strong>담당 부서</strong>와 <strong>현장</strong>을 선택해 주세요.</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -242,7 +241,7 @@ with main_tab1:
     st.markdown("""
         <div class="mascot-card">
             <div>
-                <strong style="color:#007A33;">[푸루의 입력 가이드]</strong><br>
+                <strong style="color:#007A33;">[그루의 입력 가이드]</strong><br>
                 <span style="font-size:0.92rem; color:#334155;">하단 탭에서 <strong>🔴 조치 전 사진</strong> 및 <strong>🟢 조치 후 사진</strong>을 업로드해 주세요!</span>
             </div>
         </div>
