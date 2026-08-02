@@ -150,13 +150,10 @@ def get_google_sheet_records():
         return []
 
 
-# --- 2. 안정적인 AI 분석 함수 (API버전 고정 & 표준 모델 설정) ---
+# --- 2. 동적 모델 탐색 기반 AI 분석 함수 (404 방지) ---
 def analyze_hazard_auto(api_key, img_file):
-    """API 버전을 v1으로 지정하고 표준 모델을 호출하여 404 오류를 해결합니다."""
-    client = genai.Client(
-        api_key=api_key,
-        http_options={'api_version': 'v1'}
-    )
+    """현재 API Key로 사용 가능한 모델을 탐색하여 최적의 모델로 분석을 수행합니다."""
+    client = genai.Client(api_key=api_key)
     img = Image.open(img_file)
     
     prompt = (
@@ -167,14 +164,15 @@ def analyze_hazard_auto(api_key, img_file):
         "3. **권장 조치 사항:** (1문장)"
     )
 
+    # 우선 시도할 후보 모델 목록
     candidate_models = [
         "gemini-2.5-flash",
+        "gemini-2.0-flash",
         "gemini-1.5-flash",
-        "gemini-2.5-pro",
-        "gemini-1.5-pro"
+        "gemini-2.5-pro"
     ]
 
-    last_error = None
+    # 1단계: 정해진 후보 모델 시도
     for model_name in candidate_models:
         try:
             response = client.models.generate_content(
@@ -183,11 +181,32 @@ def analyze_hazard_auto(api_key, img_file):
             )
             if response and response.text:
                 return response.text
-        except Exception as e:
-            last_error = e
+        except Exception:
             continue
 
-    raise Exception(f"AI 분석 실패 (사유: {last_error})")
+    # 2단계: 후보 모델 실패 시 API 계정이 지원하는 전체 모델 탐색 후 자동 선택
+    try:
+        available_models = [
+            m.name.replace("models/", "") 
+            for m in client.models.list() 
+            if "generateContent" in getattr(m, "supported_generation_methods", [])
+        ]
+        
+        # flash 모델 우선 탐색
+        flash_models = [m for m in available_models if "flash" in m]
+        target_model = flash_models[0] if flash_models else (available_models[0] if available_models else None)
+
+        if target_model:
+            response = client.models.generate_content(
+                model=target_model,
+                contents=[prompt, img]
+            )
+            if response and response.text:
+                return response.text
+    except Exception as list_err:
+        raise Exception(f"사용 가능한 AI 모델 탐색 중 오류 발생: {list_err}")
+
+    raise Exception("현재 계정에서 실행 가능한 Gemini 모델을 찾을 수 없습니다. Google AI Studio에서 API Key 권한을 확인해 주세요.")
 
 
 # --- 3. API Key 확인 ---
