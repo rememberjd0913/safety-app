@@ -1,6 +1,5 @@
 import streamlit as st
 from google import genai
-from google.genai import types
 import gspread
 from google.oauth2.service_account import Credentials
 import datetime
@@ -10,6 +9,7 @@ from PIL import Image
 # --- 페이지 기본 설정 (한국환경공단 맞춤) ---
 st.set_page_config(
     page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 조치 전·후 스마트 점검",
+    page_icon="puru_guru.png",  # 브라우저 탭 파비콘 이미지 설정
     layout="centered",
     initial_sidebar_state="collapsed"
 )
@@ -212,12 +212,12 @@ main_tab1, main_tab2 = st.tabs(["전·후 점검 등록 및 AI 진단", "부서�
 
 # ---------------- Tab 1: AI 전후 점검 ----------------
 with main_tab1:
-    # 그루 가이드 카드 (아이콘 제거 완료)
+    # 그루 가이드 카드
     st.markdown("""
         <div class="mascot-card">
             <div>
-                <strong style="color:#EC4899;">[푸루의 현장 안내]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">점검을 진행할 <strong>담당 부서</strong>와 <strong>현장</strong>을 선택해 주세요.</span>
+                <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
+                <span style="font-size:0.92rem; color:#334155;">점검을 진행할 <strong>담당 부서</strong>와 <strong>현장 번호</strong>를 선택해 주세요.</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -237,11 +237,11 @@ with main_tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    # 푸루 가이드 카드 (아이콘 제거 완료)
+    # 푸루 가이드 카드
     st.markdown("""
         <div class="mascot-card">
             <div>
-                <strong style="color:#007A33;">[그루의 입력 가이드]</strong><br>
+                <strong style="color:#007A33;">[푸루의 입력 가이드]</strong><br>
                 <span style="font-size:0.92rem; color:#334155;">하단 탭에서 <strong>🔴 조치 전 사진</strong> 및 <strong>🟢 조치 후 사진</strong>을 업로드해 주세요!</span>
             </div>
         </div>
@@ -249,12 +249,10 @@ with main_tab1:
 
     st.subheader("📸 안전 조치 전·후 사진 등록 (최대 4개)")
     
-    # 탭 명칭 변경: 1번사진, 2번사진, 3번사진, 4번사진
     set_tabs = st.tabs(["1번 사진", "2번 사진", "3번 사진", "4번 사진"])
     
-    set_inputs = {} # 각 번호별 데이터 저장 사전
+    set_inputs = {}
 
-    # 1번사진 ~ 4번사진 입력 화면 구성
     for idx, set_tab in enumerate(set_tabs, start=1):
         with set_tab:
             st.markdown(f"#### 🔹 [{idx}번 사진] 현장 조치 전·후 첨부")
@@ -285,7 +283,6 @@ with main_tab1:
                 key=f"desc_{idx}"
             )
             
-            # 사진이나 설명 중 하나라도 등록된 경우 유효 항목으로 등록
             if before_img_file or after_img_file or desc.strip():
                 set_inputs[idx] = {
                     "set_num": idx,
@@ -297,34 +294,36 @@ with main_tab1:
     st.markdown("---")
 
     # AI 분석 버튼
-    if st.button(f"🚀 [{selected_dept} {selected_site}] 전·후 대조 AI 정밀 분석", use_container_width=True):
+    if st.button(f"🚀 [{selected_dept} {selected_site}] 전·후 대조 AI 핵심 요약 분석", use_container_width=True):
         if not set_inputs:
             st.warning("⚠️ 최소 1개 이상의 사진 탭에서 조치 전/후 사진이나 설명글을 첨부해 주세요.")
         else:
             active_sets = list(set_inputs.values())
             
-            # AI 분석 로딩 안내
             loading_container = st.container()
             with loading_container:
                 st.markdown(f"""
                     <div style="text-align:center; padding:15px; background:#E6F4EA; border-radius:12px; margin-bottom:15px; border: 1.5px solid #10B981;">
-                        <p style="margin-top:10px; color:#007A33; font-weight:bold;">푸루 & 그루 AI가 [{selected_dept} {selected_site}] 총 {len(active_sets)}개 현장의 전·후 이미지 데이터를 분석하고 있습니다...</p>
+                        <p style="margin-top:10px; color:#007A33; font-weight:bold;">푸루 & 그루 AI가 [{selected_dept} {selected_site}] 핵심 점검 리포트를 요약 중입니다...</p>
                     </div>
                 """, unsafe_allow_html=True)
             
             try:
                 client = genai.Client(api_key=api_key)
                 
-                # 프롬프트 및 멀티모달 콘텐트 구성
                 contents_payload = []
                 
+                # 핵심 요약 전용 프롬프트 설계
                 system_prompt = (
                     f"당신은 한국환경공단(KECO) {selected_dept} {selected_site}의 현장 안전 전문 AI 검수원입니다.\n"
-                    "제공된 각 번호별 '안전 조치 전(Before) 사진'과 '안전 조치 후(After) 사진', 그리고 설명을 종합적으로 비교 및 정밀 분석하세요.\n\n"
-                    "각 번호별 분석 가이드라인:\n"
-                    "1. 조치 전 사진 분석: 시각적 위험 요소 및 산업안전 위험도 평가\n"
-                    "2. 조치 후 사진 분석: 안전 조치의 시각적 완성도 및 관련 법규 준수 여부\n"
-                    "3. 총평 및 추가 개선 조치 제안\n\n"
+                    "군더더기 없이 현장에서 즉시 파악 가능하도록 **핵심만 짧고 일목요연하게** 작성하세요.\n\n"
+                    "📌 **출력 형식 규칙 (반드시 지킬 것):**\n"
+                    "1. 상단에 **[종합 안전 진단 한 줄 요약]** 작성 (1문장)\n"
+                    "2. 각 사진 번호별로 아래 3가지 항목만 불렛포인트(-)로 간결히 요약:\n"
+                    "   - **조치 전 위험:** (1문장)\n"
+                    "   - **조치 후 상태:** (양호/보완필요 + 1문장)\n"
+                    "   - **추가 권고사항:** (1문장)\n"
+                    "3. 서론, 결론, 인사말, 장황한 설명은 절대 포함하지 마세요.\n\n"
                 )
                 contents_payload.append(system_prompt)
 
@@ -350,7 +349,7 @@ with main_tab1:
 
                     summary_detail_list.append(f"[{num}번] 전:{b_status},후:{a_status}({d_txt[:15]})")
 
-                # 최신 AI 모델 호출 (gemini-2.5-flash 우선)
+                # AI 모델 호출
                 response = client.models.generate_content(
                     model="gemini-2.5-flash",
                     contents=contents_payload
@@ -363,14 +362,14 @@ with main_tab1:
                     
                     # Google Sheets 저장
                     if save_to_google_sheet(selected_dept, selected_site, len(active_sets), result_text, summary_detail):
-                        st.toast(f"✅ [{selected_dept} {selected_site}] 전·후 점검 기록이 구글 시트에 저장되었습니다!", icon="🌱")
+                        st.toast(f"✅ [{selected_dept} {selected_site}] 전·후 점검 기록이 저장되었습니다!", icon="🌱")
 
                     # 결과 리포트 출력 카드
                     st.markdown(f"""
                         <div class="result-card">
                             <div style="display:flex; align-items:center; gap:12px; border-bottom:2px solid #E2E8F0; padding-bottom:10px; margin-bottom:12px;">
                                 <div>
-                                    <h4 style="margin:0; color:#007A33;">푸루 AI의 전·후 사진 비교 분석 리포트</h4>
+                                    <h4 style="margin:0; color:#007A33;">⚡ 푸루 AI 핵심 요약 리포트</h4>
                                     <span style="font-size:0.85rem; color:#64748B;">[{selected_dept}] - {selected_site}</span>
                                 </div>
                             </div>
@@ -379,9 +378,9 @@ with main_tab1:
                     """, unsafe_allow_html=True)
                     
                     st.download_button(
-                        label="📥 전·후 점검 리포트 (.txt) 다운로드",
+                        label="📥 핵심 요약 리포트 (.txt) 다운로드",
                         data=result_text,
-                        file_name=f"KECO_전후점검_{selected_dept}_{selected_site}_{datetime.datetime.now().strftime('%Y%m%d')}.txt",
+                        file_name=f"KECO_핵심요약_{selected_dept}_{selected_site}_{datetime.datetime.now().strftime('%Y%m%d')}.txt",
                         mime="text/plain",
                         use_container_width=True
                     )
