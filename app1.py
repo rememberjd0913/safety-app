@@ -150,9 +150,9 @@ def get_google_sheet_records():
         return []
 
 
-# --- 2. 안정적인 AI 분석 함수 ---
+# --- 2. 최신 SDK 대응 AI 분석 함수 ---
 def analyze_hazard_auto(api_key, img_file):
-    """안정성이 검증된 Gemini 모델을 사용하여 위험요소를 정밀 분석합니다."""
+    """최신 Gemini SDK 표준 모델을 순차적으로 호출하여 위험 요소를 분석합니다."""
     client = genai.Client(api_key=api_key)
     img = Image.open(img_file)
     
@@ -164,7 +164,12 @@ def analyze_hazard_auto(api_key, img_file):
         "3. **권장 조치 사항:** (1문장)"
     )
 
-    candidate_models = ["gemini-1.5-flash", "gemini-1.5-pro"]
+    candidate_models = [
+        "gemini-2.0-flash",
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-1.5-flash"
+    ]
 
     last_error = None
     for model_name in candidate_models:
@@ -179,7 +184,7 @@ def analyze_hazard_auto(api_key, img_file):
             last_error = e
             continue
 
-    raise Exception(f"사용 가능한 AI 모델 분석 실패: {last_error}")
+    raise Exception(f"AI 분석 실패 (사유: {last_error})")
 
 
 # --- 3. API Key 확인 ---
