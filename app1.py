@@ -7,7 +7,7 @@ import datetime
 # --- 페이지 기본 설정 (한국환경공단 맞춤) ---
 st.set_page_config(
     page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 조치 전·후 스마트 점검",
-    page_icon="🌱",
+    page_icon="puru_guru.png",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
