@@ -27,6 +27,29 @@ img_base64 = get_base64_image("puru_guru.png")
 # --- 커스텀 CSS ---
 st.markdown("""
     <style>
+    /* --------------------------------------------------
+       📱 [모바일 & 다크모드 대응] 글자 사라짐 / 깨짐 방지
+       -------------------------------------------------- */
+    /* 다크모드에서도 기본 글자색 및 배경을 고정하여 글자가 안 보이는 현상 방지 */
+    html, body, [data-testid="stAppViewContainer"] {
+        color: #1E293B !important;
+    }
+    
+    /* 모바일 좁은 화면에서 글자가 자르지 않고 자연스럽게 줄바꿈되도록 설정 */
+    .stMarkdown, p, div, span, label {
+        word-break: keep-all !important; /* 단어 단위 줄바꿈 */
+        white-space: normal !important;
+    }
+    
+    /* 모바일에서 테이블/표가 깨지지 않고 가로 스크롤되도록 설정 */
+    .stTable, div[data-testid="stTable"] {
+        overflow-x: auto !important;
+    }
+
+
+    /* --------------------------------------------------
+       🎨 [기존 스타일 유지] 한국환경공단 테마
+       -------------------------------------------------- */
     .stApp {
         background-color: #F8FBF9;
     }
@@ -67,6 +90,7 @@ st.markdown("""
         padding: 14px 18px;
         margin-bottom: 20px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        color: #1E293B !important; /* 다크모드 대비 추가 */
     }
     .select-card {
         background-color: #E6F4EA;
@@ -74,7 +98,7 @@ st.markdown("""
         border-radius: 12px;
         padding: 12px 16px;
         margin-bottom: 18px;
-        color: #005F27;
+        color: #005F27 !important;
         font-weight: 600;
         box-shadow: 0 2px 6px rgba(0, 122, 51, 0.05);
     }
@@ -86,6 +110,7 @@ st.markdown("""
         margin-top: 10px;
         margin-bottom: 15px;
         font-size: 0.93rem;
+        color: #991B1B !important; /* 다크모드 대비 글자색 지정 */
     }
     .item-card {
         background-color: #FFFFFF;
@@ -94,6 +119,7 @@ st.markdown("""
         padding: 18px;
         margin-bottom: 20px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        color: #1E293B !important; /* 다크모드 대비 추가 */
     }
     div.stButton > button {
         background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
@@ -122,6 +148,7 @@ st.markdown("""
         color: #FFFFFF !important;
     }
     </style>
+""", unsafe_allow_html=True)
 """, unsafe_allow_html=True)
 
 
