@@ -150,10 +150,11 @@ def get_google_sheet_records():
         return []
 
 
-# --- 2. 다중 모델 검토 AI 분석 함수 (오류 수정 완료) ---
-def analyze_hazard_with_fallback(api_key, img_file):
-    """실제 호환되는 최신 Gemini 모델을 순회하며 위험 요소를 정밀 분석합니다."""
-    candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+# --- 2. 스마트 모델 감지 및 안전 분석 함수 ---
+def analyze_hazard_auto(api_key, img_file):
+    """현재 API Key로 이용 가능한 Gemini 모델을 자동 검색하여 분석을 진행합니다."""
+    client = genai.Client(api_key=api_key)
+    img = Image.open(img_file)
     
     prompt = (
         "당신은 한국환경공단(KECO) 현장 안전 전문 AI 검수원입니다.\n"
@@ -162,12 +163,34 @@ def analyze_hazard_with_fallback(api_key, img_file):
         "2. **위험 등급:** [상/중/하 중 선택]\n"
         "3. **권장 조치 사항:** (1문장)"
     )
+
+    # 우선순위 권장 모델명
+    preferred_models = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash-002",
+        "gemini-1.5-flash",
+        "gemini-2.5-pro"
+    ]
     
-    client = genai.Client(api_key=api_key)
-    img = Image.open(img_file)
-    
+    # 계정에서 실제 이용 가능한 모델 목록 조회 시도
+    available_model_names = []
+    try:
+        models_page = client.models.list()
+        for m in models_page:
+            # models/gemini-2.5-flash 형태에서 모델명만 추출
+            name = m.name.replace("models/", "") if hasattr(m, 'name') else str(m)
+            available_model_names.append(name)
+    except Exception:
+        available_model_names = preferred_models
+
+    # 선호 모델 우선 시도 후 목록에 있는 모델 순회
+    target_models = [m for m in preferred_models if m in available_model_names]
+    if not target_models:
+        target_models = available_model_names if available_model_names else preferred_models
+
     last_error = None
-    for model_name in candidate_models:
+    for model_name in target_models:
         try:
             response = client.models.generate_content(
                 model=model_name,
@@ -178,8 +201,8 @@ def analyze_hazard_with_fallback(api_key, img_file):
         except Exception as e:
             last_error = e
             continue
-            
-    raise Exception(f"모든 AI 모델 검토 실패. 마지막 오류: {last_error}")
+
+    raise Exception(f"사용 가능한 모델 호출 실패: {last_error}")
 
 
 # --- 3. API Key 확인 ---
@@ -267,7 +290,7 @@ with main_tab1:
                     if st.button(f"🔍 [{idx}번] 조치 전 위험요인 AI 분석", key=f"btn_ai_{idx}", use_container_width=True):
                         with st.spinner("푸루 AI가 최적 모델로 위험요인을 분석 중..."):
                             try:
-                                result_text = analyze_hazard_with_fallback(api_key, before_img_file)
+                                result_text = analyze_hazard_auto(api_key, before_img_file)
                                 st.session_state.ai_results[idx] = result_text
                             except Exception as e:
                                 st.error(f"분석 오류: {e}")
