@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 커스텀 CSS (한국환경공단 브랜드 및 푸루/그루 UI 적용) ---
+# --- 커스텀 CSS (한국환경공단 KECO 브랜드 및 건설 UI 적용) ---
 st.markdown("""
     <style>
     /* 메인 배경 및 기본 폰트 설정 */
@@ -44,23 +44,23 @@ st.markdown("""
         margin-bottom: 0 !important;
     }
 
-    /* 마스코트 이미지 카드 스타일 */
-    .mascot-box {
+    /* 마스코트 환영 카드 */
+    .mascot-card {
         background-color: #FFFFFF;
+        border: 2px solid #E2E8F0;
         border-radius: 14px;
-        padding: 18px;
+        padding: 12px 16px;
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
         margin-bottom: 20px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
-    .mascot-box img {
-        width: 60px; /* 마스코트 크기 고정 */
-        height: auto;
+    .mascot-icon {
+        font-size: 2.2rem;
     }
     .mascot-text {
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         color: #334155;
         line-height: 1.4;
     }
@@ -77,6 +77,7 @@ st.markdown("""
         margin-bottom: 18px;
         color: #005F27;
         font-weight: 600;
+        box-shadow: 0 2px 6px rgba(0, 122, 51, 0.05);
     }
 
     /* 결과 카드 스타일 */
@@ -88,21 +89,6 @@ st.markdown("""
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         margin-top: 15px;
         margin-bottom: 15px;
-    }
-    .result-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 10px;
-        border-bottom: 2px solid #E2E8F0;
-        padding-bottom: 10px;
-    }
-    .result-header img {
-        width: 30px;
-    }
-    .result-header h4 {
-        margin: 0;
-        color: #007A33;
     }
 
     /* Streamlit 기본 버튼 커스텀 (큼직하고 직관적이게) */
@@ -145,14 +131,6 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-
-# 📌 이미지 URL 설정 (GitHub raw 주소로 변경하여 Streamlit 클라우드에서 바로 로드)
-# 본인의 GitHub 저장소 raw 이미지 주소로 꼭 변경해 주세요!
-PURU_WELCOME_URL = "https://raw.githubusercontent.com/본인GitHub계정/safety-app/main/images/puru_welcome.png"
-GRU_GUIDE_URL = "https://raw.githubusercontent.com/본인GitHub계정/safety-app/main/images/gru_guide.png"
-PURU_INPUT_URL = "https://raw.githubusercontent.com/본인GitHub계정/safety-app/main/images/puru_input.png"
-PURU_GRU_ANALYSIS_URL = "https://raw.githubusercontent.com/본인GitHub계정/safety-app/main/images/puru_gru_analysis.png"
-PURU_RESULT_URL = "https://raw.githubusercontent.com/본인GitHub계정/safety-app/main/images/puru_result.png"
 
 
 # --- 1. Google Sheets 연동 함수 ---
@@ -201,7 +179,7 @@ else:
     st.stop()
 
 
-# --- 3. KECO 헤더 및 메인 마스코트 UI ---
+# --- 3. KECO 헤더 및 마스코트 UI ---
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 KECO</h2>
@@ -209,35 +187,33 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# 메인 환영 마스코트 배너 (푸루/그루 함께)
-st.image(PURU_WELCOME_URL, caption="한국환경공단 안전 지킴이 푸루 & 그루", use_container_width=True)
-st.markdown("---")
+# 마스코트 환영 메시지 카드
+st.markdown("""
+    <div class="mascot-card">
+        <div class="mascot-icon">💧🌱</div>
+        <div class="mascot-text">
+            안녕하세요! 안전모와 조끼를 든든하게 착용한 <strong>푸루 & 그루</strong>입니다.<br>
+            각 세트 탭을 눌러 <strong>안전 조치 전/후 사진과 설명</strong>을 등록해 주세요!
+        </div>
+    </div>
+""", unsafe_allow_html=True)
 
 
 # --- 4. 메인 탭 구성 ---
-main_tab1, main_tab2 = st.tabs(["🔍 전·후 사진 등록 및 AI 진단", "📋 부서별 점검 이력 조회"])
+main_tab1, main_tab2 = st.tabs(["🔍 전·후 사진 등록 및 AI 진단", "📋 부서별 점검 이력"])
 
 # ---------------- Tab 1: AI 전후 사진 점검 ----------------
 with main_tab1:
-    # 점검 부서 및 현장 선택 (그루 가이드 적용)
-    st.markdown(f"""
-        <div class="mascot-box">
-            <img src="{GRU_GUIDE_URL}" alt="그루 가이드">
-            <div class="mascot-text">
-                반가워요! <strong>그루</strong>입니다.<br>
-                담당 부서와 현장을 선택해 주시면 똑 부러지게 점검해 드릴게요!
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.subheader("🏢 점검 부서 및 현장 선택")
     
     departments = ["시설사업1부", "시설사업2부", "시설사업3부"]
     sites = ["1현장", "2현장", "3현장", "4현장"]
 
     col_dept, col_site = st.columns(2)
     with col_dept:
-        selected_dept = st.selectbox("📌 담당 부서 선택", departments, key="dept_selectbox")
+        selected_dept = st.selectbox("📌 담당 부서 선택", departments)
     with col_site:
-        selected_site = st.selectbox("🏗️ 점검 현장 선택", sites, key="site_selectbox")
+        selected_site = st.selectbox("🏗️ 점검 현장 선택", sites)
 
     st.markdown(f"""
         <div class="select-card">
@@ -245,19 +221,9 @@ with main_tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    # 안전 조치 전·후 등록 안내 (푸루 가이드 적용)
-    st.markdown(f"""
-        <div class="mascot-box">
-            <img src="{PURU_INPUT_URL}" alt="푸루 입력 가이드">
-            <div class="mascot-text">
-                믿음직한 <strong>푸루</strong>입니다.<br>
-                현장의 🔴조치 전과 🟢조치 후 사진, 설명을 탭별로 빠짐없이 입력해 주세요!
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # 세트별 개별 하위 탭 생성 (1️⃣ 세트 1 ~ 4)
-    st.subheader("📋 안전 조치 전·후 등록 (세트별 화면 분리)")
+    st.subheader("📋 안전 조치 전·후 등록 (총 4개 세트)")
+    
+    # 세트별 개별 탭 생성
     set_tabs = st.tabs(["1️⃣ 세트 1", "2️⃣ 세트 2", "3️⃣ 세트 3", "4️⃣ 세트 4"])
     
     set_inputs = {} # 각 세트별 입력값 저장 사전
@@ -265,7 +231,7 @@ with main_tab1:
     # 세트 1 ~ 4 개별 화면 구성
     for idx, set_tab in enumerate(set_tabs, start=1):
         with set_tab:
-            st.markdown(f"#### 🔹 [세트 {idx}] 조치 전·후 현장 사진 및 내용")
+            st.markdown(f"#### 🔹 [세트 {idx}] 조치 전·후 사진 및 내용")
             col_before, col_after = st.columns(2)
             
             with col_before:
@@ -303,13 +269,8 @@ with main_tab1:
             st.warning("⚠️ 최소 1개 이상의 세트 탭에서 사진이나 설명글을 입력해 주세요.")
         else:
             active_sets = list(set_inputs.values())
-            
-            # AI 분석 중 로딩화면 (푸루 & 그루 분석 모습)
-            loading_container = st.container()
-            with loading_container:
-                st.image(PURU_GRU_ANALYSIS_URL, caption="푸루와 그루가 현장 상태를 정밀 분석 중입니다...", width=200)
-                status_box = st.empty()
-                status_box.info(f"⏳ **푸루 & 그루 AI가 [{selected_dept} {selected_site}] 총 {len(active_sets)}개 세트의 조치 전·후 상태를 꼼꼼하게 대조 분석 중입니다... 조금만 기다려 주세요!**")
+            status_box = st.empty()
+            status_box.info(f"⏳ **푸루가 [{selected_dept} {selected_site}] 총 {len(active_sets)}개 세트의 조치 전·후 상태를 비교 분석 중입니다...**")
             
             try:
                 client = genai.Client(api_key=api_key)
@@ -355,9 +316,7 @@ with main_tab1:
                         continue
 
                 if response:
-                    # 분석 완료 시 로딩화면 삭제 및 푸루 AI 결과 카드 출력
-                    loading_container.empty()
-                    
+                    status_box.empty()
                     result_text = response.text
                     summary_detail = " | ".join(summary_detail_list)
                     
@@ -365,13 +324,10 @@ with main_tab1:
                     if save_to_google_sheet(selected_dept, selected_site, len(active_sets), result_text, summary_detail):
                         st.toast(f"✅ [{selected_dept} {selected_site}] 전·후 점검 기록이 구글 시트에 저장되었습니다!", icon="🌱")
 
-                    # 푸루 AI 분석 완료 리포트 카드 테마 출력
+                    # 결과 리포트 출력
+                    st.markdown(f"### 📋 푸루의 전·후 비교 분석 리포트 ({selected_dept} {selected_site})")
                     st.markdown(f"""
                         <div class="result-card">
-                            <div class="result-header">
-                                <img src="{PURU_RESULT_URL}" alt="푸루 AI 분석">
-                                <h4>📋 푸루 AI의 전·후 비교 분석 리포트 ({selected_dept} {selected_site})</h4>
-                            </div>
                             {result_text.replace('\n', '<br>')}
                         </div>
                     """, unsafe_allow_html=True)
@@ -384,11 +340,11 @@ with main_tab1:
                         use_container_width=True
                     )
                 else:
-                    loading_container.empty()
+                    status_box.empty()
                     st.error("❌ 연결 가능한 AI 모델을 찾지 못했습니다. API 키 권한을 확인해 주세요.")
 
             except Exception as e:
-                loading_container.empty()
+                status_box.empty()
                 st.error(f"오류가 발생했습니다: {e}")
 
 # ---------------- Tab 2: 저장된 이력 조회 ----------------
@@ -402,9 +358,9 @@ with main_tab2:
         # 이력 검색용 부서 선택 필터
         filter_col1, filter_col2 = st.columns(2)
         with filter_col1:
-            filter_dept = st.selectbox("🔍 조회할 부서 선택", ["전체 부서"] + departments, key="dept_filter_selectbox")
+            filter_dept = st.selectbox("🔍 조회할 부서 선택", ["전체 부서"] + departments)
         with filter_col2:
-            filter_site = st.selectbox("🔍 조회할 현장 선택", ["전체 현장"] + sites, key="site_filter_selectbox")
+            filter_site = st.selectbox("🔍 조회할 현장 선택", ["전체 현장"] + sites)
 
         data_rows = rows[1:]
         filtered_rows = []
