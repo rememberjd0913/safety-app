@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 from google import genai  # 최신 공식 SDK
 import gspread
@@ -24,31 +25,27 @@ def get_base64_image(image_path):
 
 img_base64 = get_base64_image("puru_guru.png")
 
-# --- 커스텀 CSS ---
+# --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
 st.markdown("""
     <style>
     /* --------------------------------------------------
        📱 [모바일 & 다크모드 대응] 글자 사라짐 / 깨짐 방지
        -------------------------------------------------- */
-    /* 다크모드에서도 기본 글자색 및 배경을 고정하여 글자가 안 보이는 현상 방지 */
     html, body, [data-testid="stAppViewContainer"] {
         color: #1E293B !important;
     }
     
-    /* 모바일 좁은 화면에서 글자가 자르지 않고 자연스럽게 줄바꿈되도록 설정 */
     .stMarkdown, p, div, span, label {
-        word-break: keep-all !important; /* 단어 단위 줄바꿈 */
+        word-break: keep-all !important;
         white-space: normal !important;
     }
     
-    /* 모바일에서 테이블/표가 깨지지 않고 가로 스크롤되도록 설정 */
     .stTable, div[data-testid="stTable"] {
         overflow-x: auto !important;
     }
 
-
     /* --------------------------------------------------
-       🎨 [기존 스타일 유지] 한국환경공단 테마
+       🎨 [한국환경공단 테마 스타일]
        -------------------------------------------------- */
     .stApp {
         background-color: #F8FBF9;
@@ -90,7 +87,7 @@ st.markdown("""
         padding: 14px 18px;
         margin-bottom: 20px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        color: #1E293B !important; /* 다크모드 대비 추가 */
+        color: #1E293B !important;
     }
     .select-card {
         background-color: #E6F4EA;
@@ -110,7 +107,7 @@ st.markdown("""
         margin-top: 10px;
         margin-bottom: 15px;
         font-size: 0.93rem;
-        color: #991B1B !important; /* 다크모드 대비 글자색 지정 */
+        color: #991B1B !important;
     }
     .item-card {
         background-color: #FFFFFF;
@@ -119,7 +116,7 @@ st.markdown("""
         padding: 18px;
         margin-bottom: 20px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-        color: #1E293B !important; /* 다크모드 대비 추가 */
+        color: #1E293B !important;
     }
     div.stButton > button {
         background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
@@ -149,26 +146,16 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-""", unsafe_allow_html=True)
 
 
 # ==========================================
 # 🔒 [보안] 감독관 로그인 제어 게이트웨이
 # ==========================================
-# ==========================================
-# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (보완 버전)
-# ==========================================
-# ==========================================
-# 🔒 [보안 & 진단 기능 포함] 감독관 로그인 제어
-# ==========================================
 def check_password():
     """감독관 인증을 처리하는 게이트웨이 함수"""
-    
-    # 이미 로그인된 상태라면 True
     if st.session_state.get("password_correct", False):
         return True
 
-    # Secrets에 등록된 계정 목록 가져오기
     allowed_users = st.secrets.get("passwords", {})
 
     st.markdown("""
@@ -180,14 +167,6 @@ def check_password():
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # Secrets 진단용 메시지 (비밀번호는 숨기고 아이디 목록만 확인)
-        if not allowed_users:
-            st.error("⚠️ Secrets 설정에서 [passwords] 항목을 찾을 수 없습니다. Settings -> Secrets를 확인하세요.")
-        else:
-            # 등록된 아이디 목록 표시 (예: 등록된 ID: keco1001, keco1002)
-            registered_ids = list(allowed_users.keys())
-            st.caption(f"💡 현재 시스템 등록 ID: **{', '.join(map(str, registered_ids))}**")
-
         user_id = st.text_input("👤 감독관 ID (사번)", key="username_input")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input")
         
@@ -195,41 +174,19 @@ def check_password():
             user_id_clean = str(user_id).strip()
             user_pw_clean = str(user_pw).strip()
             
-            # 1. ID 존재 여부 확인
-            if user_id_clean not in [str(k) for k in allowed_users.keys()]:
-                st.error(f"❌ '{user_id_clean}'은(는) 등록되지 않은 ID입니다. (대소문자를 확인하세요)")
+            allowed_users_str = {str(k): str(v) for k, v in allowed_users.items()}
+            
+            if user_id_clean in allowed_users_str and allowed_users_str[user_id_clean] == user_pw_clean:
+                st.session_state["password_correct"] = True
+                st.session_state["logged_user"] = user_id_clean
+                st.rerun()
             else:
-                # 2. 비밀번호 일치 확인 (문자열 변환 처리)
-                real_pw = str(allowed_users.get(user_id_clean, ""))
-                if real_pw == user_pw_clean:
-                    st.session_state["password_correct"] = True
-                    st.session_state["logged_user"] = user_id_clean
-                    st.rerun()
-                else:
-                    st.error("❌ 비밀번호가 올바르지 않습니다.")
-
-    return False
-    # 로그인 UI
-    st.markdown("""
-        <div style="text-align:center; padding: 30px 10px 10px 10px;">
-            <h2 style="color:#007A33;">🌱 한국환경공단 감독관 인증</h2>
-            <p style="color:#64748B;">인증된 사내 감독관만 접근 가능한 스마트 점검 시스템입니다.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.text_input("👤 감독관 ID (사번)", key="username")
-        st.text_input("🔑 비밀번호", type="password", key="password")
-        st.button("로그인", on_click=password_entered, use_container_width=True)
-
-        if "password_correct" in st.session_state and not st.session_state["password_correct"]:
-            st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
+                st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
 
     return False
 
 
-# 인증되지 않은 경우 프로그램 실행 중단 (보안 차단)
+# 인증되지 않은 경우 실행 차단
 if not check_password():
     st.stop()
 
@@ -258,7 +215,6 @@ def save_to_google_sheet(dept_name, site_name, set_count, analysis_summary, summ
         sheet = client.open_by_key(sheet_id).sheet1
         
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # 구글 시트에 작성 감독관 ID 항목 추가 기록
         sheet.append_row([now_str, dept_name, site_name, f"{set_count}개 항목", analysis_summary, summary_detail, inspector_id])
         return True
     except Exception as e:
@@ -276,9 +232,8 @@ def get_google_sheet_records():
         return []
 
 
-# --- 2. 동적 탐색형 AI 위험 분석 함수 ---
+# --- 2. AI 위험 분석 함수 ---
 def analyze_hazard_auto(api_key, img_file):
-    """현재 API Key 계정에서 사용 가능한 모델을 동적으로 탐색하여 분석합니다."""
     client = genai.Client(api_key=api_key)
     img = Image.open(img_file)
     
@@ -290,12 +245,7 @@ def analyze_hazard_auto(api_key, img_file):
         "3. **권장 조치 사항:** (1문장)"
     )
 
-    candidate_models = [
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
-        "gemini-2.5-pro"
-    ]
-
+    candidate_models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"]
     last_error = None
 
     for model_name in candidate_models:
@@ -311,11 +261,7 @@ def analyze_hazard_auto(api_key, img_file):
             continue
 
     try:
-        available_models = [
-            m.name.replace("models/", "") 
-            for m in client.models.list() 
-        ]
-        
+        available_models = [m.name.replace("models/", "") for m in client.models.list()]
         for m_name in available_models:
             if "flash" in m_name or "pro" in m_name:
                 try:
@@ -344,10 +290,10 @@ else:
 
 # --- 4. 세션 상태 초기화 ---
 if "item_count" not in st.session_state:
-    st.session_state.item_count = 1  # 기본 1개 항목부터 시작
+    st.session_state.item_count = 1
 
 if "ai_results" not in st.session_state:
-    st.session_state.ai_results = {}  # {item_idx: {img_idx: result_text}}
+    st.session_state.ai_results = {}
 
 
 # --- 5. 헤더 UI ---
@@ -414,7 +360,7 @@ with main_tab1:
         with col_b:
             st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 가능")
             before_img_files = st.file_uploader(
-                f"#{idx} 조치 전 사진 첨부 (여러 장 선택 가능)",
+                f"#{idx} 조치 전 사진 첨부",
                 type=["jpg", "jpeg", "png"],
                 accept_multiple_files=True,
                 key=f"before_imgs_{idx}"
@@ -452,7 +398,7 @@ with main_tab1:
         with col_a:
             st.markdown("##### 🟢 조치 후 (After) - 다중 선택 가능")
             after_img_files = st.file_uploader(
-                f"#{idx} 조치 후 사진 첨부 (여러 장 선택 가능)",
+                f"#{idx} 조치 후 사진 첨부",
                 type=["jpg", "jpeg", "png"],
                 accept_multiple_files=True,
                 key=f"after_imgs_{idx}"
