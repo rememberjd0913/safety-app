@@ -1,58 +1,49 @@
 import streamlit as st
 from PIL import Image
 from google import genai
-import sqlite3
-import io
+import gspread
+from google.oauth2.service_account import Credentials
 import datetime
 
 st.set_page_config(page_title="AI 위험요소 분석기", page_icon="📸", layout="centered")
 
-# --- 1. SQLite 데이터베이스 초기화 함수 ---
-def init_db():
-    conn = sqlite3.connect("safety_logs.db")
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT,
-            filename TEXT,
-            image_bytes BLOB,
-            result_text TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-# DB 테이블 생성 실행
-init_db()
-
-# DB에 데이터 저장 함수
-def save_to_db(filename, image, result_text):
-    # 이미지 PIL 객체를 바이너리(Bytes)로 변환
-    img_byte_arr = io.BytesIO()
-    image.save(img_byte_arr, format='JPEG')
-    img_bytes = img_byte_arr.getvalue()
-    
-    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    conn = sqlite3.connect("safety_logs.db")
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO logs (timestamp, filename, image_bytes, result_text) VALUES (?, ?, ?, ?)",
-        (now_str, filename, img_bytes, result_text)
+# --- 1. Google Sheets 연동 함수 ---
+@st.cache_resource
+def get_gspread_client():
+    # Secrets에서 GCP 인증정보 가져오기
+    credentials = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
     )
-    conn.commit()
-    conn.close()
+    client = gspread.authorize(credentials)
+    return client
 
-# DB에서 전체 이력 가져오기 함수
-def get_all_logs():
-    conn = sqlite3.connect("safety_logs.db")
-    c = conn.cursor()
-    c.execute("SELECT id, timestamp, filename, image_bytes, result_text FROM logs ORDER BY id DESC")
-    rows = c.fetchall()
-    conn.close()
-    return rows
+def save_to_google_sheet(filename, result_text):
+    try:
+        client = get_gspread_client()
+        sheet_id = st.secrets["SPREADSHEET_ID"]
+        sheet = client.open_by_key(sheet_id).sheet1
+        
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        sheet.append_row([now_str, filename, result_text])
+        return True
+    except Exception as e:
+        st.error(f"구글 시트 저장 중 오류가 발생했습니다: {e}")
+        return False
 
+def get_google_sheet_records():
+    try:
+        client = get_gspread_client()
+        sheet_id = st.secrets["SPREADSHEET_ID"]
+        sheet = client.open_by_key(sheet_id).sheet1
+        records = sheet.get_all_values()
+        return records
+    except Exception as e:
+        st.error(f"구글 시트 데이터 불러오기 오류: {e}")
+        return []
 
 # --- 2. API Key 확인 ---
 if "GEMINI_API_KEY" in st.secrets:
@@ -61,7 +52,6 @@ else:
     st.error("🔑 API Key를 찾을 수 없습니다. Streamlit Cloud의 Settings -> Secrets 설정을 확인해 주세요.")
     st.stop()
 
-
 # --- 3. 메인 UI (탭 구성) ---
 st.title("📸 AI 건설/현장 위험요소 분석")
 
@@ -69,7 +59,7 @@ tab1, tab2 = st.tabs(["🔍 AI 분석 실행", "📋 지난 이력 조회"])
 
 # ---------------- Tab 1: 신규 사진 분석 ----------------
 with tab1:
-    st.write("현장 사진을 업로드하면 Gemini AI가 위험 요소를 분석하고 결과를 DB에 자동 저장합니다.")
+    st.write("현장 사진을 업로드하면 Gemini AI가 위험 요소를 분석하고 결과를 Google Sheets에 영구 저장합니다.")
     
     uploaded_file = st.file_uploader("분석할 사진을 선택하세요 (JPG, PNG)", type=["jpg", "jpeg", "png"])
 
@@ -116,9 +106,9 @@ with tab1:
                     
                     result_text = response.text
                     
-                    # 💾 DB에 데이터 자동 저장
-                    save_to_db(uploaded_file.name, image, result_text)
-                    st.toast("💾 분석 결과가 DB에 저장되었습니다!", icon="✅")
+                    # 💾 Google Sheets에 데이터 영구 저장
+                    if save_to_google_sheet(uploaded_file.name, result_text):
+                        st.toast("📊 구글 스프레드시트에 결과가 영구 저장되었습니다!", icon="✅")
 
                     st.markdown("---")
                     st.subheader("📋 분석 결과")
@@ -140,27 +130,26 @@ with tab1:
 
 # ---------------- Tab 2: 저장된 지난 이력 조회 ----------------
 with tab2:
-    st.subheader("📂 지난 위험요소 분석 이력")
-    logs = get_all_logs()
+    st.subheader("📂 지난 위험요소 분석 이력 (Google Sheets 연동)")
+    rows = get_google_sheet_records()
     
-    if not logs:
+    # 1행(헤더: 일시, 파일명, 분석결과) 제외
+    if len(rows) <= 1:
         st.info("아직 저장된 분석 이력이 없습니다. 첫 번째 사진을 올려 분석해 보세요!")
     else:
-        st.write(f"총 **{len(logs)}건**의 점검 기록이 저장되어 있습니다.")
+        header = rows[0]
+        data_rows = rows[1:]
+        # 최신순 정렬
+        data_rows.reverse()
+        
+        st.write(f"총 **{len(data_rows)}건**의 점검 기록이 구글 시트에 안전하게 보관되어 있습니다.")
         st.markdown("---")
         
-        for log in logs:
-            log_id, timestamp, filename, img_bytes, result_text = log
+        for row in data_rows:
+            timestamp = row[0] if len(row) > 0 else "-"
+            filename = row[1] if len(row) > 1 else "-"
+            result_text = row[2] if len(row) > 2 else "-"
             
-            # 드롭다운(Expander) 형태로 과거 기록을 깔끔하게 보여줍니다.
-            with st.expander(f"🗓️ [{timestamp}] - {filename} (ID: {log_id})"):
-                col1, col2 = st.columns([1, 1.5])
-                
-                with col1:
-                    # 바이너리에서 PIL 이미지 복원
-                    saved_img = Image.open(io.BytesIO(img_bytes))
-                    st.image(saved_img, caption=f"업로드 파일: {filename}", width="stretch")
-                    
-                with col2:
-                    st.markdown("**📋 당시 분석 결과:**")
-                    st.write(result_text)
+            with st.expander(f"🗓️ [{timestamp}] - {filename}"):
+                st.markdown("**📋 분석 결과:**")
+                st.write(result_text)
