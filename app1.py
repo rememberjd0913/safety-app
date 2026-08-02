@@ -150,8 +150,9 @@ def get_google_sheet_records():
         return []
 
 
-# --- 2. 최신 google-genai SDK 적용 분석 함수 (gemini-2.5 모델 고정) ---
+# --- 2. 동적 탐색형 AI 위험 분석 함수 ---
 def analyze_hazard_auto(api_key, img_file):
+    """현재 API Key 계정에서 사용 가능한 모델을 동적으로 탐색하여 분석합니다."""
     client = genai.Client(api_key=api_key)
     img = Image.open(img_file)
     
@@ -163,22 +164,50 @@ def analyze_hazard_auto(api_key, img_file):
         "3. **권장 조치 사항:** (1문장)"
     )
 
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[prompt, img]
-        )
-        if response and response.text:
-            return response.text
-    except Exception:
-        response = client.models.generate_content(
-            model="gemini-2.5-pro",
-            contents=[prompt, img]
-        )
-        if response and response.text:
-            return response.text
+    # 1. 최신 표준 모델 명단 일차 시도
+    candidate_models = [
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.5-pro"
+    ]
 
-    raise Exception("AI 분석 응답을 생성하지 못했습니다.")
+    last_error = None
+
+    for model_name in candidate_models:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=[prompt, img]
+            )
+            if response and response.text:
+                return response.text
+        except Exception as e:
+            last_error = e
+            continue
+
+    # 2. 계정 권한 모델 목록을 동적으로 가져와 재시도
+    try:
+        available_models = [
+            m.name.replace("models/", "") 
+            for m in client.models.list() 
+        ]
+        
+        for m_name in available_models:
+            if "flash" in m_name or "pro" in m_name:
+                try:
+                    response = client.models.generate_content(
+                        model=m_name,
+                        contents=[prompt, img]
+                    )
+                    if response and response.text:
+                        return response.text
+                except Exception as e:
+                    last_error = e
+                    continue
+    except Exception as list_err:
+        last_error = list_err
+
+    raise Exception(f"사용 가능한 Gemini 모델을 찾을 수 없습니다. (상세: {last_error})")
 
 
 # --- 3. API Key 확인 ---
