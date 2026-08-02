@@ -5,20 +5,23 @@ import gspread
 from google.oauth2.service_account import Credentials
 import datetime
 
-# --- 페이지 기본 설정 (한국환경공단 메인 테마) ---
+# --- 페이지 기본 설정 (한국환경공단 맞춤) ---
 st.set_page_config(
-    page_title="한국환경공단 | AI 안전 조치 전·후 점검 시스템",
+    page_title="한국환경공단 | AI 안전 조치 전·후 스마트 점검",
     page_icon="🌱",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# --- 커스텀 CSS ---
+# --- 커스텀 CSS (한국환경공단 KECO 브랜드 및 건설 UI 적용) ---
 st.markdown("""
     <style>
+    /* 메인 배경 및 기본 폰트 설정 */
     .stApp {
         background-color: #F8FBF9;
     }
+    
+    /* 상단 KECO 브랜드 헤더 */
     .keco-header {
         background: linear-gradient(135deg, #007A33 0%, #10B981 100%);
         padding: 22px 18px;
@@ -40,7 +43,9 @@ st.markdown("""
         margin-top: 6px !important;
         margin-bottom: 0 !important;
     }
-    .mascot-banner {
+
+    /* 마스코트 환영 카드 */
+    .mascot-card {
         background-color: #FFFFFF;
         border: 2px solid #E2E8F0;
         border-radius: 14px;
@@ -49,7 +54,21 @@ st.markdown("""
         align-items: center;
         gap: 12px;
         margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
+    .mascot-icon {
+        font-size: 2.2rem;
+    }
+    .mascot-text {
+        font-size: 0.92rem;
+        color: #334155;
+        line-height: 1.4;
+    }
+    .mascot-text strong {
+        color: #007A33;
+    }
+
+    /* 선택 부서 및 현장 카드 */
     .select-card {
         background-color: #E6F4EA;
         border: 1.5px solid #10B981;
@@ -58,7 +77,10 @@ st.markdown("""
         margin-bottom: 18px;
         color: #005F27;
         font-weight: 600;
+        box-shadow: 0 2px 6px rgba(0, 122, 51, 0.05);
     }
+
+    /* 결과 카드 스타일 */
     .result-card {
         background-color: #FFFFFF;
         border-radius: 12px;
@@ -68,19 +90,44 @@ st.markdown("""
         margin-top: 15px;
         margin-bottom: 15px;
     }
+
+    /* Streamlit 기본 버튼 커스텀 (큼직하고 직관적이게) */
     div.stButton > button {
         background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
         color: white !important;
         border: none !important;
         border-radius: 10px !important;
         font-weight: bold !important;
-        height: 48px !important;
+        height: 52px !important;
         font-size: 1.05rem !important;
-        box-shadow: 0 3px 6px rgba(0, 122, 51, 0.2) !important;
+        box-shadow: 0 3px 8px rgba(0, 122, 51, 0.2) !important;
+        transition: background 0.3s, transform 0.2s;
     }
     div.stButton > button:hover {
         background: linear-gradient(135deg, #005F27 0%, #047857 100%) !important;
-        transform: translateY(-1px);
+        transform: translateY(-2px);
+    }
+    
+    /* 탭 스타일 조정 (모바일 친화적) */
+    div.stTabs [data-baseweb="tab-list"] {
+        background-color: #FFFFFF;
+        padding: 5px;
+        border-radius: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    div.stTabs [data-baseweb="tab"] {
+        background-color: #F1F5F9;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-weight: bold;
+        margin: 2px;
+    }
+    div.stTabs [data-baseweb="tab"]:hover {
+        background-color: #E2E8F0;
+    }
+    div.stTabs [aria-selected="true"] {
+        background-color: #007A33 !important;
+        color: white !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -132,7 +179,7 @@ else:
     st.stop()
 
 
-# --- 3. 헤더 UI ---
+# --- 3. KECO 헤더 및 마스코트 UI ---
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 KECO</h2>
@@ -140,19 +187,20 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+# 마스코트 환영 메시지 카드
 st.markdown("""
-    <div class="mascot-banner">
+    <div class="mascot-card">
         <div class="mascot-icon">💧🌱</div>
         <div class="mascot-text">
-            안녕하세요! <strong>푸루 & 그루</strong>입니다.<br>
-            각 세트 탭(1~4)을 눌러 <strong>안전 조치 전/후 사진과 설명</strong>을 나누어 등록해 주세요!
+            안녕하세요! 안전모와 조끼를 든든하게 착용한 <strong>푸루 & 그루</strong>입니다.<br>
+            각 세트 탭을 눌러 <strong>안전 조치 전/후 사진과 설명</strong>을 등록해 주세요!
         </div>
     </div>
 """, unsafe_allow_html=True)
 
 
 # --- 4. 메인 탭 구성 ---
-main_tab1, main_tab2 = st.tabs(["📸 전·후 사진 등록 및 AI 진단", "📋 부서별 점검 이력"])
+main_tab1, main_tab2 = st.tabs(["🔍 전·후 사진 등록 및 AI 진단", "📋 부서별 점검 이력"])
 
 # ---------------- Tab 1: AI 전후 사진 점검 ----------------
 with main_tab1:
@@ -173,17 +221,17 @@ with main_tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    st.subheader("📋 안전 조치 전·후 등록 (세트별 화면 분리)")
+    st.subheader("📋 안전 조치 전·후 등록 (총 4개 세트)")
     
-    # 📌 세트별로 개별 탭 생성
+    # 세트별 개별 탭 생성
     set_tabs = st.tabs(["1️⃣ 세트 1", "2️⃣ 세트 2", "3️⃣ 세트 3", "4️⃣ 세트 4"])
     
-    set_inputs = {} # 각 세트별 입력값을 저장할 사전
+    set_inputs = {} # 각 세트별 입력값 저장 사전
 
     # 세트 1 ~ 4 개별 화면 구성
     for idx, set_tab in enumerate(set_tabs, start=1):
         with set_tab:
-            st.markdown(f"#### 🔹 [세트 {idx}] 조치 전·후 현장 사진 및 내용")
+            st.markdown(f"#### 🔹 [세트 {idx}] 조치 전·후 사진 및 내용")
             col_before, col_after = st.columns(2)
             
             with col_before:
@@ -215,7 +263,7 @@ with main_tab1:
 
     st.markdown("---")
 
-    # AI 분석 버튼
+    # AI 분석 버튼 (큼직하게)
     if st.button(f"🚀 [{selected_dept} {selected_site}] 전·후 대조 AI 정밀 분석", use_container_width=True):
         if not set_inputs:
             st.warning("⚠️ 최소 1개 이상의 세트 탭에서 사진이나 설명글을 입력해 주세요.")
@@ -246,10 +294,8 @@ with main_tab1:
                     summary_detail_list.append(f"[세트{num}] {desc_txt}")
                     
                     if s["img_before"]:
-                        ai_input.append(f"세트 {num} - 조치 전 사진:")
                         ai_input.append(Image.open(s["img_before"]).convert("RGB"))
                     if s["img_after"]:
-                        ai_input.append(f"세트 {num} - 조치 후 사진:")
                         ai_input.append(Image.open(s["img_after"]).convert("RGB"))
 
                 # 모델 자동 검색 및 실행
@@ -289,7 +335,7 @@ with main_tab1:
                     st.download_button(
                         label="📥 전·후 점검 리포트 (.txt) 다운로드",
                         data=result_text,
-                        file_name=f"KECO_전후점검_{selected_dept}_{selected_site}.txt",
+                        file_name=f"KECO_전후점검_{selected_dept}_{selected_site}_{datetime.datetime.now().strftime('%Y%m%d')}.txt",
                         mime="text/plain",
                         use_container_width=True
                     )
@@ -309,6 +355,7 @@ with main_tab2:
     if len(rows) <= 1:
         st.info("아직 저장된 점검 이력이 없습니다. 첫 번째 전·후 사진을 등록해 보세요!")
     else:
+        # 이력 검색용 부서 선택 필터
         filter_col1, filter_col2 = st.columns(2)
         with filter_col1:
             filter_dept = st.selectbox("🔍 조회할 부서 선택", ["전체 부서"] + departments)
@@ -319,6 +366,7 @@ with main_tab2:
         filtered_rows = []
         
         for r in data_rows:
+            # 구글 시트 항목 대응 [일시, 부서, 현장, 등록된 세트 수, AI 분석 결과, 세트별 상세 내역]
             row_dept = r[1] if len(r) > 1 else ""
             row_site = r[2] if len(r) > 2 else ""
             
@@ -328,9 +376,9 @@ with main_tab2:
             if dept_match and site_match:
                 filtered_rows.append(r)
                 
-        filtered_rows.reverse()
+        filtered_rows.reverse()  # 최신순 정렬
         
-        st.write(f"📊 저장된 점검 기록: 총 **{len(filtered_rows)}건**")
+        st.write(f"📊 조건에 해당하는 점검 기록: 총 **{len(filtered_rows)}건**")
         st.markdown("---")
         
         for row in filtered_rows:
