@@ -1,5 +1,4 @@
 import streamlit as st
-from PIL import Image
 from google import genai
 import gspread
 from google.oauth2.service_account import Credentials
@@ -7,13 +6,13 @@ import datetime
 
 # --- 페이지 기본 설정 (한국환경공단 맞춤) ---
 st.set_page_config(
-    page_title="한국환경공단 | AI 안전 조치 전·후 스마트 점검",
+    page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 조치 전·후 스마트 점검",
     page_icon="🌱",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
-# --- 커스텀 CSS (한국환경공단 KECO 브랜드 및 건설 UI 적용) ---
+# --- 커스텀 CSS (한국환경공단 K-ECO 브랜드 및 건설 UI 적용) ---
 st.markdown("""
     <style>
     /* 메인 배경 및 기본 폰트 설정 */
@@ -21,7 +20,7 @@ st.markdown("""
         background-color: #F8FBF9;
     }
     
-    /* 상단 KECO 브랜드 헤더 */
+    /* 상단 K-ECO 브랜드 헤더 */
     .keco-header {
         background: linear-gradient(135deg, #007A33 0%, #10B981 100%);
         padding: 22px 18px;
@@ -138,40 +137,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- 푸루/그루 캐릭터 그래픽 내장 (별도 이미지 다운로드/업로드 없이 바로 작동) ---
-PURU_HELMET_SVG = """
-<svg width="55" height="55" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#007A33"/>
-  <circle cx="50" cy="45" r="30" fill="#FFFFFF"/>
-  <!-- 안전모 -->
-  <path d="M 20 40 Q 50 10 80 40 Z" fill="#FACC15" stroke="#EAB308" stroke-width="2"/>
-  <rect x="15" y="38" width="70" height="6" rx="3" fill="#EAB308"/>
-  <circle cx="50" cy="28" r="4" fill="#007A33"/>
-  <!-- 눈 / 미소 -->
-  <circle cx="38" cy="48" r="4" fill="#333333"/>
-  <circle cx="62" cy="48" r="4" fill="#333333"/>
-  <path d="M 42 56 Q 50 62 58 56" fill="transparent" stroke="#333333" stroke-width="3" stroke-linecap="round"/>
-</svg>
-"""
-
-GRU_HELMET_SVG = """
-<svg width="55" height="55" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#EC4899"/>
-  <circle cx="50" cy="45" r="30" fill="#FFFFFF"/>
-  <!-- 안전모 -->
-  <path d="M 20 40 Q 50 10 80 40 Z" fill="#FACC15" stroke="#EAB308" stroke-width="2"/>
-  <rect x="15" y="38" width="70" height="6" rx="3" fill="#EAB308"/>
-  <circle cx="50" cy="28" r="4" fill="#EC4899"/>
-  <!-- 눈 / 볼터치 / 미소 -->
-  <circle cx="38" cy="48" r="4" fill="#333333"/>
-  <circle cx="62" cy="48" r="4" fill="#333333"/>
-  <circle cx="32" cy="52" r="4" fill="#F472B6" opacity="0.6"/>
-  <circle cx="68" cy="52" r="4" fill="#F472B6" opacity="0.6"/>
-  <path d="M 42 56 Q 50 62 58 56" fill="transparent" stroke="#333333" stroke-width="3" stroke-linecap="round"/>
-</svg>
-"""
-
-
 # --- 1. Google Sheets 연동 함수 ---
 @st.cache_resource
 def get_gspread_client():
@@ -227,28 +192,25 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 메인 푸루 & 그루 환영 배너
-st.markdown(f"""
+st.markdown("""
     <div class="mascot-banner">
-        <div style="display: flex; justify-content: center; gap: 15px; align-items: center; margin-bottom: 10px;">
-            {PURU_HELMET_SVG}
-            {GRU_HELMET_SVG}
-        </div>
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">🌱👷‍♂️👷‍♀️</div>
         <div class="mascot-badge">안전모·조끼 착용 완료!</div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
-        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">각 세트별 조치 전·후 사진(여러 장 가능)과 현장 설명을 등록해 주세요.</p>
+        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">각 세트별 조치 전·후 상황 및 현장 상세 설명을 작성해 주세요.</p>
     </div>
 """, unsafe_allow_html=True)
 
 
 # --- 4. 메인 탭 구성 ---
-main_tab1, main_tab2 = st.tabs(["🔍 전·후 사진 등록 및 AI 진단", "📋 부서별 점검 이력"])
+main_tab1, main_tab2 = st.tabs(["🔍 전·후 점검 등록 및 AI 진단", "📋 부서별 점검 이력"])
 
-# ---------------- Tab 1: AI 전후 사진 점검 ----------------
+# ---------------- Tab 1: AI 전후 점검 ----------------
 with main_tab1:
     # 그루 가이드 카드
-    st.markdown(f"""
+    st.markdown("""
         <div class="mascot-card">
-            <div>{GRU_HELMET_SVG}</div>
+            <div style="font-size:2rem;">👷‍♀️</div>
             <div>
                 <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
                 <span style="font-size:0.92rem; color:#334155;">점검을 진행할 <strong>담당 부서</strong>와 <strong>현장 번호</strong>를 선택해 주세요.</span>
@@ -272,17 +234,17 @@ with main_tab1:
     """, unsafe_allow_html=True)
 
     # 푸루 가이드 카드
-    st.markdown(f"""
+    st.markdown("""
         <div class="mascot-card">
-            <div>{PURU_HELMET_SVG}</div>
+            <div style="font-size:2rem;">👷‍♂️</div>
             <div>
                 <strong style="color:#007A33;">[푸루의 입력 가이드]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">하단 탭에서 <strong>🔴 조치 전</strong> / <strong>🟢 조치 후</strong> 사진(여러 장 동시 선택 가능) 및 조치 상세 내역을 입력해 주세요!</span>
+                <span style="font-size:0.92rem; color:#334155;">하단 탭에서 <strong>🔴 조치 전 상황</strong> 및 <strong>🟢 조치 후 내용</strong>을 작성해 주세요!</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    st.subheader("📋 안전 조치 전·후 등록 (총 4개 세트)")
+    st.subheader("📋 안전 조치 전·후 작성 (총 4개 세트)")
     
     # 세트별 개별 탭 생성
     set_tabs = st.tabs(["1️⃣ 세트 1", "2️⃣ 세트 2", "3️⃣ 세트 3", "4️⃣ 세트 4"])
@@ -292,51 +254,33 @@ with main_tab1:
     # 세트 1 ~ 4 개별 화면 구성
     for idx, set_tab in enumerate(set_tabs, start=1):
         with set_tab:
-            st.markdown(f"#### 🔹 [세트 {idx}] 조치 전·후 사진 및 내용")
-            col_before, col_after = st.columns(2)
+            st.markdown(f"#### 🔹 [세트 {idx}] 조치 전·후 현장 점검 내용")
             
-            with col_before:
-                st.caption("🔴 **안전 조치 전 (Before) - 여러 장 등록 가능**")
-                imgs_before = st.file_uploader(
-                    f"세트 {idx} - 조치 전 사진들", 
-                    type=["jpg", "png", "jpeg"], 
-                    accept_multiple_files=True, 
-                    key=f"before_{idx}"
-                )
-                if imgs_before:
-                    st.write(f"📸 업로드된 사진: **{len(imgs_before)}장**")
-                    # 업로드된 이미지 미리보기 (그리드 스타일)
-                    cols = st.columns(min(len(imgs_before), 3))
-                    for img_i, img_file in enumerate(imgs_before):
-                        cols[img_i % 3].image(img_file, use_container_width=True)
-                    
-            with col_after:
-                st.caption("🟢 **안전 조치 후 (After) - 여러 장 등록 가능**")
-                imgs_after = st.file_uploader(
-                    f"세트 {idx} - 조치 후 사진들", 
-                    type=["jpg", "png", "jpeg"], 
-                    accept_multiple_files=True, 
-                    key=f"after_{idx}"
-                )
-                if imgs_after:
-                    st.write(f"📸 업로드된 사진: **{len(imgs_after)}장**")
-                    cols = st.columns(min(len(imgs_after), 3))
-                    for img_i, img_file in enumerate(imgs_after):
-                        cols[img_i % 3].image(img_file, use_container_width=True)
+            before_text = st.text_area(
+                f"🔴 세트 {idx} - 조치 전(Before) 상태 및 위험요인",
+                placeholder=f"예: 세트{idx} - 2층 작업대 개구부에 안전난간이 미설치되어 있어 추락 위험이 존재함.",
+                key=f"before_txt_{idx}"
+            )
+            
+            after_text = st.text_area(
+                f"🟢 세트 {idx} - 조치 후(After) 개선 완료 사항",
+                placeholder=f"예: 세트{idx} - 추락방지망 및 규격 안전난간 설치 완료, 안전표지판 설치.",
+                key=f"after_txt_{idx}"
+            )
             
             desc = st.text_area(
-                f"✍️ 세트 {idx} - 작업 위치 및 조치 내용 설명", 
-                placeholder=f"예: 세트{idx} - 2층 작업대 개구부 추락방지망 및 안전난간 설치 완료", 
+                f"✍️ 세트 {idx} - 추가 참고사항 및 작업 위치", 
+                placeholder=f"예: 세트{idx} - A동 2층 남측 개구부 현장", 
                 key=f"desc_{idx}"
             )
             
             # 유효 데이터 저장
-            if imgs_before or imgs_after or desc.strip():
+            if before_text.strip() or after_text.strip() or desc.strip():
                 set_inputs[idx] = {
                     "set_num": idx,
-                    "imgs_before": imgs_before if imgs_before else [],
-                    "imgs_after": imgs_after if imgs_after else [],
-                    "desc": desc
+                    "before_text": before_text.strip(),
+                    "after_text": after_text.strip(),
+                    "desc": desc.strip()
                 }
 
     st.markdown("---")
@@ -344,7 +288,7 @@ with main_tab1:
     # AI 분석 버튼
     if st.button(f"🚀 [{selected_dept} {selected_site}] 전·후 대조 AI 정밀 분석", use_container_width=True):
         if not set_inputs:
-            st.warning("⚠️ 최소 1개 이상의 세트 탭에서 사진이나 설명글을 입력해 주세요.")
+            st.warning("⚠️ 최소 1개 이상의 세트 탭에서 조치 전/후 내용이나 설명글을 작성해 주세요.")
         else:
             active_sets = list(set_inputs.values())
             
@@ -353,8 +297,8 @@ with main_tab1:
             with loading_container:
                 st.markdown(f"""
                     <div style="text-align:center; padding:15px; background:#E6F4EA; border-radius:12px; margin-bottom:15px; border: 1.5px solid #10B981;">
-                        <div style="display:flex; justify-content:center; gap:10px;">{PURU_HELMET_SVG}{GRU_HELMET_SVG}</div>
-                        <p style="margin-top:10px; color:#007A33; font-weight:bold;">푸루 & 그루 AI가 [{selected_dept} {selected_site}] 총 {len(active_sets)}개 세트의 전·후 사진들을 종합 비교 분석하고 있습니다...</p>
+                        <div style="font-size:2rem;">🌱👷‍♂️👷‍♀️</div>
+                        <p style="margin-top:10px; color:#007A33; font-weight:bold;">푸루 & 그루 AI가 [{selected_dept} {selected_site}] 총 {len(active_sets)}개 세트의 전·후 점검 상태를 정밀 분석하고 있습니다...</p>
                     </div>
                 """, unsafe_allow_html=True)
             
@@ -363,37 +307,27 @@ with main_tab1:
                 
                 prompt_text = (
                     f"당신은 한국환경공단(KECO) {selected_dept} {selected_site}의 현장 안전 전문 AI 검수원입니다.\n"
-                    "제공된 각 세트별 '안전 조치 전(Before)' 사진들과 '안전 조치 후(After)' 사진들, 그리고 담당자의 조치 설명을 종합 비교 검토하세요.\n"
-                    "각 세트별로 여러 장의 사진이 제공될 수 있으므로 전 후의 모든 각도와 상태를 다각도로 평가해 주세요.\n\n"
+                    "제공된 각 세트별 '안전 조치 전(Before)' 내역과 '안전 조치 후(After)' 내역, 그리고 추가 설명을 종합하여 다각도로 검토하세요.\n\n"
                     "각 세트별 분석 가이드라인:\n"
-                    "1. 조치 전 위험 요소 판단 (제공된 전 사진들 종합 검토)\n"
-                    "2. 조치 후 적정성 평가 (제공된 후 사진들 및 안전 기준 준수 여부)\n"
-                    "3. 추가 개선 필요 사항 및 종합 의견\n\n"
+                    "1. 조치 전 위험 요소 판단 및 위험도 평가\n"
+                    "2. 조치 후 적정성 평가 (산업안전보건기준 준수 여부 및 조치 완성도)\n"
+                    "3. 추가 개선 필요 사항 및 종합 안전 의견\n\n"
                 )
                 
-                ai_input = [prompt_text]
-                summary_detail_list = []
-
                 for s in active_sets:
                     num = s["set_num"]
-                    desc_txt = s["desc"]
-                    b_count = len(s["imgs_before"])
-                    a_count = len(s["imgs_after"])
+                    b_txt = s["before_text"] if s["before_text"] else "미작성"
+                    a_txt = s["after_text"] if s["after_text"] else "미작성"
+                    d_txt = s["desc"] if s["desc"] else "미작성"
                     
-                    ai_input.append(f"\n--- [세트 {num}] 설명: {desc_txt} (조치 전 사진: {b_count}장, 조치 후 사진: {a_count}장) ---\n")
-                    summary_detail_list.append(f"[세트{num}] {desc_txt} (전:{b_count}장/후:{a_count}장)")
-                    
-                    # 조치 전 이미지들 전부 추가
-                    if s["imgs_before"]:
-                        ai_input.append(f"\n[세트 {num} - 조치 전(Before) 이미지들]:")
-                        for img_b in s["imgs_before"]:
-                            ai_input.append(Image.open(img_b).convert("RGB"))
-                            
-                    # 조치 후 이미지들 전부 추가
-                    if s["imgs_after"]:
-                        ai_input.append(f"\n[세트 {num} - 조치 후(After) 이미지들]:")
-                        for img_a in s["imgs_after"]:
-                            ai_input.append(Image.open(img_a).convert("RGB"))
+                    prompt_text += (
+                        f"[세트 {num}]\n"
+                        f"- 위치/참고사항: {d_txt}\n"
+                        f"- 조치 전(Before) 상태: {b_txt}\n"
+                        f"- 조치 후(After) 상태: {a_txt}\n\n"
+                    )
+
+                summary_detail_list = [f"[세트{s['set_num']}] 전:{s['before_text'][:20]}... / 후:{s['after_text'][:20]}..." for s in active_sets]
 
                 # 모델 자동 검색 및 실행
                 all_models = list(client.models.list())
@@ -406,7 +340,7 @@ with main_tab1:
                     try:
                         response = client.models.generate_content(
                             model=m_name,
-                            contents=ai_input
+                            contents=prompt_text
                         )
                         break
                     except Exception:
@@ -425,9 +359,9 @@ with main_tab1:
                     st.markdown(f"""
                         <div class="result-card">
                             <div style="display:flex; align-items:center; gap:12px; border-bottom:2px solid #E2E8F0; padding-bottom:10px; margin-bottom:12px;">
-                                {PURU_HELMET_SVG}
+                                <div style="font-size:1.8rem;">📋</div>
                                 <div>
-                                    <h4 style="margin:0; color:#007A33;">📋 푸루 AI의 전·후 비교 분석 리포트</h4>
+                                    <h4 style="margin:0; color:#007A33;">푸루 AI의 전·후 비교 분석 리포트</h4>
                                     <span style="font-size:0.85rem; color:#64748B;">[{selected_dept}] - {selected_site}</span>
                                 </div>
                             </div>
@@ -456,7 +390,7 @@ with main_tab2:
     rows = get_google_sheet_records()
     
     if len(rows) <= 1:
-        st.info("아직 저장된 점검 이력이 없습니다. 첫 번째 전·후 사진을 등록해 보세요!")
+        st.info("아직 저장된 점검 이력이 없습니다. 첫 번째 전·후 점검을 작성해 보세요!")
     else:
         filter_col1, filter_col2 = st.columns(2)
         with filter_col1:
@@ -492,6 +426,6 @@ with main_tab2:
             
             with st.expander(f"🗓️ [{timestamp}] {dept} | {site} ({set_cnt})"):
                 st.markdown(f"**🏢 부서/현장:** {dept} - {site} ({set_cnt})")
-                st.markdown(f"**✍️ 현장 설명 요약:** {detail}")
+                st.markdown(f"**✍️ 현장 작성 요약:** {detail}")
                 st.markdown("**📋 AI 전·후 진단 리포트:**")
                 st.write(result_text)
