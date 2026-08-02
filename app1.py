@@ -150,9 +150,9 @@ def get_google_sheet_records():
         return []
 
 
-# --- 2. 스마트 모델 감지 및 안전 분석 함수 ---
+# --- 2. 안정적인 AI 분석 함수 ---
 def analyze_hazard_auto(api_key, img_file):
-    """현재 API Key로 이용 가능한 Gemini 모델을 자동 검색하여 분석을 진행합니다."""
+    """안정성이 검증된 Gemini 모델을 사용하여 위험요소를 정밀 분석합니다."""
     client = genai.Client(api_key=api_key)
     img = Image.open(img_file)
     
@@ -164,33 +164,10 @@ def analyze_hazard_auto(api_key, img_file):
         "3. **권장 조치 사항:** (1문장)"
     )
 
-    # 우선순위 권장 모델명
-    preferred_models = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash-002",
-        "gemini-1.5-flash",
-        "gemini-2.5-pro"
-    ]
-    
-    # 계정에서 실제 이용 가능한 모델 목록 조회 시도
-    available_model_names = []
-    try:
-        models_page = client.models.list()
-        for m in models_page:
-            # models/gemini-2.5-flash 형태에서 모델명만 추출
-            name = m.name.replace("models/", "") if hasattr(m, 'name') else str(m)
-            available_model_names.append(name)
-    except Exception:
-        available_model_names = preferred_models
-
-    # 선호 모델 우선 시도 후 목록에 있는 모델 순회
-    target_models = [m for m in preferred_models if m in available_model_names]
-    if not target_models:
-        target_models = available_model_names if available_model_names else preferred_models
+    candidate_models = ["gemini-1.5-flash", "gemini-1.5-pro"]
 
     last_error = None
-    for model_name in target_models:
+    for model_name in candidate_models:
         try:
             response = client.models.generate_content(
                 model=model_name,
@@ -202,7 +179,7 @@ def analyze_hazard_auto(api_key, img_file):
             last_error = e
             continue
 
-    raise Exception(f"사용 가능한 모델 호출 실패: {last_error}")
+    raise Exception(f"사용 가능한 AI 모델 분석 실패: {last_error}")
 
 
 # --- 3. API Key 확인 ---
