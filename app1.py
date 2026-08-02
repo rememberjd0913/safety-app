@@ -152,6 +152,9 @@ def check_password():
     with col2:
         user_id = st.text_input("👤 감독관 ID (사번)", key="username_input")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input")
+
+        st.caption("🔍 [Secrets 등록 현황 확인]")
+        st.write(dict(allowed_users))
         
         if st.button("로그인", use_container_width=True):
             user_id_clean = user_id.strip()
