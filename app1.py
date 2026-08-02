@@ -186,15 +186,15 @@ else:
 # --- 3. KECO 헤더 및 마스코트 UI ---
 st.markdown("""
     <div class="keco-header">
-        <h2>🌱 한국환경공단 KECO</h2>
-        <p>시설사업부 현장 안전 조치 전·후 스마트 점검 시스템</p>
+        <h2>🌱 한국환경공단 수도권서부환경본부</h2>
+        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템</p>
     </div>
 """, unsafe_allow_html=True)
 
 # 메인 푸루 & 그루 환영 배너
 st.markdown("""
     <div class="mascot-banner">
-        <div style="font-size: 2.5rem; margin-bottom: 8px;">🌱👷‍♂️👷‍♀️</div>
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">🌱</div>
         <div class="mascot-badge">안전모·조끼 착용 완료!</div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
         <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">각 세트별 조치 전·후 상황 및 현장 상세 설명을 작성해 주세요.</p>
