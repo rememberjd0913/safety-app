@@ -152,7 +152,7 @@ def get_google_sheet_records():
 
 # --- 2. 최신 SDK 대응 AI 분석 함수 ---
 def analyze_hazard_auto(api_key, img_file):
-    """최신 Gemini SDK 표준 모델을 순차적으로 호출하여 위험 요소를 분석합니다."""
+    """google-genai SDK 1.0+ 표준 모델을 호출하여 위험 요소를 분석합니다."""
     client = genai.Client(api_key=api_key)
     img = Image.open(img_file)
     
@@ -166,9 +166,9 @@ def analyze_hazard_auto(api_key, img_file):
 
     candidate_models = [
         "gemini-2.0-flash",
-        "gemini-2.5-flash",
-        "gemini-2.5-pro",
-        "gemini-1.5-flash"
+        "gemini-2.0-flash-lite",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro-latest"
     ]
 
     last_error = None
