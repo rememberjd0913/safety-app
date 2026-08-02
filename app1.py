@@ -3,13 +3,26 @@ from google import genai
 import gspread
 from google.oauth2.service_account import Credentials
 import datetime
+import base64  # <--- Base64 변환용 모듈 추가
 
 # --- 페이지 기본 설정 (한국환경공단 맞춤) ---
 st.set_page_config(
     page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 조치 전·후 스마트 점검",
+    page_icon="puru_guru.png",  # 브라우저 탭 파비콘 이미지 설정
     layout="centered",
     initial_sidebar_state="collapsed"
 )
+
+# --- Base64 이미지 변환 함수 (st.markdown 내 이미지 로드용) ---
+def get_base64_image(image_path):
+    try:
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except FileNotFoundError:
+        return ""
+
+# 푸루&그루 이미지 Base64 인코딩
+img_base64 = get_base64_image("puru_guru.png")
 
 # --- 커스텀 CSS (한국환경공단 K-ECO 브랜드 및 건설 UI 적용) ---
 st.markdown("""
@@ -190,12 +203,13 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# 메인 푸루 & 그루 환영 배너
-st.markdown("""
+# 메인 푸루 & 그루 환영 배너 (Base64 이미지 적용)
+image_html = f'<img src="data:image/png;base64,{img_base64}" style="max-height: 110px; object-fit: contain;">' if img_base64 else '🌱'
+
+st.markdown(f"""
     <div class="mascot-banner">
-        <!-- 🌱 이모지 대신 마스코트 이미지 적용 -->
         <div style="margin-bottom: 8px;">
-            <img src="app/static/puru_guru.png" style="max-height: 100px; object-fit: contain;">
+            {image_html}
         </div>
         <div class="mascot-badge">안전모·조끼 착용 완료!</div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
