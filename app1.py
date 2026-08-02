@@ -211,7 +211,6 @@ st.markdown(f"""
         <div style="margin-bottom: 8px;">
             {image_html}
         </div>
-        <div class="mascot-badge">안전모·조끼 착용 완료!</div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
         <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">각 세트별 조치 전·후 상황 및 현장 상세 설명을 작성해 주세요.</p>
     </div>
