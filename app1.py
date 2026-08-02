@@ -131,14 +131,17 @@ st.markdown("""
 # ==========================================
 # 🔒 [보안] 감독관 로그인 제어 게이트웨이 (보완 버전)
 # ==========================================
+# ==========================================
+# 🔒 [보안 & 진단 기능 포함] 감독관 로그인 제어
+# ==========================================
 def check_password():
     """감독관 인증을 처리하는 게이트웨이 함수"""
     
-    # 이미 로그인된 상태라면 True 반환
+    # 이미 로그인된 상태라면 True
     if st.session_state.get("password_correct", False):
         return True
 
-    # 비밀번호 디버깅/확인용
+    # Secrets에 등록된 계정 목록 가져오기
     allowed_users = st.secrets.get("passwords", {})
 
     st.markdown("""
@@ -150,26 +153,35 @@ def check_password():
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
+        # Secrets 진단용 메시지 (비밀번호는 숨기고 아이디 목록만 확인)
+        if not allowed_users:
+            st.error("⚠️ Secrets 설정에서 [passwords] 항목을 찾을 수 없습니다. Settings -> Secrets를 확인하세요.")
+        else:
+            # 등록된 아이디 목록 표시 (예: 등록된 ID: keco1001, keco1002)
+            registered_ids = list(allowed_users.keys())
+            st.caption(f"💡 현재 시스템 등록 ID: **{', '.join(map(str, registered_ids))}**")
+
         user_id = st.text_input("👤 감독관 ID (사번)", key="username_input")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input")
-
-        st.caption("🔍 [Secrets 등록 현황 확인]")
-        st.write(dict(allowed_users))
         
         if st.button("로그인", use_container_width=True):
-            user_id_clean = user_id.strip()
-            user_pw_clean = user_pw.strip()
+            user_id_clean = str(user_id).strip()
+            user_pw_clean = str(user_pw).strip()
             
-            # ID 존재 여부 및 비밀번호 일치 확인
-            if user_id_clean in allowed_users and str(allowed_users[user_id_clean]) == user_pw_clean:
-                st.session_state["password_correct"] = True
-                st.session_state["logged_user"] = user_id_clean
-                st.rerun()  # 화면 즉시 갱신
+            # 1. ID 존재 여부 확인
+            if user_id_clean not in [str(k) for k in allowed_users.keys()]:
+                st.error(f"❌ '{user_id_clean}'은(는) 등록되지 않은 ID입니다. (대소문자를 확인하세요)")
             else:
-                st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
+                # 2. 비밀번호 일치 확인 (문자열 변환 처리)
+                real_pw = str(allowed_users.get(user_id_clean, ""))
+                if real_pw == user_pw_clean:
+                    st.session_state["password_correct"] = True
+                    st.session_state["logged_user"] = user_id_clean
+                    st.rerun()
+                else:
+                    st.error("❌ 비밀번호가 올바르지 않습니다.")
 
     return False
-
     # 로그인 UI
     st.markdown("""
         <div style="text-align:center; padding: 30px 10px 10px 10px;">
