@@ -150,7 +150,39 @@ def get_google_sheet_records():
         return []
 
 
-# --- 2. API Key 확인 ---
+# --- 2. 다중 모델 검토 AI 분석 함수 ---
+def analyze_hazard_with_fallback(api_key, img_file):
+    """모든 주요 Gemini 모델을 순회하며 위험 요소를 정밀 분석합니다."""
+    candidate_models = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"]
+    
+    prompt = (
+        "당신은 한국환경공단(KECO) 현장 안전 전문 AI 검수원입니다.\n"
+        "제공된 조치 전 사진을 분석하여 다음 3가지 항목만 핵심 요약해서 짧게 답변하세요.\n\n"
+        "1. **주요 위험 요소:** (1문장)\n"
+        "2. **위험 등급:** [상/중/하 중 선택]\n"
+        "3. **권장 조치 사항:** (1문장)"
+    )
+    
+    client = genai.Client(api_key=api_key)
+    img = Image.open(img_file)
+    
+    last_error = None
+    for model_name in candidate_models:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=[prompt, img]
+            )
+            if response and response.text:
+                return response.text
+        except Exception as e:
+            last_error = e
+            continue
+            
+    raise Exception(f"모든 AI 모델 검토 실패. 마지막 오류: {last_error}")
+
+
+# --- 3. API Key 확인 ---
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
@@ -158,7 +190,7 @@ else:
     st.stop()
 
 
-# --- 3. 헤더 UI ---
+# --- 4. 헤더 UI ---
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 수도권서부환경본부</h2>
@@ -177,7 +209,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
-# --- 4. 메인 탭 ---
+# --- 5. 메인 탭 ---
 main_tab1, main_tab2 = st.tabs(["안전 점검 등록", "부서별 점검 이력"])
 
 with main_tab1:
@@ -209,7 +241,6 @@ with main_tab1:
     
     set_tabs = st.tabs(["1번 사진", "2번 사진", "3번 사진", "4번 사진"])
     
-    # 세션 상태에 AI 분석 결과 저장을 위한 데이터 구조 초기화
     if "ai_results" not in st.session_state:
         st.session_state.ai_results = {}
 
@@ -233,33 +264,17 @@ with main_tab1:
                 if before_img_file:
                     st.image(before_img_file, caption=f"{idx}번 조치 전 사진", use_container_width=True)
                     
-                    # 조치 전 사진 바로 아래에 AI 분석 버튼 배치!
                     if st.button(f"🔍 [{idx}번] 조치 전 위험요인 AI 분석", key=f"btn_ai_{idx}", use_container_width=True):
-                        try:
-                            client = genai.Client(api_key=api_key)
-                            prompt = (
-                                "당신은 한국환경공단(KECO) 현장 안전 전문 AI 검수원입니다.\n"
-                                "제공된 조치 전 사진을 분석하여 다음 3가지 항목만 핵심 요약해서 짧게 답변하세요.\n\n"
-                                "1. **주요 위험 요소:** (1문장)\n"
-                                "2. **위험 등급:** [상/중/하 중 선택]\n"
-                                "3. **권장 조치 사항:** (1문장)"
-                            )
-                            
-                            with st.spinner("푸루 AI가 조치 전 위험요인을 분석 중..."):
-                                img = Image.open(before_img_file)
-                                response = client.models.generate_content(
-                                    model="gemini-2.5-flash",
-                                    contents=[prompt, img]
-                                )
-                                st.session_state.ai_results[idx] = response.text
-                        except Exception as e:
-                            st.error(f"분석 중 오류 발생: {e}")
+                        with st.spinner("푸루 AI가 최적 모델로 위험요인을 교차 분석 중..."):
+                            try:
+                                result_text = analyze_hazard_with_fallback(api_key, before_img_file)
+                                st.session_state.ai_results[idx] = result_text
+                            except Exception as e:
+                                st.error(f"분석 오류: {e}")
 
-                # AI 분석 결과 출력 위치
                 if idx in st.session_state.ai_results:
                     st.markdown(f"""
                         <div class="analysis-box">
-                            <strong style="color:#DC2626;">⚡ 푸루 AI 위험요인 요약 ({idx}번):</strong><br>
                             {st.session_state.ai_results[idx].replace('\n', '<br>')}
                         </div>
                     """, unsafe_allow_html=True)
@@ -301,10 +316,10 @@ with main_tab1:
             
             for k, v in form_data.items():
                 if v['ai_analysis'] != "분석 미실행":
-                    all_ai_summaries.append(f"[{k}번 요약]: {v['ai_analysis'].replace('\n', ' ')}")
+                    all_ai_summaries.append(f"[{k}번]:\n{v['ai_analysis']}")
                 details.append(f"[{k}번] 전:{'O' if v['before'] else 'X'}, 후:{'O' if v['after'] else 'X'} ({v['desc'][:15]})")
             
-            combined_ai = "\n".join(all_ai_summaries) if all_ai_summaries else "조치 전 AI 분석 미실행"
+            combined_ai = "\n\n".join(all_ai_summaries) if all_ai_summaries else "조치 전 AI 분석 미실행"
             combined_detail = " | ".join(details)
             
             if save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail):
@@ -337,5 +352,4 @@ with main_tab2:
             if (filter_dept in ["전체 부서", dept]) and (filter_site in ["전체 현장", site]):
                 with st.expander(f"🗓️ [{timestamp}] {dept} | {site} ({count})"):
                     st.write(f"**현장 메모:** {detail}")
-                    st.write(f"**🔴 조치 전 AI 위험분석 요약:**")
                     st.info(ai_text)
