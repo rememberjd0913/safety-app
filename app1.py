@@ -221,7 +221,7 @@ with main_tab1:
         <div class="mascot-card">
             <div>
                 <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">담당 부서와 현장 번호를 선택해 주세요.</span>
+                <span style="font-size:0.92rem; color:#334155;">담당 부서와 현장을 선택해 주세요.</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
