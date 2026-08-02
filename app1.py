@@ -11,7 +11,7 @@ st.set_page_config(
     page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 점검 시스템",
     page_icon="puru_guru.png",
     layout="centered",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # --- Base64 이미지 변환 함수 ---
@@ -125,6 +125,61 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+# ==========================================
+# 🔒 [보안] 감독관 로그인 제어 게이트웨이
+# ==========================================
+def check_password():
+    """감독관 인증을 처리하는 게이트웨이 함수"""
+    def password_entered():
+        user_id = st.session_state.get("username", "").strip()
+        user_pw = st.session_state.get("password", "").strip()
+        
+        # secrets에서 passwords 딕셔너리 가져오기
+        allowed_users = st.secrets.get("passwords", {})
+        
+        if user_id in allowed_users and allowed_users[user_id] == user_pw:
+            st.session_state["password_correct"] = True
+            st.session_state["logged_user"] = user_id
+            del st.session_state["password"]  # 메모리 보안 삭제
+        else:
+            st.session_state["password_correct"] = False
+
+    if st.session_state.get("password_correct", False):
+        return True
+
+    # 로그인 UI
+    st.markdown("""
+        <div style="text-align:center; padding: 30px 10px 10px 10px;">
+            <h2 style="color:#007A33;">🌱 한국환경공단 감독관 인증</h2>
+            <p style="color:#64748B;">인증된 사내 감독관만 접근 가능한 스마트 점검 시스템입니다.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.text_input("👤 감독관 ID (사번)", key="username")
+        st.text_input("🔑 비밀번호", type="password", key="password")
+        st.button("로그인", on_click=password_entered, use_container_width=True)
+
+        if "password_correct" in st.session_state and not st.session_state["password_correct"]:
+            st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
+
+    return False
+
+
+# 인증되지 않은 경우 프로그램 실행 중단 (보안 차단)
+if not check_password():
+    st.stop()
+
+
+# --- 사이드바: 로그인 정보 및 로그아웃 ---
+st.sidebar.markdown("### 🔒 감독관 인증 정보")
+st.sidebar.write(f"접속 사번: **{st.session_state.get('logged_user')}**")
+if st.sidebar.button("🔓 로그아웃", use_container_width=True):
+    st.session_state["password_correct"] = False
+    st.rerun()
+
+
 # --- 1. Google Sheets 연동 ---
 @st.cache_resource
 def get_gspread_client():
@@ -134,14 +189,15 @@ def get_gspread_client():
     )
     return gspread.authorize(credentials)
 
-def save_to_google_sheet(dept_name, site_name, set_count, analysis_summary, summary_detail):
+def save_to_google_sheet(dept_name, site_name, set_count, analysis_summary, summary_detail, inspector_id):
     try:
         client = get_gspread_client()
         sheet_id = st.secrets["SPREADSHEET_ID"]
         sheet = client.open_by_key(sheet_id).sheet1
         
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sheet.append_row([now_str, dept_name, site_name, f"{set_count}개 항목", analysis_summary, summary_detail])
+        # 구글 시트에 작성 감독관 ID 항목 추가 기록
+        sheet.append_row([now_str, dept_name, site_name, f"{set_count}개 항목", analysis_summary, summary_detail, inspector_id])
         return True
     except Exception as e:
         st.error(f"구글 시트 저장 중 오류: {e}")
@@ -224,9 +280,9 @@ else:
     st.stop()
 
 
-# --- 4. 세션 상태 초기화 (동적 추가/삭제용) ---
+# --- 4. 세션 상태 초기화 ---
 if "item_count" not in st.session_state:
-    st.session_state.item_count = 1  # 기본 1개부터 시작
+    st.session_state.item_count = 1  # 기본 1개 항목부터 시작
 
 if "ai_results" not in st.session_state:
     st.session_state.ai_results = {}  # {item_idx: {img_idx: result_text}}
@@ -275,7 +331,7 @@ with main_tab1:
 
     st.markdown(f"""
         <div class="select-card">
-            📍 선택된 점검 대상: <strong>[{selected_dept}] - {selected_site}</strong>
+            📍 선택된 점검 대상: <strong>[{selected_dept}] - {selected_site}</strong> (작성자: {st.session_state.get('logged_user')})
         </div>
     """, unsafe_allow_html=True)
 
@@ -284,7 +340,6 @@ with main_tab1:
 
     form_data = {}
 
-    # 동적으로 생성된 항목 수만큼 반복
     for idx in range(1, st.session_state.item_count + 1):
         st.markdown(f"""
             <div class="item-card">
@@ -293,7 +348,7 @@ with main_tab1:
         
         col_b, col_a = st.columns(2)
         
-        # --- [조치 전 섹션 - 다중 파일 업로드] ---
+        # --- [조치 전 섹션] ---
         with col_b:
             st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 가능")
             before_img_files = st.file_uploader(
@@ -305,12 +360,10 @@ with main_tab1:
             
             if before_img_files:
                 st.write(f"📷 첨부된 조치 전 사진: **{len(before_img_files)}장**")
-                # 이미지 미리보기 (2열 Grid)
                 cols = st.columns(min(len(before_img_files), 2))
                 for img_i, img_f in enumerate(before_img_files):
                     cols[img_i % 2].image(img_f, caption=f"조치 전 #{img_i+1}", use_container_width=True)
                 
-                # AI 분석 버튼
                 if st.button(f"🔍 [항목 #{idx}] 조치 전 사진 전체 AI 분석", key=f"btn_ai_{idx}", use_container_width=True):
                     with st.spinner("푸루 AI가 조치 전 사진들의 위험요인을 분석 중..."):
                         if idx not in st.session_state.ai_results:
@@ -323,7 +376,6 @@ with main_tab1:
                             except Exception as e:
                                 st.session_state.ai_results[idx][img_i] = f"분석 오류: {e}"
 
-            # AI 분석 결과 출력
             if idx in st.session_state.ai_results and st.session_state.ai_results[idx]:
                 st.markdown("**🤖 AI 위험 분석 결과:**")
                 for img_i, res_text in st.session_state.ai_results[idx].items():
@@ -334,7 +386,7 @@ with main_tab1:
                         </div>
                     """, unsafe_allow_html=True)
 
-        # --- [조치 후 섹션 - 다중 파일 업로드] ---
+        # --- [조치 후 섹션] ---
         with col_a:
             st.markdown("##### 🟢 조치 후 (After) - 다중 선택 가능")
             after_img_files = st.file_uploader(
@@ -358,7 +410,6 @@ with main_tab1:
         st.markdown("</div>", unsafe_allow_html=True)
         
         if before_img_files or after_img_files or desc.strip():
-            # AI 분석 텍스트 취합
             ai_summary_list = []
             if idx in st.session_state.ai_results:
                 for img_i, res_text in st.session_state.ai_results[idx].items():
@@ -381,7 +432,6 @@ with main_tab1:
     with btn_col2:
         if st.session_state.item_count > 1:
             if st.button("➖ 마지막 항목 삭제", use_container_width=True):
-                # 마지막 항목 데이터 정리
                 last_idx = st.session_state.item_count
                 if last_idx in st.session_state.ai_results:
                     del st.session_state.ai_results[last_idx]
@@ -405,8 +455,9 @@ with main_tab1:
             
             combined_ai = "\n\n".join(all_ai_summaries) if all_ai_summaries else "조치 전 AI 분석 미실행"
             combined_detail = " | ".join(details)
+            inspector_id = st.session_state.get('logged_user', '알 수 없음')
             
-            if save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail):
+            if save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail, inspector_id):
                 st.success(f"🎉 [{selected_dept} {selected_site}] 총 {len(form_data)}개 점검 항목이 구글 시트에 성공적으로 저장되었습니다!")
 
 # ---------------- Tab 2: 이력 조회 ----------------
@@ -432,8 +483,9 @@ with main_tab2:
             count = r[3] if len(r) > 3 else "-"
             ai_text = r[4] if len(r) > 4 else "-"
             detail = r[5] if len(r) > 5 else "-"
+            inspector = r[6] if len(r) > 6 else "기록 없음"
             
             if (filter_dept in ["전체 부서", dept]) and (filter_site in ["전체 현장", site]):
-                with st.expander(f"🗓️ [{timestamp}] {dept} | {site} ({count})"):
+                with st.expander(f"🗓️ [{timestamp}] {dept} | {site} ({count}) - 작성자: {inspector}"):
                     st.write(f"**현장 메모:** {detail}")
                     st.info(ai_text)
