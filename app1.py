@@ -1,5 +1,5 @@
 import streamlit as st
-from google import genai
+import google.generativeai as genai
 import gspread
 from google.oauth2.service_account import Credentials
 import datetime
@@ -19,7 +19,7 @@ def get_base64_image(image_path):
     try:
         with open(image_path, "rb") as img_file:
             return base64.b64encode(img_file.read()).decode()
-    except FileNotFoundError:
+    except Exception:
         return ""
 
 img_base64 = get_base64_image("puru_guru.png")
@@ -150,10 +150,11 @@ def get_google_sheet_records():
         return []
 
 
-# --- 2. 다중 모델 검토 AI 분석 함수 (오류 수정 완료) ---
-def analyze_hazard_with_fallback(api_key, img_file):
-    """실제 호환되는 최신 Gemini 모델을 순회하며 위험 요소를 정밀 분석합니다."""
-    candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+# --- 2. 최신 모델 표준 적용 AI 분석 함수 ---
+def analyze_hazard_auto(api_key, img_file):
+    """최신 Gemini 2.0 / 2.5 모델 표준 규격으로 위험요인을 분석합니다."""
+    genai.configure(api_key=api_key)
+    img = Image.open(img_file)
     
     prompt = (
         "당신은 한국환경공단(KECO) 현장 안전 전문 AI 검수원입니다.\n"
@@ -162,31 +163,34 @@ def analyze_hazard_with_fallback(api_key, img_file):
         "2. **위험 등급:** [상/중/하 중 선택]\n"
         "3. **권장 조치 사항:** (1문장)"
     )
-    
-    client = genai.Client(api_key=api_key)
-    img = Image.open(img_file)
-    
+
+    # 404 에러가 나지 않는 최신 공식 모델 순서
+    target_models = [
+        "gemini-2.0-flash",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash-lite",
+        "gemini-1.5-flash-8b"
+    ]
+
     last_error = None
-    for model_name in candidate_models:
+    for model_name in target_models:
         try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=[prompt, img]
-            )
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content([prompt, img])
             if response and response.text:
                 return response.text
         except Exception as e:
             last_error = e
             continue
-            
-    raise Exception(f"모든 AI 모델 검토 실패. 마지막 오류: {last_error}")
+
+    raise Exception(f"AI 분석 실패 (사유: {last_error})")
 
 
 # --- 3. API Key 확인 ---
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    st.error("🔑 API Key를 찾을 수 없습니다.")
+    st.error("🔑 API Key를 찾을 수 없습니다. Streamlit Secrets 설정을 확인해 주세요.")
     st.stop()
 
 
@@ -267,7 +271,7 @@ with main_tab1:
                     if st.button(f"🔍 [{idx}번] 조치 전 위험요인 AI 분석", key=f"btn_ai_{idx}", use_container_width=True):
                         with st.spinner("푸루 AI가 최적 모델로 위험요인을 분석 중..."):
                             try:
-                                result_text = analyze_hazard_with_fallback(api_key, before_img_file)
+                                result_text = analyze_hazard_auto(api_key, before_img_file)
                                 st.session_state.ai_results[idx] = result_text
                             except Exception as e:
                                 st.error(f"분석 오류: {e}")
