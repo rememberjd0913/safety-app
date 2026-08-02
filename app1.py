@@ -150,10 +150,10 @@ def get_google_sheet_records():
         return []
 
 
-# --- 2. 다중 모델 검토 AI 분석 함수 (수정 완료) ---
+# --- 2. 다중 모델 검토 AI 분석 함수 (오류 수정 완료) ---
 def analyze_hazard_with_fallback(api_key, img_file):
-    """Gemini 2.5 정식 모델 라인업을 순회하며 위험 요소를 정밀 분석합니다."""
-    candidate_models = ["gemini-2.5-flash", "gemini-2.5-pro"]
+    """실제 호환되는 최신 Gemini 모델을 순회하며 위험 요소를 정밀 분석합니다."""
+    candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
     
     prompt = (
         "당신은 한국환경공단(KECO) 현장 안전 전문 AI 검수원입니다.\n"
