@@ -59,14 +59,6 @@ st.markdown("""
         color: #005F27;
         font-weight: 600;
     }
-    .set-box {
-        background-color: #FFFFFF;
-        border: 1px solid #CBD5E1;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-    }
     .result-card {
         background-color: #FFFFFF;
         border-radius: 12px;
@@ -153,17 +145,17 @@ st.markdown("""
         <div class="mascot-icon">💧🌱</div>
         <div class="mascot-text">
             안녕하세요! <strong>푸루 & 그루</strong>입니다.<br>
-            부서와 현장을 선택하고 <strong>안전 조치 전/후 사진과 설명(총 4세트)</strong>을 입력해 주세요!
+            각 세트 탭(1~4)을 눌러 <strong>안전 조치 전/후 사진과 설명</strong>을 나누어 등록해 주세요!
         </div>
     </div>
 """, unsafe_allow_html=True)
 
 
 # --- 4. 메인 탭 구성 ---
-tab1, tab2 = st.tabs(["📸 전·후 사진 등록 및 AI 진단", "📋 부서별 점검 이력"])
+main_tab1, main_tab2 = st.tabs(["📸 전·후 사진 등록 및 AI 진단", "📋 부서별 점검 이력"])
 
 # ---------------- Tab 1: AI 전후 사진 점검 ----------------
-with tab1:
+with main_tab1:
     st.subheader("🏢 점검 부서 및 현장 선택")
     
     departments = ["시설사업1부", "시설사업2부", "시설사업3부"]
@@ -181,58 +173,64 @@ with tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    st.subheader("📋 안전 조치 전·후 현장 사진 등록 (총 4개 세트)")
+    st.subheader("📋 안전 조치 전·후 등록 (세트별 화면 분리)")
     
-    set_data = [] # 4개 세트 입력 정보 저장용
-    prompt_contents = [] # AI 전달용 이미지 및 텍스트 리스트
+    # 📌 세트별로 개별 탭 생성
+    set_tabs = st.tabs(["1️⃣ 세트 1", "2️⃣ 세트 2", "3️⃣ 세트 3", "4️⃣ 세트 4"])
     
-    # 4개 세트 UI 생성
-    for i in range(1, 5):
-        st.markdown(f"### 🔹 [세트 {i}] 안전 조치 전/후 현장 점검")
-        
-        with st.container():
+    set_inputs = {} # 각 세트별 입력값을 저장할 사전
+
+    # 세트 1 ~ 4 개별 화면 구성
+    for idx, set_tab in enumerate(set_tabs, start=1):
+        with set_tab:
+            st.markdown(f"#### 🔹 [세트 {idx}] 조치 전·후 현장 사진 및 내용")
             col_before, col_after = st.columns(2)
             
             with col_before:
                 st.caption("🔴 **안전 조치 전 (Before)**")
-                img_before = st.file_uploader(f"세트 {i} - 조치 전 사진", type=["jpg", "png", "jpeg"], key=f"before_{i}")
+                img_before = st.file_uploader(f"세트 {idx} - 조치 전 사진", type=["jpg", "png", "jpeg"], key=f"before_{idx}")
                 if img_before:
                     st.image(img_before, use_container_width=True)
                     
             with col_after:
                 st.caption("🟢 **안전 조치 후 (After)**")
-                img_after = st.file_uploader(f"세트 {i} - 조치 후 사진", type=["jpg", "png", "jpeg"], key=f"after_{i}")
+                img_after = st.file_uploader(f"세트 {idx} - 조치 후 사진", type=["jpg", "png", "jpeg"], key=f"after_{idx}")
                 if img_after:
                     st.image(img_after, use_container_width=True)
             
-            desc = st.text_area(f"✍️ 세트 {i} - 작업 위치 및 조치 내용 설명", placeholder=f"예: 세트{i} - 2층 작업대 개구부 추락방지망 및 안전난간 설치 완료", key=f"desc_{i}")
-            st.markdown("---")
+            desc = st.text_area(
+                f"✍️ 세트 {idx} - 작업 위치 및 조치 내용 설명", 
+                placeholder=f"예: 세트{idx} - 2층 작업대 개구부 추락방지망 및 안전난간 설치 완료", 
+                key=f"desc_{idx}"
+            )
             
-            # 입력 데이터 정리
+            # 유효 데이터 저장
             if img_before or img_after or desc.strip():
-                set_data.append({
-                    "set_num": i,
+                set_inputs[idx] = {
+                    "set_num": idx,
                     "img_before": img_before,
                     "img_after": img_after,
                     "desc": desc
-                })
+                }
+
+    st.markdown("---")
 
     # AI 분석 버튼
     if st.button(f"🚀 [{selected_dept} {selected_site}] 전·후 대조 AI 정밀 분석", use_container_width=True):
-        if not set_data:
-            st.warning("⚠️ 최소 1개 세트 이상의 사진이나 설명글을 입력해 주세요.")
+        if not set_inputs:
+            st.warning("⚠️ 최소 1개 이상의 세트 탭에서 사진이나 설명글을 입력해 주세요.")
         else:
+            active_sets = list(set_inputs.values())
             status_box = st.empty()
-            status_box.info(f"⏳ **푸루가 [{selected_dept} {selected_site}] 총 {len(set_data)}개 세트의 조치 전·후 상태를 비교 분석 중입니다...**")
+            status_box.info(f"⏳ **푸루가 [{selected_dept} {selected_site}] 총 {len(active_sets)}개 세트의 조치 전·후 상태를 비교 분석 중입니다...**")
             
             try:
                 client = genai.Client(api_key=api_key)
                 
-                # AI 프롬프트 구성
                 prompt_text = (
                     f"당신은 한국환경공단(KECO) {selected_dept} {selected_site}의 현장 안전 전문 AI 검수원입니다.\n"
                     "제공된 각 세트별 '안전 조치 전(Before)' 사진과 '안전 조치 후(After)' 사진, 그리고 담당자의 조치 설명을 비교 검토하세요.\n"
-                    "각 세트별로 다음 사항을 분석해 주세요:\n"
+                    "각 세트별로 다음 사항을 정밀 분석해 주세요:\n"
                     "1. 조치 전 위험 요소 판단\n"
                     "2. 조치 후 적정성 평가 (안전 기준 준수 여부)\n"
                     "3. 추가 개선 필요 사항 및 종합 의견\n\n"
@@ -241,7 +239,7 @@ with tab1:
                 ai_input = [prompt_text]
                 summary_detail_list = []
 
-                for s in set_data:
+                for s in active_sets:
                     num = s["set_num"]
                     desc_txt = s["desc"]
                     ai_input.append(f"\n--- [세트 {num} 설명]: {desc_txt} ---\n")
@@ -254,7 +252,7 @@ with tab1:
                         ai_input.append(f"세트 {num} - 조치 후 사진:")
                         ai_input.append(Image.open(s["img_after"]).convert("RGB"))
 
-                # 모델 호출
+                # 모델 자동 검색 및 실행
                 all_models = list(client.models.list())
                 valid_model_names = [m.name.replace("models/", "") for m in all_models]
 
@@ -276,8 +274,8 @@ with tab1:
                     result_text = response.text
                     summary_detail = " | ".join(summary_detail_list)
                     
-                    # Google Sheets 영구 저장
-                    if save_to_google_sheet(selected_dept, selected_site, len(set_data), result_text, summary_detail):
+                    # Google Sheets 저장
+                    if save_to_google_sheet(selected_dept, selected_site, len(active_sets), result_text, summary_detail):
                         st.toast(f"✅ [{selected_dept} {selected_site}] 전·후 점검 기록이 구글 시트에 저장되었습니다!", icon="🌱")
 
                     # 결과 리포트 출력
@@ -304,7 +302,7 @@ with tab1:
                 st.error(f"오류가 발생했습니다: {e}")
 
 # ---------------- Tab 2: 저장된 이력 조회 ----------------
-with tab2:
+with main_tab2:
     st.subheader("📂 지난 전·후 점검 이력 (부서/현장별 필터링)")
     rows = get_google_sheet_records()
     
