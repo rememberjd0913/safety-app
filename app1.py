@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai  # 최신 공식 SDK
 import gspread
 from google.oauth2.service_account import Credentials
 import datetime
@@ -150,10 +150,14 @@ def get_google_sheet_records():
         return []
 
 
-# --- 2. 최신 모델 표준 적용 AI 분석 함수 ---
+# --- 2. 최신 google-genai SDK 적용 분석 함수 ---
 def analyze_hazard_auto(api_key, img_file):
-    """최신 Gemini 2.0 / 2.5 모델 표준 규격으로 위험요인을 분석합니다."""
-    genai.configure(api_key=api_key)
+    """google-genai SDK를 사용하여 최신 gemini-2.5-flash 모델로 분석합니다."""
+    
+    # Client 객체 생성
+    client = genai.Client(api_key=api_key)
+    
+    # 이미지 파일 읽기
     img = Image.open(img_file)
     
     prompt = (
@@ -164,26 +168,23 @@ def analyze_hazard_auto(api_key, img_file):
         "3. **권장 조치 사항:** (1문장)"
     )
 
-    # 404 에러가 나지 않는 최신 공식 모델 순서
-    target_models = [
-        "gemini-2.0-flash",
-        "gemini-2.5-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-1.5-flash-8b"
-    ]
+    # gemini-2.5-flash 호출 (실패 시 gemini-2.0-flash 자동 전환)
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[prompt, img]
+        )
+        if response and response.text:
+            return response.text
+    except Exception:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[prompt, img]
+        )
+        if response and response.text:
+            return response.text
 
-    last_error = None
-    for model_name in target_models:
-        try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content([prompt, img])
-            if response and response.text:
-                return response.text
-        except Exception as e:
-            last_error = e
-            continue
-
-    raise Exception(f"AI 분석 실패 (사유: {last_error})")
+    raise Exception("AI 분석 응답을 생성하지 못했습니다.")
 
 
 # --- 3. API Key 확인 ---
