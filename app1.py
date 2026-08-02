@@ -45,6 +45,19 @@ st.markdown("""
     }
 
     /* --------------------------------------------------
+       📱 [모바일 라벨/선택창 글자색 고정] 선명한 가독성 확보
+       -------------------------------------------------- */
+    label, div[data-baseweb="select"] span, .stSelectbox label, .stTextInput label, .stTextArea label, .stFileUploader label {
+        color: #1E293B !important;
+        font-weight: 600 !important;
+    }
+    
+    /* 드롭다운 목록 글자 색상 고정 */
+    div[role="listbox"] div {
+        color: #1E293B !important;
+    }
+
+    /* --------------------------------------------------
        🎨 [한국환경공단 테마 스타일]
        -------------------------------------------------- */
     .stApp {
@@ -323,7 +336,7 @@ with main_tab1:
         <div class="mascot-card">
             <div>
                 <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">담당 부서와 현장을 선택해 주세요.</span>
+                <span style="font-size:0.92rem; color:#334155;">담당 부서와 현장 번호를 선택해 주세요.</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
