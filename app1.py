@@ -150,14 +150,9 @@ def get_google_sheet_records():
         return []
 
 
-# --- 2. 최신 google-genai SDK 적용 분석 함수 ---
+# --- 2. 최신 google-genai SDK 적용 분석 함수 (gemini-2.5 모델 고정) ---
 def analyze_hazard_auto(api_key, img_file):
-    """google-genai SDK를 사용하여 최신 gemini-2.5-flash 모델로 분석합니다."""
-    
-    # Client 객체 생성
     client = genai.Client(api_key=api_key)
-    
-    # 이미지 파일 읽기
     img = Image.open(img_file)
     
     prompt = (
@@ -168,7 +163,6 @@ def analyze_hazard_auto(api_key, img_file):
         "3. **권장 조치 사항:** (1문장)"
     )
 
-    # gemini-2.5-flash 호출 (실패 시 gemini-2.0-flash 자동 전환)
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
@@ -178,7 +172,7 @@ def analyze_hazard_auto(api_key, img_file):
             return response.text
     except Exception:
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-pro",
             contents=[prompt, img]
         )
         if response and response.text:
@@ -222,7 +216,7 @@ with main_tab1:
         <div class="mascot-card">
             <div>
                 <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">담당 부서와 현장을 선택해 주세요.</span>
+                <span style="font-size:0.92rem; color:#334155;">담당 부서와 현장 번호를 선택해 주세요.</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
