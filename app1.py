@@ -7,7 +7,6 @@ import datetime
 # --- 페이지 기본 설정 (한국환경공단 맞춤) ---
 st.set_page_config(
     page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 조치 전·후 스마트 점검",
-    page_icon="puru_guru.png",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
@@ -194,7 +193,10 @@ st.markdown("""
 # 메인 푸루 & 그루 환영 배너
 st.markdown("""
     <div class="mascot-banner">
-        <div style="font-size: 2.5rem; margin-bottom: 8px;">🌱</div>
+        <!-- 🌱 이모지 대신 마스코트 이미지 적용 -->
+        <div style="margin-bottom: 8px;">
+            <img src="app/static/puru_guru.png" style="max-height: 100px; object-fit: contain;">
+        </div>
         <div class="mascot-badge">안전모·조끼 착용 완료!</div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
         <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">각 세트별 조치 전·후 상황 및 현장 상세 설명을 작성해 주세요.</p>
