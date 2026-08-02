@@ -128,24 +128,44 @@ st.markdown("""
 # ==========================================
 # 🔒 [보안] 감독관 로그인 제어 게이트웨이
 # ==========================================
+# ==========================================
+# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (보완 버전)
+# ==========================================
 def check_password():
     """감독관 인증을 처리하는 게이트웨이 함수"""
-    def password_entered():
-        user_id = st.session_state.get("username", "").strip()
-        user_pw = st.session_state.get("password", "").strip()
-        
-        # secrets에서 passwords 딕셔너리 가져오기
-        allowed_users = st.secrets.get("passwords", {})
-        
-        if user_id in allowed_users and allowed_users[user_id] == user_pw:
-            st.session_state["password_correct"] = True
-            st.session_state["logged_user"] = user_id
-            del st.session_state["password"]  # 메모리 보안 삭제
-        else:
-            st.session_state["password_correct"] = False
-
+    
+    # 이미 로그인된 상태라면 True 반환
     if st.session_state.get("password_correct", False):
         return True
+
+    # 비밀번호 디버깅/확인용
+    allowed_users = st.secrets.get("passwords", {})
+
+    st.markdown("""
+        <div style="text-align:center; padding: 30px 10px 10px 10px;">
+            <h2 style="color:#007A33;">🌱 한국환경공단 감독관 인증</h2>
+            <p style="color:#64748B;">인증된 사내 감독관만 접근 가능한 스마트 점검 시스템입니다.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        user_id = st.text_input("👤 감독관 ID (사번)", key="username_input")
+        user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input")
+        
+        if st.button("로그인", use_container_width=True):
+            user_id_clean = user_id.strip()
+            user_pw_clean = user_pw.strip()
+            
+            # ID 존재 여부 및 비밀번호 일치 확인
+            if user_id_clean in allowed_users and str(allowed_users[user_id_clean]) == user_pw_clean:
+                st.session_state["password_correct"] = True
+                st.session_state["logged_user"] = user_id_clean
+                st.rerun()  # 화면 즉시 갱신
+            else:
+                st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
+
+    return False
 
     # 로그인 UI
     st.markdown("""
