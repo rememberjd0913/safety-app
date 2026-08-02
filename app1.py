@@ -150,10 +150,13 @@ def get_google_sheet_records():
         return []
 
 
-# --- 2. 최신 SDK 대응 AI 분석 함수 ---
+# --- 2. 안정적인 AI 분석 함수 (API버전 고정 & 표준 모델 설정) ---
 def analyze_hazard_auto(api_key, img_file):
-    """google-genai SDK 1.0+ 표준 모델을 호출하여 위험 요소를 분석합니다."""
-    client = genai.Client(api_key=api_key)
+    """API 버전을 v1으로 지정하고 표준 모델을 호출하여 404 오류를 해결합니다."""
+    client = genai.Client(
+        api_key=api_key,
+        http_options={'api_version': 'v1'}
+    )
     img = Image.open(img_file)
     
     prompt = (
@@ -165,10 +168,10 @@ def analyze_hazard_auto(api_key, img_file):
     )
 
     candidate_models = [
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-pro-latest"
+        "gemini-2.5-flash",
+        "gemini-1.5-flash",
+        "gemini-2.5-pro",
+        "gemini-1.5-pro"
     ]
 
     last_error = None
