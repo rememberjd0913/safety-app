@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 커스텀 CSS (한국환경공단 브랜드 및 푸루/그루 UI 적용) ---
+# --- 커스텀 CSS (한국환경공단 KECO 브랜드 및 건설 UI 적용) ---
 st.markdown("""
     <style>
     /* 메인 배경 및 기본 폰트 설정 */
@@ -44,28 +44,36 @@ st.markdown("""
         margin-bottom: 0 !important;
     }
 
-    /* 마스코트 이미지 카드 스타일 */
-    .mascot-box {
+    /* 캐릭터 배너 / 카드 스타일 */
+    .mascot-banner {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        text-align: center;
+        border: 2px solid #E2E8F0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+    }
+    .mascot-card {
         background-color: #FFFFFF;
+        border: 1.5px solid #E2E8F0;
         border-radius: 14px;
-        padding: 18px;
+        padding: 14px 18px;
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 15px;
         margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
-    .mascot-box img {
-        width: 60px; /* 마스코트 크기 고정 */
-        height: auto;
-    }
-    .mascot-text {
-        font-size: 0.95rem;
-        color: #334155;
-        line-height: 1.4;
-    }
-    .mascot-text strong {
+    .mascot-badge {
+        background-color: #E6F4EA;
         color: #007A33;
+        font-weight: bold;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        display: inline-block;
+        margin-bottom: 8px;
     }
 
     /* 선택 부서 및 현장 카드 */
@@ -83,29 +91,14 @@ st.markdown("""
     .result-card {
         background-color: #FFFFFF;
         border-radius: 12px;
-        padding: 18px;
+        padding: 20px;
         border-left: 5px solid #007A33;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         margin-top: 15px;
         margin-bottom: 15px;
     }
-    .result-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 10px;
-        border-bottom: 2px solid #E2E8F0;
-        padding-bottom: 10px;
-    }
-    .result-header img {
-        width: 30px;
-    }
-    .result-header h4 {
-        margin: 0;
-        color: #007A33;
-    }
 
-    /* Streamlit 기본 버튼 커스텀 (큼직하고 직관적이게) */
+    /* Streamlit 기본 버튼 커스텀 */
     div.stButton > button {
         background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
         color: white !important;
@@ -122,7 +115,7 @@ st.markdown("""
         transform: translateY(-2px);
     }
     
-    /* 탭 스타일 조정 (모바일 친화적) */
+    /* 탭 스타일 조정 */
     div.stTabs [data-baseweb="tab-list"] {
         background-color: #FFFFFF;
         padding: 5px;
@@ -136,9 +129,6 @@ st.markdown("""
         font-weight: bold;
         margin: 2px;
     }
-    div.stTabs [data-baseweb="tab"]:hover {
-        background-color: #E2E8F0;
-    }
     div.stTabs [aria-selected="true"] {
         background-color: #007A33 !important;
         color: white !important;
@@ -146,13 +136,39 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 📌 이미지 URL 설정 (GitHub raw 주소로 변경하여 Streamlit 클라우드에서 바로 로드)
-# 본인의 GitHub 저장소 raw 이미지 주소로 꼭 변경해 주세요!
-PURU_WELCOME_URL = "https://raw.githubusercontent.com/본인GitHub계정/safety-app/main/images/puru_welcome.png"
-GRU_GUIDE_URL = "https://raw.githubusercontent.com/본인GitHub계정/safety-app/main/images/gru_guide.png"
-PURU_INPUT_URL = "https://raw.githubusercontent.com/본인GitHub계정/safety-app/main/images/puru_input.png"
-PURU_GRU_ANALYSIS_URL = "https://raw.githubusercontent.com/본인GitHub계정/safety-app/main/images/puru_gru_analysis.png"
-PURU_RESULT_URL = "https://raw.githubusercontent.com/본인GitHub계정/safety-app/main/images/puru_result.png"
+
+# --- 푸루/그루 SVG 캐릭터 고화질 그래픽 내장 (별도 이미지 파일 없이 작동) ---
+PURU_HELMET_SVG = """
+<svg width="60" height="60" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="50" cy="50" r="45" fill="#007A33"/>
+  <circle cx="50" cy="45" r="30" fill="#FFFFFF"/>
+  <!-- 안전모 -->
+  <path d="M 20 40 Q 50 10 80 40 Z" fill="#FACC15" stroke="#EAB308" stroke-width="2"/>
+  <rect x="15" y="38" width="70" height="6" rx="3" fill="#EAB308"/>
+  <circle cx="50" cy="28" r="4" fill="#007A33"/>
+  <!-- 눈 / 미소 -->
+  <circle cx="38" cy="48" r="4" fill="#333333"/>
+  <circle cx="62" cy="48" r="4" fill="#333333"/>
+  <path d="M 42 56 Q 50 62 58 56" fill="transparent" stroke="#333333" stroke-width="3" stroke-linecap="round"/>
+</svg>
+"""
+
+GRU_HELMET_SVG = """
+<svg width="60" height="60" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="50" cy="50" r="45" fill="#EC4899"/>
+  <circle cx="50" cy="45" r="30" fill="#FFFFFF"/>
+  <!-- 안전모 -->
+  <path d="M 20 40 Q 50 10 80 40 Z" fill="#FACC15" stroke="#EAB308" stroke-width="2"/>
+  <rect x="15" y="38" width="70" height="6" rx="3" fill="#EAB308"/>
+  <circle cx="50" cy="28" r="4" fill="#EC4899"/>
+  <!-- 눈 / 볼터치 / 미소 -->
+  <circle cx="38" cy="48" r="4" fill="#333333"/>
+  <circle cx="62" cy="48" r="4" fill="#333333"/>
+  <circle cx="32" cy="52" r="4" fill="#F472B6" opacity="0.6"/>
+  <circle cx="68" cy="52" r="4" fill="#F472B6" opacity="0.6"/>
+  <path d="M 42 56 Q 50 62 58 56" fill="transparent" stroke="#333333" stroke-width="3" stroke-linecap="round"/>
+</svg>
+"""
 
 
 # --- 1. Google Sheets 연동 함수 ---
@@ -201,7 +217,7 @@ else:
     st.stop()
 
 
-# --- 3. KECO 헤더 및 메인 마스코트 UI ---
+# --- 3. KECO 상단 헤더 및 메인 마스코트 환영 카드 ---
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 KECO</h2>
@@ -209,9 +225,18 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# 메인 환영 마스코트 배너 (푸루/그루 함께)
-st.image(PURU_WELCOME_URL, caption="한국환경공단 안전 지킴이 푸루 & 그루", use_container_width=True)
-st.markdown("---")
+# 메인 푸루 & 그루 환영 카드
+st.markdown(f"""
+    <div class="mascot-banner">
+        <div style="display: flex; justify-content: center; gap: 20px; align-items: center; margin-bottom: 12px;">
+            {PURU_HELMET_SVG}
+            {GRU_HELMET_SVG}
+        </div>
+        <div class="mascot-badge">안전모·조끼 착용 완료!</div>
+        <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
+        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">각 세트별 조치 전·후 사진과 현장 설명을 등록해 주세요.</p>
+    </div>
+""", unsafe_allow_html=True)
 
 
 # --- 4. 메인 탭 구성 ---
@@ -219,13 +244,13 @@ main_tab1, main_tab2 = st.tabs(["🔍 전·후 사진 등록 및 AI 진단", "�
 
 # ---------------- Tab 1: AI 전후 사진 점검 ----------------
 with main_tab1:
-    # 점검 부서 및 현장 선택 (그루 가이드 적용)
+    # 점검 부서 및 현장 선택 (그루 가이드)
     st.markdown(f"""
-        <div class="mascot-box">
-            <img src="{GRU_GUIDE_URL}" alt="그루 가이드">
-            <div class="mascot-text">
-                반가워요! <strong>그루</strong>입니다.<br>
-                담당 부서와 현장을 선택해 주시면 똑 부러지게 점검해 드릴게요!
+        <div class="mascot-card">
+            <div>{GRU_HELMET_SVG}</div>
+            <div>
+                <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
+                <span style="font-size:0.92rem; color:#334155;">점검을 진행할 <strong>담당 부서</strong>와 <strong>현장 번호</strong>를 선택해 주세요.</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -245,24 +270,23 @@ with main_tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    # 안전 조치 전·후 등록 안내 (푸루 가이드 적용)
+    # 4세트 점검 등록 (푸루 가이드)
     st.markdown(f"""
-        <div class="mascot-box">
-            <img src="{PURU_INPUT_URL}" alt="푸루 입력 가이드">
-            <div class="mascot-text">
-                믿음직한 <strong>푸루</strong>입니다.<br>
-                현장의 🔴조치 전과 🟢조치 후 사진, 설명을 탭별로 빠짐없이 입력해 주세요!
+        <div class="mascot-card">
+            <div>{PURU_HELMET_SVG}</div>
+            <div>
+                <strong style="color:#007A33;">[푸루의 입력 가이드]</strong><br>
+                <span style="font-size:0.92rem; color:#334155;">하단 탭에서 <strong>🔴 조치 전</strong> / <strong>🟢 조치 후</strong> 사진 및 조치 상세 내역을 입력해 주세요!</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    # 세트별 개별 하위 탭 생성 (1️⃣ 세트 1 ~ 4)
+    # 세트 1 ~ 4 개별 하위 탭
     st.subheader("📋 안전 조치 전·후 등록 (세트별 화면 분리)")
     set_tabs = st.tabs(["1️⃣ 세트 1", "2️⃣ 세트 2", "3️⃣ 세트 3", "4️⃣ 세트 4"])
     
     set_inputs = {} # 각 세트별 입력값 저장 사전
 
-    # 세트 1 ~ 4 개별 화면 구성
     for idx, set_tab in enumerate(set_tabs, start=1):
         with set_tab:
             st.markdown(f"#### 🔹 [세트 {idx}] 조치 전·후 현장 사진 및 내용")
@@ -297,19 +321,22 @@ with main_tab1:
 
     st.markdown("---")
 
-    # AI 분석 버튼 (큼직하게)
+    # AI 분석 실행 버튼
     if st.button(f"🚀 [{selected_dept} {selected_site}] 전·후 대조 AI 정밀 분석", use_container_width=True):
         if not set_inputs:
             st.warning("⚠️ 최소 1개 이상의 세트 탭에서 사진이나 설명글을 입력해 주세요.")
         else:
             active_sets = list(set_inputs.values())
             
-            # AI 분석 중 로딩화면 (푸루 & 그루 분석 모습)
+            # AI 로딩 모달
             loading_container = st.container()
             with loading_container:
-                st.image(PURU_GRU_ANALYSIS_URL, caption="푸루와 그루가 현장 상태를 정밀 분석 중입니다...", width=200)
-                status_box = st.empty()
-                status_box.info(f"⏳ **푸루 & 그루 AI가 [{selected_dept} {selected_site}] 총 {len(active_sets)}개 세트의 조치 전·후 상태를 꼼꼼하게 대조 분석 중입니다... 조금만 기다려 주세요!**")
+                st.markdown(f"""
+                    <div style="text-align:center; padding:15px; background:#E6F4EA; border-radius:12px; margin-bottom:15px;">
+                        <div style="display:flex; justify-content:center; gap:10px;">{PURU_HELMET_SVG}{GRU_HELMET_SVG}</div>
+                        <p style="margin-top:10px; color:#007A33; font-weight:bold;">푸루 & 그루 AI가 [{selected_dept} {selected_site}] 총 {len(active_sets)}개 세트의 전·후 사진을 비교 정밀 분석하고 있습니다...</p>
+                    </div>
+                """, unsafe_allow_html=True)
             
             try:
                 client = genai.Client(api_key=api_key)
@@ -337,7 +364,7 @@ with main_tab1:
                     if s["img_after"]:
                         ai_input.append(Image.open(s["img_after"]).convert("RGB"))
 
-                # 모델 자동 검색 및 실행
+                # 실행 모델 검색
                 all_models = list(client.models.list())
                 valid_model_names = [m.name.replace("models/", "") for m in all_models]
 
@@ -355,9 +382,7 @@ with main_tab1:
                         continue
 
                 if response:
-                    # 분석 완료 시 로딩화면 삭제 및 푸루 AI 결과 카드 출력
                     loading_container.empty()
-                    
                     result_text = response.text
                     summary_detail = " | ".join(summary_detail_list)
                     
@@ -365,12 +390,15 @@ with main_tab1:
                     if save_to_google_sheet(selected_dept, selected_site, len(active_sets), result_text, summary_detail):
                         st.toast(f"✅ [{selected_dept} {selected_site}] 전·후 점검 기록이 구글 시트에 저장되었습니다!", icon="🌱")
 
-                    # 푸루 AI 분석 완료 리포트 카드 테마 출력
+                    # 푸루 AI 분석 완료 결과 출력
                     st.markdown(f"""
                         <div class="result-card">
-                            <div class="result-header">
-                                <img src="{PURU_RESULT_URL}" alt="푸루 AI 분석">
-                                <h4>📋 푸루 AI의 전·후 비교 분석 리포트 ({selected_dept} {selected_site})</h4>
+                            <div style="display:flex; align-items:center; gap:12px; border-bottom:2px solid #E2E8F0; padding-bottom:10px; margin-bottom:12px;">
+                                {PURU_HELMET_SVG}
+                                <div>
+                                    <h4 style="margin:0; color:#007A33;">📋 푸루 AI의 전·후 비교 분석 리포트</h4>
+                                    <span style="font-size:0.85rem; color:#64748B;">[{selected_dept}] - {selected_site}</span>
+                                </div>
                             </div>
                             {result_text.replace('\n', '<br>')}
                         </div>
@@ -399,7 +427,6 @@ with main_tab2:
     if len(rows) <= 1:
         st.info("아직 저장된 점검 이력이 없습니다. 첫 번째 전·후 사진을 등록해 보세요!")
     else:
-        # 이력 검색용 부서 선택 필터
         filter_col1, filter_col2 = st.columns(2)
         with filter_col1:
             filter_dept = st.selectbox("🔍 조회할 부서 선택", ["전체 부서"] + departments, key="dept_filter_selectbox")
@@ -410,7 +437,6 @@ with main_tab2:
         filtered_rows = []
         
         for r in data_rows:
-            # 구글 시트 항목 대응 [일시, 부서, 현장, 등록된 세트 수, AI 분석 결과, 세트별 상세 내역]
             row_dept = r[1] if len(r) > 1 else ""
             row_site = r[2] if len(r) > 2 else ""
             
@@ -420,7 +446,7 @@ with main_tab2:
             if dept_match and site_match:
                 filtered_rows.append(r)
                 
-        filtered_rows.reverse()  # 최신순 정렬
+        filtered_rows.reverse()
         
         st.write(f"📊 조건에 해당하는 점검 기록: 총 **{len(filtered_rows)}건**")
         st.markdown("---")
