@@ -1,9 +1,11 @@
 import streamlit as st
 from google import genai
+from google.genai import types
 import gspread
 from google.oauth2.service_account import Credentials
 import datetime
-import base64  # <--- Base64 변환용 모듈 추가
+import base64
+from PIL import Image
 
 # --- 페이지 기본 설정 (한국환경공단 맞춤) ---
 st.set_page_config(
@@ -70,21 +72,8 @@ st.markdown("""
         border: 1.5px solid #E2E8F0;
         border-radius: 14px;
         padding: 14px 18px;
-        display: flex;
-        align-items: center;
-        gap: 15px;
         margin-bottom: 20px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    }
-    .mascot-badge {
-        background-color: #E6F4EA;
-        color: #007A33;
-        font-weight: bold;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        display: inline-block;
-        margin-bottom: 8px;
     }
 
     /* 선택 부서 및 현장 카드 */
@@ -127,23 +116,25 @@ st.markdown("""
         transform: translateY(-2px);
     }
     
-    /* 탭 스타일 조정 */
+    /* 탭 스타일 조정 (초록색 음영 제거 -> 세련된 모노톤 적용) */
     div.stTabs [data-baseweb="tab-list"] {
-        background-color: #FFFFFF;
-        padding: 5px;
+        background-color: #F1F5F9;
+        padding: 6px;
         border-radius: 12px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
     }
     div.stTabs [data-baseweb="tab"] {
-        background-color: #F1F5F9;
+        background-color: transparent;
         border-radius: 8px;
-        padding: 8px 12px;
+        padding: 8px 16px;
         font-weight: bold;
-        margin: 2px;
+        color: #475569;
+        border: none;
     }
     div.stTabs [aria-selected="true"] {
-        background-color: #007A33 !important;
-        color: white !important;
+        background-color: #1E293B !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -212,20 +203,19 @@ st.markdown(f"""
             {image_html}
         </div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
-        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">각 세트별 조치 전·후 상황 및 현장 상세 설명을 작성해 주세요.</p>
+        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">각 번호별 조치 전·후 사진 첨부 및 현장 설명을 입력해 주세요.</p>
     </div>
 """, unsafe_allow_html=True)
 
 
 # --- 4. 메인 탭 구성 ---
-main_tab1, main_tab2 = st.tabs(["🔍 전·후 점검 등록 및 AI 진단", "📋 부서별 점검 이력"])
+main_tab1, main_tab2 = st.tabs(["전·후 점검 등록 및 AI 진단", "부서별 점검 이력"])
 
 # ---------------- Tab 1: AI 전후 점검 ----------------
 with main_tab1:
-    # 그루 가이드 카드
+    # 그루 가이드 카드 (아이콘 제거 완료)
     st.markdown("""
         <div class="mascot-card">
-            <div style="font-size:2rem;">👷‍♀️</div>
             <div>
                 <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
                 <span style="font-size:0.92rem; color:#334155;">점검을 진행할 <strong>담당 부서</strong>와 <strong>현장 번호</strong>를 선택해 주세요.</span>
@@ -248,53 +238,60 @@ with main_tab1:
         </div>
     """, unsafe_allow_html=True)
 
-    # 푸루 가이드 카드
+    # 푸루 가이드 카드 (아이콘 제거 완료)
     st.markdown("""
         <div class="mascot-card">
-            <div style="font-size:2rem;">👷‍♂️</div>
             <div>
                 <strong style="color:#007A33;">[푸루의 입력 가이드]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">하단 탭에서 <strong>🔴 조치 전 상황</strong> 및 <strong>🟢 조치 후 내용</strong>을 작성해 주세요!</span>
+                <span style="font-size:0.92rem; color:#334155;">하단 탭에서 <strong>🔴 조치 전 사진</strong> 및 <strong>🟢 조치 후 사진</strong>을 업로드해 주세요!</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    st.subheader("📋 안전 조치 전·후 작성 (총 4개 세트)")
+    st.subheader("📸 안전 조치 전·후 사진 등록 (최대 4개)")
     
-    # 세트별 개별 탭 생성
-    set_tabs = st.tabs(["1️⃣ 세트 1", "2️⃣ 세트 2", "3️⃣ 세트 3", "4️⃣ 세트 4"])
+    # 탭 명칭 변경: 1번사진, 2번사진, 3번사진, 4번사진
+    set_tabs = st.tabs(["1번 사진", "2번 사진", "3번 사진", "4번 사진"])
     
-    set_inputs = {} # 각 세트별 입력값 저장 사전
+    set_inputs = {} # 각 번호별 데이터 저장 사전
 
-    # 세트 1 ~ 4 개별 화면 구성
+    # 1번사진 ~ 4번사진 입력 화면 구성
     for idx, set_tab in enumerate(set_tabs, start=1):
         with set_tab:
-            st.markdown(f"#### 🔹 [세트 {idx}] 조치 전·후 현장 점검 내용")
+            st.markdown(f"#### 🔹 [{idx}번 사진] 현장 조치 전·후 첨부")
             
-            before_text = st.text_area(
-                f"🔴 세트 {idx} - 조치 전(Before) 상태 및 위험요인",
-                placeholder=f"예: 세트{idx} - 2층 작업대 개구부에 안전난간이 미설치되어 있어 추락 위험이 존재함.",
-                key=f"before_txt_{idx}"
-            )
+            col_b, col_a = st.columns(2)
             
-            after_text = st.text_area(
-                f"🟢 세트 {idx} - 조치 후(After) 개선 완료 사항",
-                placeholder=f"예: 세트{idx} - 추락방지망 및 규격 안전난간 설치 완료, 안전표지판 설치.",
-                key=f"after_txt_{idx}"
-            )
-            
+            with col_b:
+                before_img_file = st.file_uploader(
+                    f"🔴 [{idx}번] 조치 전(Before) 사진",
+                    type=["jpg", "jpeg", "png"],
+                    key=f"before_img_{idx}"
+                )
+                if before_img_file:
+                    st.image(before_img_file, caption=f"{idx}번 조치 전 사진 미리보기", use_container_width=True)
+
+            with col_a:
+                after_img_file = st.file_uploader(
+                    f"🟢 [{idx}번] 조치 후(After) 사진",
+                    type=["jpg", "jpeg", "png"],
+                    key=f"after_img_{idx}"
+                )
+                if after_img_file:
+                    st.image(after_img_file, caption=f"{idx}번 조치 후 사진 미리보기", use_container_width=True)
+
             desc = st.text_area(
-                f"✍️ 세트 {idx} - 추가 참고사항 및 작업 위치", 
-                placeholder=f"예: 세트{idx} - A동 2층 남측 개구부 현장", 
+                f"✍️ [{idx}번] 현장 위치 및 작업 설명", 
+                placeholder=f"예: {idx}번 - A동 2층 남측 개구부 안전난간 설치 현장", 
                 key=f"desc_{idx}"
             )
             
-            # 유효 데이터 저장
-            if before_text.strip() or after_text.strip() or desc.strip():
+            # 사진이나 설명 중 하나라도 등록된 경우 유효 항목으로 등록
+            if before_img_file or after_img_file or desc.strip():
                 set_inputs[idx] = {
                     "set_num": idx,
-                    "before_text": before_text.strip(),
-                    "after_text": after_text.strip(),
+                    "before_img": before_img_file,
+                    "after_img": after_img_file,
                     "desc": desc.strip()
                 }
 
@@ -303,7 +300,7 @@ with main_tab1:
     # AI 분석 버튼
     if st.button(f"🚀 [{selected_dept} {selected_site}] 전·후 대조 AI 정밀 분석", use_container_width=True):
         if not set_inputs:
-            st.warning("⚠️ 최소 1개 이상의 세트 탭에서 조치 전/후 내용이나 설명글을 작성해 주세요.")
+            st.warning("⚠️ 최소 1개 이상의 사진 탭에서 조치 전/후 사진이나 설명글을 첨부해 주세요.")
         else:
             active_sets = list(set_inputs.values())
             
@@ -312,54 +309,53 @@ with main_tab1:
             with loading_container:
                 st.markdown(f"""
                     <div style="text-align:center; padding:15px; background:#E6F4EA; border-radius:12px; margin-bottom:15px; border: 1.5px solid #10B981;">
-                        <div style="font-size:2rem;">🌱👷‍♂️👷‍♀️</div>
-                        <p style="margin-top:10px; color:#007A33; font-weight:bold;">푸루 & 그루 AI가 [{selected_dept} {selected_site}] 총 {len(active_sets)}개 세트의 전·후 점검 상태를 정밀 분석하고 있습니다...</p>
+                        <p style="margin-top:10px; color:#007A33; font-weight:bold;">푸루 & 그루 AI가 [{selected_dept} {selected_site}] 총 {len(active_sets)}개 현장의 전·후 이미지 데이터를 분석하고 있습니다...</p>
                     </div>
                 """, unsafe_allow_html=True)
             
             try:
                 client = genai.Client(api_key=api_key)
                 
-                prompt_text = (
-                    f"당신은 한국환경공단(KECO) {selected_dept} {selected_site}의 현장 안전 전문 AI 검수원입니다.\n"
-                    "제공된 각 세트별 '안전 조치 전(Before)' 내역과 '안전 조치 후(After)' 내역, 그리고 추가 설명을 종합하여 다각도로 검토하세요.\n\n"
-                    "각 세트별 분석 가이드라인:\n"
-                    "1. 조치 전 위험 요소 판단 및 위험도 평가\n"
-                    "2. 조치 후 적정성 평가 (산업안전보건기준 준수 여부 및 조치 완성도)\n"
-                    "3. 추가 개선 필요 사항 및 종합 안전 의견\n\n"
-                )
+                # 프롬프트 및 멀티모달 콘텐트 구성
+                contents_payload = []
                 
+                system_prompt = (
+                    f"당신은 한국환경공단(KECO) {selected_dept} {selected_site}의 현장 안전 전문 AI 검수원입니다.\n"
+                    "제공된 각 번호별 '안전 조치 전(Before) 사진'과 '안전 조치 후(After) 사진', 그리고 설명을 종합적으로 비교 및 정밀 분석하세요.\n\n"
+                    "각 번호별 분석 가이드라인:\n"
+                    "1. 조치 전 사진 분석: 시각적 위험 요소 및 산업안전 위험도 평가\n"
+                    "2. 조치 후 사진 분석: 안전 조치의 시각적 완성도 및 관련 법규 준수 여부\n"
+                    "3. 총평 및 추가 개선 조치 제안\n\n"
+                )
+                contents_payload.append(system_prompt)
+
+                summary_detail_list = []
+
                 for s in active_sets:
                     num = s["set_num"]
-                    b_txt = s["before_text"] if s["before_text"] else "미작성"
-                    a_txt = s["after_text"] if s["after_text"] else "미작성"
-                    d_txt = s["desc"] if s["desc"] else "미작성"
+                    d_txt = s["desc"] if s["desc"] else "설명 없음"
                     
-                    prompt_text += (
-                        f"[세트 {num}]\n"
-                        f"- 위치/참고사항: {d_txt}\n"
-                        f"- 조치 전(Before) 상태: {b_txt}\n"
-                        f"- 조치 후(After) 상태: {a_txt}\n\n"
-                    )
+                    contents_payload.append(f"\n--- [{num}번 사진 세트] ---")
+                    contents_payload.append(f"위치/설명: {d_txt}")
 
-                summary_detail_list = [f"[세트{s['set_num']}] 전:{s['before_text'][:20]}... / 후:{s['after_text'][:20]}..." for s in active_sets]
+                    b_status = "첨부됨" if s["before_img"] else "미첨부"
+                    a_status = "첨부됨" if s["after_img"] else "미첨부"
 
-                # 모델 자동 검색 및 실행
-                all_models = list(client.models.list())
-                valid_model_names = [m.name.replace("models/", "") for m in all_models]
+                    if s["before_img"]:
+                        contents_payload.append(f"[{num}번 조치 전(Before) 이미지]:")
+                        contents_payload.append(Image.open(s["before_img"]))
+                    
+                    if s["after_img"]:
+                        contents_payload.append(f"[{num}번 조치 후(After) 이미지]:")
+                        contents_payload.append(Image.open(s["after_img"]))
 
-                response = None
-                for m_name in valid_model_names:
-                    if any(skip in m_name for skip in ["embed", "text-", "bison", "imagen", "audio", "realtime"]):
-                        continue
-                    try:
-                        response = client.models.generate_content(
-                            model=m_name,
-                            contents=prompt_text
-                        )
-                        break
-                    except Exception:
-                        continue
+                    summary_detail_list.append(f"[{num}번] 전:{b_status},후:{a_status}({d_txt[:15]})")
+
+                # 최신 AI 모델 호출 (gemini-2.5-flash 우선)
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=contents_payload
+                )
 
                 if response:
                     loading_container.empty()
@@ -374,9 +370,8 @@ with main_tab1:
                     st.markdown(f"""
                         <div class="result-card">
                             <div style="display:flex; align-items:center; gap:12px; border-bottom:2px solid #E2E8F0; padding-bottom:10px; margin-bottom:12px;">
-                                <div style="font-size:1.8rem;">📋</div>
                                 <div>
-                                    <h4 style="margin:0; color:#007A33;">푸루 AI의 전·후 비교 분석 리포트</h4>
+                                    <h4 style="margin:0; color:#007A33;">푸루 AI의 전·후 사진 비교 분석 리포트</h4>
                                     <span style="font-size:0.85rem; color:#64748B;">[{selected_dept}] - {selected_site}</span>
                                 </div>
                             </div>
@@ -391,13 +386,10 @@ with main_tab1:
                         mime="text/plain",
                         use_container_width=True
                     )
-                else:
-                    loading_container.empty()
-                    st.error("❌ 연결 가능한 AI 모델을 찾지 못했습니다. API 키 권한을 확인해 주세요.")
 
             except Exception as e:
                 loading_container.empty()
-                st.error(f"오류가 발생했습니다: {e}")
+                st.error(f"AI 분석 처리 중 오류가 발생했습니다: {e}")
 
 # ---------------- Tab 2: 저장된 이력 조회 ----------------
 with main_tab2:
