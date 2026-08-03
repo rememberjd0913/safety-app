@@ -9,9 +9,10 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
-from email.header import Header  # 👈 이 줄이 빠져 있어서 난 에러이므로 추가해 줍니다!
+from email.mime.application import MIMEApplication
+from email.header import Header
 from PIL import Image
+import io
 
 # --- 페이지 기본 설정 ---
 st.set_page_config(
@@ -215,6 +216,7 @@ def save_image_to_internal_network(uploaded_file, folder_path, prefix):
         safe_filename = f"{prefix}_{timestamp_str}_{uploaded_file.name}"
         full_path = os.path.join(folder_path, safe_filename)
         
+        uploaded_file.seek(0)
         with open(full_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
             
@@ -224,7 +226,7 @@ def save_image_to_internal_network(uploaded_file, folder_path, prefix):
         return None
 
 def send_inspection_email(dept_name, site_name, inspector_id, form_data):
-    """사내 이메일(SMTP)을 통해 점검 결과 및 사진을 전송하는 함수 (완벽한 유니코드 헤더 인코딩 적용)"""
+    """사내 이메일(SMTP)을 통해 점검 결과 및 사진을 전송하는 함수 (바이트 완벽 추출 및 유니코드 처리)"""
     try:
         smtp_conf = st.secrets.get("smtp", {})
         smtp_server = smtp_conf.get("server", "smtp.gmail.com")
@@ -238,11 +240,8 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
 
         msg = MIMEMultipart()
         
-        # 💡 [핵심 수정] 제목, 보내는 사람, 받는 사람 모두 Header(..., 'utf-8') 처리하여 ASCII 인코딩 에러 원천 차단
         subject_str = f"[안전점검 보고] {dept_name} - {site_name} (작성자: {inspector_id})"
         msg['Subject'] = Header(subject_str, 'utf-8')
-        
-        # ASCII 에러를 유발할 수 있는 이름을 제외하고 순수 이메일 주소만 넣거나 Header로 감싸기
         msg['From'] = Header(f"KECO 안전점검시스템 <{sender_email}>", 'utf-8')
         msg['To'] = Header(receiver_email, 'utf-8')
 
@@ -262,21 +261,19 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
 
         msg.attach(MIMEText(body_html, 'html', 'utf-8'))
 
-       # 💡 [확실한 해결] BytesIO를 이용한 안전한 이미지 바이트 복사 및 첨부
-        import io
-
+        # 💡 [핵심 해결] BytesIO를 통해 포인터 위치와 상관없이 이미지 바이트를 안전하게 강제 추출하여 첨부
         for k, v in form_data.items():
             # Before 사진들 첨부
             if 'before_files' in v and v['before_files']:
                 for idx, img_f in enumerate(v['before_files']):
                     try:
                         img_f.seek(0)
-                        # 파일을 메모리 버퍼에 온전히 복사하여 바이트로 추출
                         img_bytes = io.BytesIO(img_f.read()).getvalue()
                         
                         if img_bytes:
-                            part = MIMEApplication(img_bytes, Name=f"Before_Item{k}_{idx+1}.jpg")
-                            part['Content-Disposition'] = f'attachment; filename="Before_Item{k}_{idx+1}.jpg"'
+                            filename = f"Before_Item{k}_{idx+1}.jpg"
+                            part = MIMEApplication(img_bytes, Name=filename)
+                            part['Content-Disposition'] = f'attachment; filename="{filename}"'
                             msg.attach(part)
                     except Exception as img_err:
                         print(f"Before 이미지 첨부 실패: {img_err}")
@@ -286,16 +283,16 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
                 for idx, img_f in enumerate(v['after_files']):
                     try:
                         img_f.seek(0)
-                        # 파일을 메모리 버퍼에 온전히 복사하여 바이트로 추출
                         img_bytes = io.BytesIO(img_f.read()).getvalue()
                         
                         if img_bytes:
-                            part = MIMEApplication(img_bytes, Name=f"After_Item{k}_{idx+1}.jpg")
-                            part['Content-Disposition'] = f'attachment; filename="After_Item{k}_{idx+1}.jpg"'
+                            filename = f"After_Item{k}_{idx+1}.jpg"
+                            part = MIMEApplication(img_bytes, Name=filename)
+                            part['Content-Disposition'] = f'attachment; filename="{filename}"'
                             msg.attach(part)
                     except Exception as img_err:
                         print(f"After 이미지 첨부 실패: {img_err}")
-                        
+                    
         # SMTP 전송
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
@@ -335,6 +332,7 @@ def get_google_sheet_records():
 # --- 2. AI 위험 분석 함수 ---
 def analyze_hazard_auto(api_key, img_file):
     client = genai.Client(api_key=api_key)
+    img_file.seek(0)
     img = Image.open(img_file)
     
     prompt = (
