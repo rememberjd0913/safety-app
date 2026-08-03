@@ -10,6 +10,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
+from email.header import Header  # 👈 이 줄이 빠져 있어서 난 에러이므로 추가해 줍니다!
 from PIL import Image
 
 # --- 페이지 기본 설정 ---
