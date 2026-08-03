@@ -223,7 +223,7 @@ def save_image_to_internal_network(uploaded_file, folder_path, prefix):
         return None
 
 def send_inspection_email(dept_name, site_name, inspector_id, form_data):
-    """사내 이메일(SMTP)을 통해 점검 결과 및 사진을 전송하는 함수"""
+    """사내 이메일(SMTP)을 통해 점검 결과 및 사진을 전송하는 함수 (한글 인코딩 처리 완료)"""
     try:
         smtp_conf = st.secrets.get("smtp", {})
         smtp_server = smtp_conf.get("server", "smtp.gmail.com")
@@ -236,7 +236,11 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
             return False, "이메일 설정(SMTP)이 누락되었습니다."
 
         msg = MIMEMultipart()
-        msg['Subject'] = f"[안전점검 보고] {dept_name} - {site_name} (작성자: {inspector_id})"
+        
+        # 💡 [핵심 수정] 한글 제목이 깨지거나 인코딩 에러가 나지 않도록 Header 처리 추가
+        subject_str = f"[안전점검 보고] {dept_name} - {site_name} (작성자: {inspector_id})"
+        msg['Subject'] = Header(subject_str, 'utf-8')
+        
         msg['From'] = sender_email
         msg['To'] = receiver_email
 
@@ -254,17 +258,25 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
         for k, v in form_data.items():
             body_html += f"<p><b>[항목 #{k}]</b><br>• 조치 내용: {v['desc']}<br>• AI 분석: {v['ai_analysis'].replace(chr(10), '<br>')}</p>"
 
-        msg.attach(MIMEText(body_html, 'html'))
+        msg.attach(MIMEText(body_html, 'html', 'utf-8'))
 
-        # 첨부 파일(사진들) 추가
+        # 첨부 파일(사진들) 추가 (한글 파일명 인코딩 처리 포함)
         for k, v in form_data.items():
             for img_f in v['before_files']:
                 img_f.seek(0)
-                img_part = MIMEImage(img_f.read(), name=f"Before_Item{k}_{img_f.name}")
+                img_bytes = img_f.read()
+                img_part = MIMEImage(img_bytes)
+                # 첨부 파일명에 한글이 포함되어 있을 때의 인코딩 처리
+                filename = f"Before_Item{k}_{img_f.name}"
+                img_part.add_header('Content-Disposition', 'attachment', filename=('utf-8', '', filename))
                 msg.attach(img_part)
+                
             for img_f in v['after_files']:
                 img_f.seek(0)
-                img_part = MIMEImage(img_f.read(), name=f"After_Item{k}_{img_f.name}")
+                img_bytes = img_f.read()
+                img_part = MIMEImage(img_bytes)
+                filename = f"After_Item{k}_{img_f.name}"
+                img_part.add_header('Content-Disposition', 'attachment', filename=('utf-8', '', filename))
                 msg.attach(img_part)
 
         # SMTP 전송
