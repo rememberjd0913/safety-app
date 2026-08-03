@@ -262,24 +262,29 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
 
         msg.attach(MIMEText(body_html, 'html', 'utf-8'))
 
-        # 첨부 파일(사진들) 추가 (한글 파일명 인코딩 처리 포함)
+        # 첨부 파일(사진들) 추가 (안전한 파일명 및 데이터 체크 적용)
         for k, v in form_data.items():
-            for img_f in v['before_files']:
-                img_f.seek(0)
-                img_bytes = img_f.read()
-                img_part = MIMEImage(img_bytes)
-                filename = f"Before_Item{k}_{img_f.name}"
-                img_part.add_header('Content-Disposition', 'attachment', filename=('utf-8', '', filename))
-                msg.attach(img_part)
+            # Before 사진들 첨부
+            if 'before_files' in v and v['before_files']:
+                for idx, img_f in enumerate(v['before_files']):
+                    img_f.seek(0)
+                    img_bytes = img_f.read()
+                    if img_bytes:  # 💡 데이터가 확실히 있을 때만 첨부
+                        img_part = MIMEImage(img_bytes)
+                        filename = f"Before_Item{k}_{idx+1}.jpg"  # 💡 한글/특수문자 에러 방지를 위해 깔끔한 이름으로 지정
+                        img_part.add_header('Content-Disposition', 'attachment', filename=('utf-8', '', filename))
+                        msg.attach(img_part)
                 
-            for img_f in v['after_files']:
-                img_f.seek(0)
-                img_bytes = img_f.read()
-                img_part = MIMEImage(img_bytes)
-                filename = f"After_Item{k}_{img_f.name}"
-                img_part.add_header('Content-Disposition', 'attachment', filename=('utf-8', '', filename))
-                msg.attach(img_part)
-
+            # After 사진들 첨부
+            if 'after_files' in v and v['after_files']:
+                for idx, img_f in enumerate(v['after_files']):
+                    img_f.seek(0)
+                    img_bytes = img_f.read()
+                    if img_bytes:  # 💡 데이터가 확실히 있을 때만 첨부
+                        img_part = MIMEImage(img_bytes)
+                        filename = f"After_Item{k}_{idx+1}.jpg"  # 💡 한글/특수문자 에러 방지를 위해 깔끔한 이름으로 지정
+                        img_part.add_header('Content-Disposition', 'attachment', filename=('utf-8', '', filename))
+                        msg.attach(img_part)
         # SMTP 전송
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
