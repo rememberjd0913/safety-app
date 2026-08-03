@@ -191,8 +191,15 @@ def check_password():
 if not check_password():
     st.stop()
 
+# 로그인된 사번을 바탕으로 자동 매핑된 이메일 가져오기
+logged_user_id = st.session_state.get('logged_user')
+user_emails_map = st.secrets.get("user_emails", {})
+mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
+
 st.sidebar.markdown("### 🔒 감독관 인증 정보")
-st.sidebar.write(f"접속 사번: **{st.session_state.get('logged_user')}**")
+st.sidebar.write(f"접속 사번: **{logged_user_id}**")
+st.sidebar.write(f"수신 이메일: **{mapped_email if mapped_email else '미등록(기본값 사용)'}**")
+
 if st.sidebar.button("🔓 로그아웃", use_container_width=True):
     st.session_state["password_correct"] = False
     st.rerun()
@@ -226,17 +233,23 @@ def save_image_to_internal_network(uploaded_file, folder_path, prefix):
         return None
 
 def send_inspection_email(dept_name, site_name, inspector_id, form_data):
-    """사내 이메일(SMTP)을 통해 점검 결과 및 사진을 전송하는 함수 (바이트 완벽 추출 및 유니코드 처리)"""
+    """로그인된 사번(inspector_id)을 기반으로 secrets에서 이메일을 자동 매핑하여 전송하는 함수"""
     try:
         smtp_conf = st.secrets.get("smtp", {})
         smtp_server = smtp_conf.get("server", "smtp.gmail.com")
         smtp_port = smtp_conf.get("port", 587)
         sender_email = smtp_conf.get("sender_email", "")
         sender_password = smtp_conf.get("sender_password", "")
-        receiver_email = smtp_conf.get("receiver_email", sender_email)
 
         if not sender_email or not sender_password:
             return False, "이메일 설정(SMTP)이 누락되었습니다."
+
+        # 💡 [핵심] user_emails 딕셔너리에서 사번 매칭, 없으면 기본 관리자 메일로 폴백
+        user_emails_map = st.secrets.get("user_emails", {})
+        receiver_email = user_emails_map.get(str(inspector_id), smtp_conf.get("receiver_email", sender_email))
+
+        if not receiver_email:
+            return False, f"해당 사번({inspector_id})에 매핑된 이메일 주소가 없습니다."
 
         msg = MIMEMultipart()
         
@@ -261,15 +274,13 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
 
         msg.attach(MIMEText(body_html, 'html', 'utf-8'))
 
-        # 💡 [핵심 해결] BytesIO를 통해 포인터 위치와 상관없이 이미지 바이트를 안전하게 강제 추출하여 첨부
+        # 이미지 첨부 (BytesIO 활용)
         for k, v in form_data.items():
-            # Before 사진들 첨부
             if 'before_files' in v and v['before_files']:
                 for idx, img_f in enumerate(v['before_files']):
                     try:
                         img_f.seek(0)
                         img_bytes = io.BytesIO(img_f.read()).getvalue()
-                        
                         if img_bytes:
                             filename = f"Before_Item{k}_{idx+1}.jpg"
                             part = MIMEApplication(img_bytes, Name=filename)
@@ -278,13 +289,11 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
                     except Exception as img_err:
                         print(f"Before 이미지 첨부 실패: {img_err}")
                 
-            # After 사진들 첨부
             if 'after_files' in v and v['after_files']:
                 for idx, img_f in enumerate(v['after_files']):
                     try:
                         img_f.seek(0)
                         img_bytes = io.BytesIO(img_f.read()).getvalue()
-                        
                         if img_bytes:
                             filename = f"After_Item{k}_{idx+1}.jpg"
                             part = MIMEApplication(img_bytes, Name=filename)
@@ -392,7 +401,7 @@ if "ai_results" not in st.session_state:
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 수도권서부환경본부</h2>
-        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템 (내부망 + 이메일 연동형)</p>
+        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템 (사번 자동 매핑 이메일 연동형)</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -402,7 +411,7 @@ st.markdown(f"""
     <div class="mascot-banner">
         <div style="margin-bottom: 8px;">{image_html}</div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
-        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">사내망 폴더 저장, 구글 시트 기록 및 이메일 리포트 전송이 동시에 이루어집니다.</p>
+        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">사내망 폴더 저장, 구글 시트 기록 및 담당자 메일 자동 발송이 동시에 이루어집니다.</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -431,7 +440,7 @@ with main_tab1:
 
     st.markdown(f"""
         <div class="select-card">
-            📍 선택된 점검 대상: <strong>[{selected_dept}] - {selected_site}</strong> (작성자: {st.session_state.get('logged_user')})
+            📍 선택된 점검 대상: <strong>[{selected_dept}] - {selected_site}</strong> (작성자 사번: {logged_user_id})
         </div>
     """, unsafe_allow_html=True)
 
@@ -575,16 +584,15 @@ with main_tab1:
                 combined_ai = "\n\n".join(all_ai_summaries) if all_ai_summaries else "조치 전 AI 분석 미실행"
                 combined_detail = " | ".join(details)
                 combined_paths_str = " || ".join(all_photo_paths)
-                inspector_id = st.session_state.get('logged_user', '알 수 없음')
                 
                 # 1. 구글 시트 저장
-                sheet_success = save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail, inspector_id, combined_paths_str)
+                sheet_success = save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail, logged_user_id, combined_paths_str)
                 
-                # 2. 이메일 전송
-                email_success, email_msg = send_inspection_email(selected_dept, selected_site, inspector_id, form_data)
+                # 2. 이메일 전송 (사번 자동 매핑)
+                email_success, email_msg = send_inspection_email(selected_dept, selected_site, logged_user_id, form_data)
                 
                 if sheet_success and email_success:
-                    st.success(f"🎉 [{selected_dept} {selected_site}] 점검 내역이 구글 시트에 기록되고, 사내 이메일로 원본 사진과 함께 안전하게 발송되었습니다!")
+                    st.success(f"🎉 [{selected_dept} {selected_site}] 점검 내역이 구글 시트에 기록되고, 담당자 이메일({mapped_email})로 원본 사진과 함께 안전하게 발송되었습니다!")
                 elif sheet_success:
                     st.warning(f"⚠️ 구글 시트는 저장되었으나 이메일 전송에 실패했습니다. (사유: {email_msg})")
                 else:
