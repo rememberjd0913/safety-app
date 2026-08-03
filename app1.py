@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 import streamlit as st
-from google import genai  # 최신 공식 SDK
+from google import genai
 import gspread
 from google.oauth2.service_account import Credentials
 import datetime
 import base64
+import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
 from PIL import Image
 
-# --- 페이지 기본 설정 (한국환경공단 맞춤) ---
+# --- 페이지 기본 설정 ---
 st.set_page_config(
     page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 점검 시스템",
     page_icon="puru_guru.png",
@@ -28,38 +33,23 @@ img_base64 = get_base64_image("puru_guru.png")
 # --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
 st.markdown("""
     <style>
-    /* --------------------------------------------------
-       📱 [모바일 & 다크모드 대응] 글자 사라짐 / 깨짐 방지
-       -------------------------------------------------- */
     html, body, [data-testid="stAppViewContainer"] {
         color: #1E293B !important;
     }
-    
     .stMarkdown, p, div, span, label {
         word-break: keep-all !important;
         white-space: normal !important;
     }
-    
     .stTable, div[data-testid="stTable"] {
         overflow-x: auto !important;
     }
-
-    /* --------------------------------------------------
-       📱 [모바일 라벨/선택창 글자색 고정] 선명한 가독성 확보
-       -------------------------------------------------- */
     label, div[data-baseweb="select"] span, .stSelectbox label, .stTextInput label, .stTextArea label, .stFileUploader label {
         color: #1E293B !important;
         font-weight: 600 !important;
     }
-    
-    /* 드롭다운 목록 글자 색상 고정 */
     div[role="listbox"] div {
         color: #1E293B !important;
     }
-
-    /* --------------------------------------------------
-       🎨 [한국환경공단 테마 스타일]
-       -------------------------------------------------- */
     .stApp {
         background-color: #F8FBF9;
     }
@@ -165,7 +155,6 @@ st.markdown("""
 # 🔒 [보안] 감독관 로그인 제어 게이트웨이
 # ==========================================
 def check_password():
-    """감독관 인증을 처리하는 게이트웨이 함수"""
     if st.session_state.get("password_correct", False):
         return True
 
@@ -186,7 +175,6 @@ def check_password():
         if st.button("로그인", use_container_width=True):
             user_id_clean = str(user_id).strip()
             user_pw_clean = str(user_pw).strip()
-            
             allowed_users_str = {str(k): str(v) for k, v in allowed_users.items()}
             
             if user_id_clean in allowed_users_str and allowed_users_str[user_id_clean] == user_pw_clean:
@@ -198,13 +186,9 @@ def check_password():
 
     return False
 
-
-# 인증되지 않은 경우 실행 차단
 if not check_password():
     st.stop()
 
-
-# --- 사이드바: 로그인 정보 및 로그아웃 ---
 st.sidebar.markdown("### 🔒 감독관 인증 정보")
 st.sidebar.write(f"접속 사번: **{st.session_state.get('logged_user')}**")
 if st.sidebar.button("🔓 로그아웃", use_container_width=True):
@@ -212,23 +196,96 @@ if st.sidebar.button("🔓 로그아웃", use_container_width=True):
     st.rerun()
 
 
-# --- 1. Google Sheets 연동 ---
+# --- 1. Google Sheets & 내부망 폴더 & 이메일 연동 설정 ---
 @st.cache_resource
-def get_gspread_client():
-    credentials = Credentials.from_service_account_info(
+def get_gcp_credentials():
+    return Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
-        scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        scopes=["https://www.googleapis.com/auth/spreadsheets"]
     )
-    return gspread.authorize(credentials)
 
-def save_to_google_sheet(dept_name, site_name, set_count, analysis_summary, summary_detail, inspector_id):
+def save_image_to_internal_network(uploaded_file, folder_path, prefix):
+    """업로드된 이미지를 사내망 공용 폴더(경로)에 저장하는 함수"""
     try:
-        client = get_gspread_client()
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path, exist_ok=True)
+            
+        timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_filename = f"{prefix}_{timestamp_str}_{uploaded_file.name}"
+        full_path = os.path.join(folder_path, safe_filename)
+        
+        with open(full_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+            
+        return full_path
+    except Exception as e:
+        st.error(f"내부망 폴더 사진 저장 실패: {e}")
+        return None
+
+def send_inspection_email(dept_name, site_name, inspector_id, form_data):
+    """사내 이메일(SMTP)을 통해 점검 결과 및 사진을 전송하는 함수"""
+    try:
+        smtp_conf = st.secrets.get("smtp", {})
+        smtp_server = smtp_conf.get("server", "smtp.gmail.com")
+        smtp_port = smtp_conf.get("port", 587)
+        sender_email = smtp_conf.get("sender_email", "")
+        sender_password = smtp_conf.get("sender_password", "")
+        receiver_email = smtp_conf.get("receiver_email", sender_email)
+
+        if not sender_email or not sender_password:
+            return False, "이메일 설정(SMTP)이 누락되었습니다."
+
+        msg = MIMEMultipart()
+        msg['Subject'] = f"[안전점검 보고] {dept_name} - {site_name} (작성자: {inspector_id})"
+        msg['From'] = sender_email
+        msg['To'] = receiver_email
+
+        # 본문 구성
+        body_html = f"""
+        <h3>🌱 한국환경공단 현장 안전 점검 보고</h3>
+        <p><b>- 담당 부서:</b> {dept_name}</p>
+        <p><b>- 점검 현장:</b> {site_name}</p>
+        <p><b>- 작성 감독관 사번:</b> {inspector_id}</p>
+        <p><b>- 점검 일시:</b> {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        <hr>
+        <h4>📋 점검 항목별 상세 내용</h4>
+        """
+
+        for k, v in form_data.items():
+            body_html += f"<p><b>[항목 #{k}]</b><br>• 조치 내용: {v['desc']}<br>• AI 분석: {v['ai_analysis'].replace(chr(10), '<br>')}</p>"
+
+        msg.attach(MIMEText(body_html, 'html'))
+
+        # 첨부 파일(사진들) 추가
+        for k, v in form_data.items():
+            for img_f in v['before_files']:
+                img_f.seek(0)
+                img_part = MIMEImage(img_f.read(), name=f"Before_Item{k}_{img_f.name}")
+                msg.attach(img_part)
+            for img_f in v['after_files']:
+                img_f.seek(0)
+                img_part = MIMEImage(img_f.read(), name=f"After_Item{k}_{img_f.name}")
+                msg.attach(img_part)
+
+        # SMTP 전송
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, receiver_email, msg.as_string())
+
+        return True, "성공"
+    except Exception as e:
+        return False, str(e)
+
+def save_to_google_sheet(dept_name, site_name, set_count, analysis_summary, summary_detail, inspector_id, photo_info_str):
+    try:
+        creds = get_gcp_credentials()
+        client = gspread.authorize(creds)
         sheet_id = st.secrets["SPREADSHEET_ID"]
         sheet = client.open_by_key(sheet_id).sheet1
         
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sheet.append_row([now_str, dept_name, site_name, f"{set_count}개 항목", analysis_summary, summary_detail, inspector_id])
+        sheet.append_row([now_str, dept_name, site_name, f"{set_count}개 항목", analysis_summary, summary_detail, inspector_id, photo_info_str])
         return True
     except Exception as e:
         st.error(f"구글 시트 저장 중 오류: {e}")
@@ -236,7 +293,8 @@ def save_to_google_sheet(dept_name, site_name, set_count, analysis_summary, summ
 
 def get_google_sheet_records():
     try:
-        client = get_gspread_client()
+        creds = get_gcp_credentials()
+        client = gspread.authorize(creds)
         sheet_id = st.secrets["SPREADSHEET_ID"]
         sheet = client.open_by_key(sheet_id).sheet1
         return sheet.get_all_values()
@@ -263,10 +321,7 @@ def analyze_hazard_auto(api_key, img_file):
 
     for model_name in candidate_models:
         try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=[prompt, img]
-            )
+            response = client.models.generate_content(model=model_name, contents=[prompt, img])
             if response and response.text:
                 return response.text
         except Exception as e:
@@ -278,10 +333,7 @@ def analyze_hazard_auto(api_key, img_file):
         for m_name in available_models:
             if "flash" in m_name or "pro" in m_name:
                 try:
-                    response = client.models.generate_content(
-                        model=m_name,
-                        contents=[prompt, img]
-                    )
+                    response = client.models.generate_content(model=m_name, contents=[prompt, img])
                     if response and response.text:
                         return response.text
                 except Exception as e:
@@ -313,7 +365,7 @@ if "ai_results" not in st.session_state:
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 수도권서부환경본부</h2>
-        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템</p>
+        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템 (내부망 + 이메일 연동형)</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -323,7 +375,7 @@ st.markdown(f"""
     <div class="mascot-banner">
         <div style="margin-bottom: 8px;">{image_html}</div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
-        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">필요한 만큼 점검 항목을 추가하고, 여러 장의 사진을 한 번에 올려보세요.</p>
+        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">사내망 폴더 저장, 구글 시트 기록 및 이메일 리포트 전송이 동시에 이루어집니다.</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -437,8 +489,8 @@ with main_tab1:
                     ai_summary_list.append(f"(사진#{img_i}) {res_text}")
             
             form_data[idx] = {
-                "before_count": len(before_img_files) if before_img_files else 0,
-                "after_count": len(after_img_files) if after_img_files else 0,
+                "before_files": before_img_files if before_img_files else [],
+                "after_files": after_img_files if after_img_files else [],
                 "desc": desc.strip(),
                 "ai_analysis": "\n".join(ai_summary_list) if ai_summary_list else "분석 미실행"
             }
@@ -462,24 +514,54 @@ with main_tab1:
     st.markdown("---")
 
     # 최종 제출 버튼
-    if st.button(f"💾 [{selected_dept} {selected_site}] 전체 점검 내역 구글 시트 저장 및 완료", use_container_width=True):
+    if st.button(f"💾 [{selected_dept} {selected_site}] 전체 점검 내역 저장, 이메일 전송 및 완료", use_container_width=True):
         if not form_data:
             st.warning("⚠️ 최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
         else:
-            all_ai_summaries = []
-            details = []
+            internal_folder = st.secrets.get("INTERNAL_FOLDER_PATH", "./KecoSafetyImages")
             
-            for k, v in form_data.items():
-                if v['ai_analysis'] != "분석 미실행":
-                    all_ai_summaries.append(f"[항목 #{k}]:\n{v['ai_analysis']}")
-                details.append(f"[항목 #{k}] 전:{v['before_count']}장, 후:{v['after_count']}장 ({v['desc'][:15]})")
-            
-            combined_ai = "\n\n".join(all_ai_summaries) if all_ai_summaries else "조치 전 AI 분석 미실행"
-            combined_detail = " | ".join(details)
-            inspector_id = st.session_state.get('logged_user', '알 수 없음')
-            
-            if save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail, inspector_id):
-                st.success(f"🎉 [{selected_dept} {selected_site}] 총 {len(form_data)}개 점검 항목이 구글 시트에 성공적으로 저장되었습니다!")
+            with st.spinner("🔄 사내망 폴더 저장, 구글 시트 동기화 및 이메일 전송 중입니다..."):
+                all_ai_summaries = []
+                details = []
+                all_photo_paths = []
+                
+                for k, v in form_data.items():
+                    if v['ai_analysis'] != "분석 미실행":
+                        all_ai_summaries.append(f"[항목 #{k}]:\n{v['ai_analysis']}")
+                    
+                    b_paths = []
+                    for img_f in v['before_files']:
+                        saved_path = save_image_to_internal_network(img_f, internal_folder, f"Before_{selected_dept}_{selected_site}_Item{k}")
+                        if saved_path: b_paths.append(saved_path)
+                    
+                    a_paths = []
+                    for img_f in v['after_files']:
+                        saved_path = save_image_to_internal_network(img_f, internal_folder, f"After_{selected_dept}_{selected_site}_Item{k}")
+                        if saved_path: a_paths.append(saved_path)
+
+                    path_text = f"[항목#{k}] 전:{len(b_paths)}장, 후:{len(a_paths)}장"
+                    if b_paths: path_text += f" (경로: {', '.join(b_paths)})"
+                    all_photo_paths.append(path_text)
+
+                    details.append(f"[항목 #{k}] 전:{len(v['before_files'])}장, 후:{len(v['after_files'])}장 ({v['desc'][:15]})")
+                
+                combined_ai = "\n\n".join(all_ai_summaries) if all_ai_summaries else "조치 전 AI 분석 미실행"
+                combined_detail = " | ".join(details)
+                combined_paths_str = " || ".join(all_photo_paths)
+                inspector_id = st.session_state.get('logged_user', '알 수 없음')
+                
+                # 1. 구글 시트 저장
+                sheet_success = save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail, inspector_id, combined_paths_str)
+                
+                # 2. 이메일 전송
+                email_success, email_msg = send_inspection_email(selected_dept, selected_site, inspector_id, form_data)
+                
+                if sheet_success and email_success:
+                    st.success(f"🎉 [{selected_dept} {selected_site}] 점검 내역이 구글 시트에 기록되고, 사내 이메일로 원본 사진과 함께 안전하게 발송되었습니다!")
+                elif sheet_success:
+                    st.warning(f"⚠️ 구글 시트는 저장되었으나 이메일 전송에 실패했습니다. (사유: {email_msg})")
+                else:
+                    st.error("❌ 저장 및 전송 과정에서 오류가 발생했습니다.")
 
 # ---------------- Tab 2: 이력 조회 ----------------
 with main_tab2:
@@ -491,9 +573,9 @@ with main_tab2:
     else:
         filter_col1, filter_col2 = st.columns(2)
         with filter_col1:
-            filter_dept = st.selectbox("🔍 부서 선택", ["전체 부서"] + departments)
+            filter_dept = st.selectbox("🔍 부서 선택", ["전체 부서"] + departments, key="hist_dept")
         with filter_col2:
-            filter_site = st.selectbox("🔍 현장 선택", ["전체 현장"] + sites)
+            filter_site = st.selectbox("🔍 현장 선택", ["전체 현장"] + sites, key="hist_site")
 
         data_rows = rows[1:][::-1]
         
@@ -505,8 +587,11 @@ with main_tab2:
             ai_text = r[4] if len(r) > 4 else "-"
             detail = r[5] if len(r) > 5 else "-"
             inspector = r[6] if len(r) > 6 else "기록 없음"
+            photo_paths = r[7] if len(r) > 7 else "사진 경로 없음"
             
             if (filter_dept in ["전체 부서", dept]) and (filter_site in ["전체 현장", site]):
                 with st.expander(f"🗓️ [{timestamp}] {dept} | {site} ({count}) - 작성자: {inspector}"):
                     st.write(f"**현장 메모:** {detail}")
                     st.info(ai_text)
+                    st.markdown("---")
+                    st.markdown(f"📁 **사내망 사진 저장 경로:**\n`{photo_paths}`")
