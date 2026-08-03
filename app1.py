@@ -262,15 +262,17 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
 
         msg.attach(MIMEText(body_html, 'html', 'utf-8'))
 
-        # 💡 [확실한 해결] getvalue()와 PIL 이미지 변환을 이용한 완벽한 사진 첨부 처리
+       # 💡 [확실한 해결] BytesIO를 이용한 안전한 이미지 바이트 복사 및 첨부
+        import io
+
         for k, v in form_data.items():
             # Before 사진들 첨부
             if 'before_files' in v and v['before_files']:
                 for idx, img_f in enumerate(v['before_files']):
                     try:
-                        # 스트림릿 업로드 파일의 바이트를 가장 안전하게 가져오는 방법 (.getvalue())
                         img_f.seek(0)
-                        img_bytes = img_f.getvalue()
+                        # 파일을 메모리 버퍼에 온전히 복사하여 바이트로 추출
+                        img_bytes = io.BytesIO(img_f.read()).getvalue()
                         
                         if img_bytes:
                             part = MIMEApplication(img_bytes, Name=f"Before_Item{k}_{idx+1}.jpg")
@@ -284,7 +286,8 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
                 for idx, img_f in enumerate(v['after_files']):
                     try:
                         img_f.seek(0)
-                        img_bytes = img_f.getvalue()
+                        # 파일을 메모리 버퍼에 온전히 복사하여 바이트로 추출
+                        img_bytes = io.BytesIO(img_f.read()).getvalue()
                         
                         if img_bytes:
                             part = MIMEApplication(img_bytes, Name=f"After_Item{k}_{idx+1}.jpg")
