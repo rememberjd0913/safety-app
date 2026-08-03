@@ -164,8 +164,8 @@ def check_password():
 
     st.markdown("""
         <div style="text-align:center; padding: 30px 10px 10px 10px;">
-            <h2 style="color:#007A33;">🌱 한국환경공단 감독관 인증</h2>
-            <p style="color:#64748B;">인증된 사내 감독관만 접근 가능한 스마트 점검 시스템입니다.</p>
+            <h2 style="color:#007A33;">🌱 한국환경공단 수도권서부환경본부 환경시설관리처 건설현장 안전관리시스템</h2>
+            <p style="color:#64748B;">인증된 사내 감독관만 접근 가능합니다.</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -345,7 +345,7 @@ def analyze_hazard_auto(api_key, img_file):
     img = Image.open(img_file)
     
     prompt = (
-        "당신은 한국환경공단(KECO) 현장 안전 전문 AI 검수원입니다.\n"
+        "당신은 한국환경공단(K-ECO) 현장 안전 전문 AI 검수원입니다.\n"
         "제공된 조치 전 사진을 분석하여 다음 3가지 항목만 핵심 요약해서 짧게 답변하세요.\n\n"
         "1. **주요 위험 요소:** (1문장)\n"
         "2. **위험 등급:** [상/중/하 중 선택]\n"
@@ -401,7 +401,7 @@ if "ai_results" not in st.session_state:
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 수도권서부환경본부</h2>
-        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템 (사번 자동 매핑 이메일 연동형)</p>
+        <p>환경시설관리처 건설현장 안전관리시스템 (사번 자동 매핑 이메일 연동형)</p>
     </div>
 """, unsafe_allow_html=True)
 
