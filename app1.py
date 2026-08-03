@@ -224,7 +224,7 @@ def save_image_to_internal_network(uploaded_file, folder_path, prefix):
         return None
 
 def send_inspection_email(dept_name, site_name, inspector_id, form_data):
-    """사내 이메일(SMTP)을 통해 점검 결과 및 사진을 전송하는 함수 (한글 인코딩 처리 완료)"""
+    """사내 이메일(SMTP)을 통해 점검 결과 및 사진을 전송하는 함수 (완벽한 유니코드 헤더 인코딩 적용)"""
     try:
         smtp_conf = st.secrets.get("smtp", {})
         smtp_server = smtp_conf.get("server", "smtp.gmail.com")
@@ -238,12 +238,13 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
 
         msg = MIMEMultipart()
         
-        # 💡 [핵심 수정] 한글 제목이 깨지거나 인코딩 에러가 나지 않도록 Header 처리 추가
+        # 💡 [핵심 수정] 제목, 보내는 사람, 받는 사람 모두 Header(..., 'utf-8') 처리하여 ASCII 인코딩 에러 원천 차단
         subject_str = f"[안전점검 보고] {dept_name} - {site_name} (작성자: {inspector_id})"
         msg['Subject'] = Header(subject_str, 'utf-8')
         
-        msg['From'] = sender_email
-        msg['To'] = receiver_email
+        # ASCII 에러를 유발할 수 있는 이름을 제외하고 순수 이메일 주소만 넣거나 Header로 감싸기
+        msg['From'] = Header(f"KECO 안전점검시스템 <{sender_email}>", 'utf-8')
+        msg['To'] = Header(receiver_email, 'utf-8')
 
         # 본문 구성
         body_html = f"""
@@ -267,7 +268,6 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
                 img_f.seek(0)
                 img_bytes = img_f.read()
                 img_part = MIMEImage(img_bytes)
-                # 첨부 파일명에 한글이 포함되어 있을 때의 인코딩 처리
                 filename = f"Before_Item{k}_{img_f.name}"
                 img_part.add_header('Content-Disposition', 'attachment', filename=('utf-8', '', filename))
                 msg.attach(img_part)
