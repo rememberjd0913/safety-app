@@ -5,3 +5,7 @@ google-auth
 pillow
 pandas
 plotly
+llama-index
+llama-index-llms-gemini
+llama-index-embeddings-gemini
+pymupdf
