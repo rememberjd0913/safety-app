@@ -745,7 +745,7 @@ with main_tab3:
 
     # LlamaIndex 및 Gemini RAG 초기화 (캐싱 처리로 속도 향상)
     @st.cache_resource
-    get_rag_engine():
+    def get_rag_engine():
         try:
             from llama_index.core import Settings, SimpleDirectoryReader, VectorStoreIndex
             from llama_index.embeddings.gemini import GeminiEmbedding
