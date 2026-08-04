@@ -417,8 +417,8 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
-# --- 6. 메인 탭 ---
-main_tab1, main_tab2 = st.tabs(["안전 점검 등록", "부서별 점검 이력 및 대시보드"])
+# --- 메인 탭 확장 ("AI 안전 가이드 Q&A" 추가) ---
+main_tab1, main_tab2, main_tab3 = st.tabs(["안전 점검 등록", "부서별 점검 이력 및 대시보드", "📖 AI 안전 가이드 Q&A (RAG)"])
 
 with main_tab1:
     st.markdown("""
@@ -737,3 +737,59 @@ with main_tab2:
                     st.info(ai_text)
                     st.markdown("---")
                     st.markdown(f"📁 **사내망 사진 저장 경로:**\n`{photo_paths}`")
+
+# ---------------- Tab 3: AI 안전 가이드 Q&A (RAG) ----------------
+with main_tab3:
+    st.subheader("📖 건설안전실무자가이드 기반 AI Q&A")
+    st.markdown("현장 안전 관리 규정, 가이드라인, 조치 기준에 대해 무엇이든 물어보세요! 업로드된 PDF 기반으로 정확한 근거를 찾아 답변해 드립니다.")
+
+    # LlamaIndex 및 Gemini RAG 초기화 (캐싱 처리로 속도 향상)
+    @st.cache_resource
+    get_rag_engine():
+        try:
+            from llama_index.core import Settings, SimpleDirectoryReader, VectorStoreIndex
+            from llama_index.embeddings.gemini import GeminiEmbedding
+            from llama_index.llms.gemini import Gemini
+            
+            # API Key 연동 (기존에 선언된 api_key 활용)
+            Settings.llm = Gemini(model="models/gemini-2.5-flash", api_key=api_key)
+            Settings.embed_model = GeminiEmbedding(model_name="models/text-embedding-004", api_key=api_key)
+            
+            # data 폴더 내의 PDF 읽기
+            documents = SimpleDirectoryReader("./data").load_data()
+            index = VectorStoreIndex.from_documents(documents)
+            return index.as_query_engine()
+        except Exception as e:
+            return None
+
+    query_engine = get_rag_engine()
+
+    if query_engine is None:
+        st.error("⚠️ `./data` 폴더 안에 '건설안전실무자가이드.pdf' 파일이 있는지 확인해 주세요.")
+    else:
+        # 사용자 질문 입력창
+        user_question = st.text_input("💬 가이드북에 대해 질문하세요 (예: 비계 설치 시 안전기준은 어떻게 되나요?)", key="rag_question")
+        
+        if st.button("AI에게 질문하기", key="rag_btn"):
+            if user_question.strip():
+                with st.spinner("📚 건설안전실무자가이드에서 관련 내용을 정밀 검색 및 분석 중입니다..."):
+                    try:
+                        response = query_engine.query(user_question)
+                        
+                        st.markdown("### 🤖 AI 답변")
+                        st.markdown(f"""
+                            <div style="background-color: #FFFFFF; border: 1.5px solid #10B981; border-radius: 12px; padding: 18px; color: #1E293B; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                                {str(response).replace(chr(10), '<br>')}
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # 참고된 소스 문서(PDF 내용) 확인용 익스팬더
+                        with st.expander("🔍 참고된 가이드 원문 발췌 확인"):
+                            for node in response.source_nodes:
+                                st.write(f"- **유사도 점격/출처:** {node.score:.4f}")
+                                st.caption(node.text[:300] + "...")
+                                
+                    except Exception as e:
+                        st.error(f"답변 생성 중 오류가 발생했습니다: {e}")
+            else:
+                st.warning("질문 내용을 입력해 주세요.")
