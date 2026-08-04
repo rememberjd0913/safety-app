@@ -13,6 +13,8 @@ from email.mime.application import MIMEApplication
 from email.header import Header
 from PIL import Image
 import io
+import pandas as pd
+import plotly.express as px
 
 # --- 페이지 기본 설정 ---
 st.set_page_config(
@@ -300,7 +302,7 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
                             msg.attach(part)
                     except Exception as img_err:
                         print(f"After 이미지 첨부 실패: {img_err}")
-                    
+                
         # SMTP 전송
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
@@ -416,7 +418,7 @@ st.markdown(f"""
 
 
 # --- 6. 메인 탭 ---
-main_tab1, main_tab2 = st.tabs(["안전 점검 등록", "부서별 점검 이력"])
+main_tab1, main_tab2 = st.tabs(["안전 점검 등록", "부서별 점검 이력 및 대시보드"])
 
 with main_tab1:
     st.markdown("""
@@ -553,7 +555,6 @@ with main_tab1:
         if not form_data:
             st.warning("⚠️ 최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
         else:
-            # 💡 [보완 완료] secrets나 기본값에서 사내망 폴더 경로 가져오기
             internal_folder = st.secrets.get("INTERNAL_FOLDER_PATH", "./KecoSafetyImages")
             
             with st.spinner("🔄 사내망 폴더 저장, 구글 시트 동기화 및 이메일 전송 중입니다..."):
@@ -565,14 +566,12 @@ with main_tab1:
                     if v['ai_analysis'] != "분석 미실행":
                         all_ai_summaries.append(f"[항목 #{k}]:\n{v['ai_analysis']}")
                     
-                    # 💡 [사내망 폴더 저장 로직 추가] Before 사진 저장
                     b_paths = []
                     for img_f in v['before_files']:
                         saved_path = save_image_to_internal_network(img_f, internal_folder, f"Before_{selected_dept}_{selected_site}_Item{k}")
                         if saved_path: 
                             b_paths.append(saved_path)
                     
-                    # 💡 [사내망 폴더 저장 로직 추가] After 사진 저장
                     a_paths = []
                     for img_f in v['after_files']:
                         saved_path = save_image_to_internal_network(img_f, internal_folder, f"After_{selected_dept}_{selected_site}_Item{k}")
@@ -591,10 +590,7 @@ with main_tab1:
                 combined_detail = " | ".join(details)
                 combined_paths_str = " || ".join(all_photo_paths)
                 
-                # 1. 구글 시트 저장 (사내망 저장 경로 문자열 포함)
                 sheet_success = save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail, logged_user_id, combined_paths_str)
-                
-                # 2. 이메일 전송 (사번 자동 매핑)
                 email_success, email_msg = send_inspection_email(selected_dept, selected_site, logged_user_id, form_data)
                 
                 if sheet_success and email_success:
@@ -604,10 +600,89 @@ with main_tab1:
                 else:
                     st.error("❌ 저장 및 전송 과정에서 오류가 발생했습니다.")
 
-# ---------------- Tab 2: 이력 조회 ----------------
+# ---------------- Tab 2: 이력 조회 및 인터랙티브 대시보드 ----------------
 with main_tab2:
-    st.subheader("📂 지난 점검 이력 조회")
+    st.subheader("📊 인터랙티브 안전 트렌드 및 재발 방지 대시보드")
+    
     rows = get_google_sheet_records()
+    
+    if len(rows) > 1:
+        # 구글 시트 데이터를 Pandas DataFrame으로 변환 (헤더: [날짜, 부서, 현장, 항목수, AI분석, 상세내용, 작성자, 사진경로])
+        header = rows[0]
+        data_values = rows[1:]
+        df = pd.DataFrame(data_values, columns=header[:len(data_values[0])])
+        
+        # 컬럼 이름 매핑 정합성 보정 (시트 헤더명에 맞춰 조정)
+        # 만약 시트 컬럼명이 다를 경우를 대비해 인덱스로도 안전하게 이름 재정의
+        if len(df.columns) >= 8:
+            df.columns = ["날짜", "점검 부서", "점검 현장", "항목수", "AI분석", "지적 분류", "작성자", "사진경로"]
+        
+        # 데이터 정제 (날짜 형식 변환 등)
+        if "날짜" in df.columns:
+            df["날짜"] = pd.to_datetime(df["날짜"], errors='coerce').dt.date
+
+        col_a, col_b = st.columns(2)
+        
+        # ----------------------------------------------------
+        # 1. 현장별 안전 지적 빈도 (인터랙티브 막대 그래프)
+        # ----------------------------------------------------
+        with col_a:
+            st.markdown("##### 🏗️ 현장별 안전 지적 빈도")
+            if "점검 현장" in df.columns and not df.empty:
+                site_counts = df["점검 현장"].value_counts().reset_index()
+                site_counts.columns = ["점검 현장", "건수"]
+                
+                fig_bar = px.bar(
+                    site_counts, 
+                    x="점검 현장", 
+                    y="건수", 
+                    color="건수",
+                    color_continuous_scale="Reds",
+                    text="건수"
+                )
+                fig_bar.update_layout(xaxis_title="", yaxis_title="건수", margin=dict(t=10, b=10, l=10, r=10))
+                st.plotly_chart(fig_bar, use_container_width=True)
+
+        # ----------------------------------------------------
+        # 2. 주요 지적 유형별 비율 (도넛 차트 - Pie Chart)
+        # ----------------------------------------------------
+        with col_b:
+            st.markdown("##### ⚠️ 주요 지적 유형별 비율")
+            if "지적 분류" in df.columns and not df.empty:
+                cat_counts = df["지적 분류"].value_counts().reset_index()
+                cat_counts.columns = ["지적 분류", "건수"]
+                
+                fig_pie = px.pie(
+                    cat_counts, 
+                    names="지적 분류", 
+                    values="건수", 
+                    hole=0.4, 
+                    color_discrete_sequence=px.colors.qualitative.Pastel
+                )
+                fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10))
+                st.plotly_chart(fig_pie, use_container_width=True)
+
+        # ----------------------------------------------------
+        # 3. 월별/날짜별 안전 지적 추이 (시계열 라인 그래프)
+        # ----------------------------------------------------
+        st.markdown("##### 📈 시간 흐름에 따른 안전 지적 추이")
+        if "날짜" in df.columns and not df.empty:
+            trend_df = df.groupby("날짜").size().reset_index(name="건수")
+            
+            fig_line = px.line(
+                trend_df, 
+                x="날짜", 
+                y="건수", 
+                markers=True, 
+                line_shape="spline"
+            )
+            fig_line.update_traces(line_color="#FF4B4B", line_width=3)
+            fig_line.update_layout(xaxis_title="점검 일자", yaxis_title="발생 건수", margin=dict(t=10, b=10, l=10, r=10))
+            st.plotly_chart(fig_line, use_container_width=True)
+            
+        st.markdown("---")
+
+    st.subheader("📂 지난 점검 상세 이력 조회")
     
     if len(rows) <= 1:
         st.info("저장된 점검 이력이 없습니다.")
