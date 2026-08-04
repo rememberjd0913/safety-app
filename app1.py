@@ -629,24 +629,43 @@ with main_tab2:
 
         col_a, col_b = st.columns(2)
         
-        # ----------------------------------------------------
-        # 1. 현장별 안전 지적 빈도 (인터랙티브 막대 그래프)
+       # ----------------------------------------------------
+        # 1. 현장별/부서별 안전 지적 빈도 (파스텔 톤 부서별 색상 구분)
         # ----------------------------------------------------
         with col_a:
-            st.markdown("##### 🏗️ 현장별 안전 지적 빈도")
+            st.markdown("##### 🏗️ 현장 및 부서별 안전 지적 빈도")
             if "점검 현장" in df.columns and not df.empty:
-                site_counts = df["점검 현장"].value_counts().reset_index()
-                site_counts.columns = ["점검 현장", "건수"]
+                # 현장과 점검 부서별로 그룹화하여 카운트
+                group_cols = ["점검 현장"]
+                if "점검 부서" in df.columns:
+                    group_cols.append("점검 부서")
+                
+                site_counts = df.groupby(group_cols).size().reset_index(name="건수")
+                
+                # 부서별 파스텔 톤 색상 맵핑 사전
+                pastel_colors = {
+                    "시설사업1부": "#A3C1AD",  # 파스텔 그린
+                    "시설사업2부": "#A0C4FF",  # 파스텔 블루
+                    "시설사업3부": "#FFD6A5"   # 파스텔 오렌지/옐로우
+                }
                 
                 fig_bar = px.bar(
                     site_counts, 
                     x="점검 현장", 
                     y="건수", 
-                    color="건수",
-                    color_continuous_scale="Reds",
+                    color="점검 부서" if "점검 부서" in df.columns else None,
+                    color_discrete_map=pastel_colors,
+                    barmode="group",
                     text="건수"
                 )
-                fig_bar.update_layout(xaxis_title="", yaxis_title="건수", margin=dict(t=10, b=10, l=10, r=10))
+                
+                # 오른쪽 그라데이션 컬러바(color_axis 등)가 표시되지 않도록 레이아웃 정리
+                fig_bar.update_layout(
+                    xaxis_title="", 
+                    yaxis_title="건수", 
+                    margin=dict(t=10, b=10, l=10, r=10),
+                    showlegend=True if "점검 부서" in df.columns else False
+                )
                 st.plotly_chart(fig_bar, use_container_width=True)
 
         # ----------------------------------------------------
