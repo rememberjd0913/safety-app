@@ -16,9 +16,9 @@ import io
 
 # --- 페이지 기본 설정 ---
 st.set_page_config(
-    page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 점검 시스템",
+    page_title="한국환경공단 수도권서부환경본부 | Canvas AI 안전 점검 대시보드",
     page_icon="puru_guru.png",
-    layout="centered",
+    layout="wide",  # 대시보드 느낌을 살리기 위해 wide 모드 적용
     initial_sidebar_state="expanded"
 )
 
@@ -31,108 +31,63 @@ def get_base64_image(image_path):
         return ""
 
 img_base64 = get_base64_image("puru_guru.png")
-dashboard_img_base64 = get_base64_image("dashboard_preview.png")  # 💡 [추가] Canvas 대시보드 이미지 연동
 
-# --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
+# --- 커스텀 CSS (Canvas 대시보드 스타일링) ---
 st.markdown("""
     <style>
     html, body, [data-testid="stAppViewContainer"] {
         color: #1E293B !important;
     }
-    .stMarkdown, p, div, span, label {
-        word-break: keep-all !important;
-        white-space: normal !important;
-    }
-    .stTable, div[data-testid="stTable"] {
-        overflow-x: auto !important;
-    }
-    label, div[data-baseweb="select"] span, .stSelectbox label, .stTextInput label, .stTextArea label, .stFileUploader label {
-        color: #1E293B !important;
-        font-weight: 600 !important;
-    }
-    div[role="listbox"] div {
-        color: #1E293B !important;
-    }
     .stApp {
-        background-color: #F8FBF9;
+        background-color: #F8FAFC;
     }
-    .keco-header {
-        background: linear-gradient(135deg, #007A33 0%, #10B981 100%);
-        padding: 22px 18px;
+    .dashboard-header {
+        background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+        padding: 24px 28px;
         border-radius: 16px;
         color: white;
-        text-align: center;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(0, 122, 51, 0.15);
+        margin-bottom: 24px;
+        box-shadow: 0 4px 20px rgba(15, 23, 42, 0.15);
     }
-    .keco-header h2 {
-        color: white !important;
-        font-size: 1.5rem !important;
-        font-weight: 700 !important;
+    .dashboard-header h1 {
+        color: #FFFFFF !important;
+        font-size: 1.8rem !important;
+        font-weight: 800 !important;
         margin: 0 !important;
     }
-    .keco-header p {
-        color: #E6F4EA !important;
-        font-size: 0.9rem !important;
+    .dashboard-header p {
+        color: #94A3B8 !important;
+        font-size: 0.95rem !important;
         margin-top: 6px !important;
         margin-bottom: 0 !important;
     }
-    .mascot-banner {
-        background: white;
-        border-radius: 16px;
+    /* 캔버스 스타일 카드 컴포넌트 */
+    .canvas-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 14px;
         padding: 20px;
-        text-align: center;
-        border: 2px solid #E2E8F0;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
         margin-bottom: 20px;
     }
-    /* 💡 [추가] 대시보드 시각화 카드 스타일 */
-    .dashboard-preview-card {
+    .metric-card {
         background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
-        border: 1.5px solid #86EFAC;
-        border-radius: 16px;
+        border: 1px solid #86EFAC;
+        border-radius: 12px;
         padding: 16px;
         text-align: center;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(0, 122, 51, 0.08);
-    }
-    .mascot-card {
-        background-color: #FFFFFF;
-        border: 1.5px solid #E2E8F0;
-        border-radius: 14px;
-        padding: 14px 18px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        color: #1E293B !important;
-    }
-    .select-card {
-        background-color: #E6F4EA;
-        border: 1.5px solid #10B981;
-        border-radius: 12px;
-        padding: 12px 16px;
-        margin-bottom: 18px;
-        color: #005F27 !important;
-        font-weight: 600;
         box-shadow: 0 2px 6px rgba(0, 122, 51, 0.05);
     }
-    .analysis-box {
-        background-color: #FEF2F2;
-        border: 1.5px solid #FCA5A5;
-        border-radius: 12px;
-        padding: 14px 16px;
-        margin-top: 10px;
-        margin-bottom: 15px;
-        font-size: 0.93rem;
-        color: #991B1B !important;
+    .metric-card h3 {
+        color: #166534 !important;
+        margin: 0 !important;
+        font-size: 1.6rem !important;
     }
-    .item-card {
-        background-color: #FFFFFF;
-        border: 1.5px solid #CBD5E1;
-        border-radius: 12px;
-        padding: 18px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-        color: #1E293B !important;
+    .metric-card p {
+        color: #15803D !important;
+        margin: 4px 0 0 0 !important;
+        font-size: 0.85rem !important;
+        font-weight: 600;
     }
     div.stButton > button {
         background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
@@ -143,22 +98,6 @@ st.markdown("""
         height: 48px !important;
         font-size: 1rem !important;
         box-shadow: 0 3px 8px rgba(0, 122, 51, 0.2) !important;
-    }
-    div.stTabs [data-baseweb="tab-list"] {
-        background-color: #F1F5F9;
-        padding: 6px;
-        border-radius: 12px;
-    }
-    div.stTabs [data-baseweb="tab"] {
-        background-color: transparent;
-        border-radius: 8px;
-        padding: 8px 16px;
-        font-weight: bold;
-        color: #475569;
-    }
-    div.stTabs [aria-selected="true"] {
-        background-color: #1E293B !important;
-        color: #FFFFFF !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -174,9 +113,9 @@ def check_password():
     allowed_users = st.secrets.get("passwords", {})
 
     st.markdown("""
-        <div style="text-align:center; padding: 30px 10px 10px 10px;">
-            <h2 style="color:#007A33;">🌱 한국환경공단 감독관 인증</h2>
-            <p style="color:#64748B;">인증된 사내 감독관만 접근 가능한 스마트 점검 시스템입니다.</p>
+        <div style="text-align:center; padding: 40px 10px 20px 10px;">
+            <h2 style="color:#007A33;">🌱 한국환경공단 Canvas 보안 인증</h2>
+            <p style="color:#64748B;">인증된 사내 감독관 계정으로 로그인해 주세요.</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -202,12 +141,11 @@ def check_password():
 if not check_password():
     st.stop()
 
-# 로그인된 사번을 바탕으로 자동 매핑된 이메일 가져오기
 logged_user_id = st.session_state.get('logged_user')
 user_emails_map = st.secrets.get("user_emails", {})
 mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
 
-st.sidebar.markdown("### 🔒 감독관 인증 정보")
+st.sidebar.markdown("### 🔒 감독관 세션 정보")
 st.sidebar.write(f"접속 사번: **{logged_user_id}**")
 st.sidebar.write(f"수신 이메일: **{mapped_email if mapped_email else '미등록(기본값 사용)'}**")
 
@@ -216,7 +154,7 @@ if st.sidebar.button("🔓 로그아웃", use_container_width=True):
     st.rerun()
 
 
-# --- 1. Google Sheets & 내부망 폴더 & 이메일 연동 설정 ---
+# --- Google Sheets 연동 유틸 ---
 @st.cache_resource
 def get_gcp_credentials():
     return Credentials.from_service_account_info(
@@ -224,27 +162,31 @@ def get_gcp_credentials():
         scopes=["https://www.googleapis.com/auth/spreadsheets"]
     )
 
+def get_google_sheet_records():
+    try:
+        creds = get_gcp_credentials()
+        client = gspread.authorize(creds)
+        sheet_id = st.secrets["SPREADSHEET_ID"]
+        sheet = client.open_by_key(sheet_id).sheet1
+        return sheet.get_all_values()
+    except Exception:
+        return []
+
 def save_image_to_internal_network(uploaded_file, folder_path, prefix):
-    """업로드된 이미지를 사내망 공용 폴더(경로)에 저장하는 함수"""
     try:
         if not os.path.exists(folder_path):
             os.makedirs(folder_path, exist_ok=True)
-            
         timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_filename = f"{prefix}_{timestamp_str}_{uploaded_file.name}"
         full_path = os.path.join(folder_path, safe_filename)
-        
         uploaded_file.seek(0)
         with open(full_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
-            
         return full_path
-    except Exception as e:
-        st.error(f"내부망 폴더 사진 저장 실패: {e}")
+    except Exception:
         return None
 
 def send_inspection_email(dept_name, site_name, inspector_id, form_data):
-    """로그인된 사번(inspector_id)을 기반으로 secrets에서 이메일을 자동 매핑하여 전송하는 함수"""
     try:
         smtp_conf = st.secrets.get("smtp", {})
         smtp_server = smtp_conf.get("server", "smtp.gmail.com")
@@ -253,71 +195,35 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
         sender_password = smtp_conf.get("sender_password", "")
 
         if not sender_email or not sender_password:
-            return False, "이메일 설정(SMTP)이 누락되었습니다."
+            return False, "SMTP 설정 누락"
 
         user_emails_map = st.secrets.get("user_emails", {})
         receiver_email = user_emails_map.get(str(inspector_id), smtp_conf.get("receiver_email", sender_email))
 
-        if not receiver_email:
-            return False, f"해당 사번({inspector_id})에 매핑된 이메일 주소가 없습니다."
-
         msg = MIMEMultipart()
-        
-        subject_str = f"[안전점검 보고] {dept_name} - {site_name} (작성자: {inspector_id})"
-        msg['Subject'] = Header(subject_str, 'utf-8')
-        msg['From'] = Header(f"KECO 안전점검시스템 <{sender_email}>", 'utf-8')
+        msg['Subject'] = Header(f"[안전점검 보고] {dept_name} - {site_name} (작성자: {inspector_id})", 'utf-8')
+        msg['From'] = Header(f"KECO Canvas 시스템 <{sender_email}>", 'utf-8')
         msg['To'] = Header(receiver_email, 'utf-8')
 
-        # 본문 구성
-        body_html = f"""
-        <h3>🌱 한국환경공단 현장 안전 점검 보고</h3>
-        <p><b>- 담당 부서:</b> {dept_name}</p>
-        <p><b>- 점검 현장:</b> {site_name}</p>
-        <p><b>- 작성 감독관 사번:</b> {inspector_id}</p>
-        <p><b>- 점검 일시:</b> {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-        <hr>
-        <h4>📋 점검 항목별 상세 내용</h4>
-        """
-
+        body_html = f"<h3>🌱 한국환경공단 현장 안전 점검 보고 (Canvas)</h3><p><b>- 부서:</b> {dept_name} / <b>현장:</b> {site_name}</p><hr>"
         for k, v in form_data.items():
-            body_html += f"<p><b>[항목 #{k}]</b><br>• 조치 내용: {v['desc']}<br>• AI 분석: {v['ai_analysis'].replace(chr(10), '<br>')}</p>"
+            body_html += f"<p><b>[항목 #{k}]</b><br>• 조치내용: {v['desc']}<br>• AI 분석: {v['ai_analysis'].replace(chr(10), '<br>')}</p>"
 
         msg.attach(MIMEText(body_html, 'html', 'utf-8'))
 
-        # 이미지 첨부 (BytesIO 활용)
         for k, v in form_data.items():
-            if 'before_files' in v and v['before_files']:
-                for idx, img_f in enumerate(v['before_files']):
-                    try:
-                        img_f.seek(0)
-                        img_bytes = io.BytesIO(img_f.read()).getvalue()
-                        if img_bytes:
-                            filename = f"Before_Item{k}_{idx+1}.jpg"
-                            part = MIMEApplication(img_bytes, Name=filename)
-                            part['Content-Disposition'] = f'attachment; filename="{filename}"'
-                            msg.attach(part)
-                    except Exception as img_err:
-                        print(f"Before 이미지 첨부 실패: {img_err}")
-                
-            if 'after_files' in v and v['after_files']:
-                for idx, img_f in enumerate(v['after_files']):
-                    try:
-                        img_f.seek(0)
-                        img_bytes = io.BytesIO(img_f.read()).getvalue()
-                        if img_bytes:
-                            filename = f"After_Item{k}_{idx+1}.jpg"
-                            part = MIMEApplication(img_bytes, Name=filename)
-                            part['Content-Disposition'] = f'attachment; filename="{filename}"'
-                            msg.attach(part)
-                    except Exception as img_err:
-                        print(f"After 이미지 첨부 실패: {img_err}")
-                    
-        # SMTP 전송
+            for img_f in v.get('before_files', []):
+                try:
+                    img_f.seek(0)
+                    part = MIMEApplication(io.BytesIO(img_f.read()).getvalue(), Name=f"Before_Item{k}.jpg")
+                    part['Content-Disposition'] = f'attachment; filename="Before_Item{k}.jpg"'
+                    msg.attach(part)
+                except: pass
+
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, msg.as_string())
-
         return True, "성공"
     except Exception as e:
         return False, str(e)
@@ -328,125 +234,86 @@ def save_to_google_sheet(dept_name, site_name, set_count, analysis_summary, summ
         client = gspread.authorize(creds)
         sheet_id = st.secrets["SPREADSHEET_ID"]
         sheet = client.open_by_key(sheet_id).sheet1
-        
-        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sheet.append_row([now_str, dept_name, site_name, f"{set_count}개 항목", analysis_summary, summary_detail, inspector_id, photo_info_str])
+        sheet.append_row([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), dept_name, site_name, f"{set_count}개 항목", analysis_summary, summary_detail, inspector_id, photo_info_str])
         return True
-    except Exception as e:
-        st.error(f"구글 시트 저장 중 오류: {e}")
+    except:
         return False
 
-def get_google_sheet_records():
-    try:
-        creds = get_gcp_credentials()
-        client = gspread.authorize(creds)
-        sheet_id = st.secrets["SPREADSHEET_ID"]
-        sheet = client.open_by_key(sheet_id).sheet1
-        return sheet.get_all_values()
-    except Exception as e:
-        st.error(f"구글 시트 불러오기 오류: {e}")
-        return []
-
-
-# --- 2. AI 위험 분석 함수 ---
+# --- AI 위험 분석 함수 ---
 def analyze_hazard_auto(api_key, img_file):
     client = genai.Client(api_key=api_key)
     img_file.seek(0)
     img = Image.open(img_file)
+    prompt = "당신은 한국환경공단(KECO) 안전 전문 AI입니다. 조치 전 사진을 분석하여 1. 주요 위험 요소 (1문장), 2. 위험 등급 [상/중/하], 3. 권장 조치 사항 (1문장)으로 요약하세요."
     
-    prompt = (
-        "당신은 한국환경공단(KECO) 현장 안전 전문 AI 검수원입니다.\n"
-        "제공된 조치 전 사진을 분석하여 다음 3가지 항목만 핵심 요약해서 짧게 답변하세요.\n\n"
-        "1. **주요 위험 요소:** (1문장)\n"
-        "2. **위험 등급:** [상/중/하 중 선택]\n"
-        "3. **권장 조치 사항:** (1문장)"
-    )
-
-    candidate_models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"]
-    last_error = None
-
-    for model_name in candidate_models:
+    for model_name in ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"]:
         try:
-            response = client.models.generate_content(model=model_name, contents=[prompt, img])
-            if response and response.text:
-                return response.text
-        except Exception as e:
-            last_error = e
-            continue
+            res = client.models.generate_content(model=model_name, contents=[prompt, img])
+            if res and res.text: return res.text
+        except: continue
+    return "AI 분석 실패"
 
-    try:
-        available_models = [m.name.replace("models/", "") for m in client.models.list()]
-        for m_name in available_models:
-            if "flash" in m_name or "pro" in m_name:
-                try:
-                    response = client.models.generate_content(model=m_name, contents=[prompt, img])
-                    if response and response.text:
-                        return response.text
-                except Exception as e:
-                    last_error = e
-                    continue
-    except Exception as list_err:
-        last_error = list_err
-
-    raise Exception(f"사용 가능한 Gemini 모델을 찾을 수 없습니다. (상세: {last_error})")
-
-
-# --- 3. API Key 확인 ---
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
-    st.error("🔑 API Key를 찾을 수 없습니다. Streamlit Secrets 설정을 확인해 주세요.")
+    st.error("API Key가 설정되지 않았습니다.")
     st.stop()
 
+if "item_count" not in st.session_state: st.session_state.item_count = 1
+if "ai_results" not in st.session_state: st.session_state.ai_results = {}
 
-# --- 4. 세션 상태 초기화 ---
-if "item_count" not in st.session_state:
-    st.session_state.item_count = 1
-
-if "ai_results" not in st.session_state:
-    st.session_state.ai_results = {}
-
-
-# --- 5. 헤더 UI ---
+# ==========================================
+# 📊 [Canvas 대시보드 UI 영역]
+# ==========================================
 st.markdown("""
-    <div class="keco-header">
-        <h2>🌱 한국환경공단 수도권서부환경본부</h2>
-        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템 (사번 자동 매핑 이메일 연동형)</p>
+    <div class="dashboard-header">
+        <h1>🌱 KECO Canvas 안전 모니터링 대시보드</h1>
+        <p>수도권서부환경본부 환경시설관리처 실시간 현장 점검 및 AI 리스크 통합 제어 패널</p>
     </div>
 """, unsafe_allow_html=True)
 
-image_html = f'<img src="data:image/png;base64,{img_base64}" style="max-height: 100px;">' if img_base64 else '🌱'
+# 시트 데이터를 불러와 대시보드 지표 통계 계산
+sheet_rows = get_google_sheet_records()
+total_inspections = max(0, len(sheet_rows) - 1)
 
-st.markdown(f"""
-    <div class="mascot-banner">
-        <div style="margin-bottom: 8px;">{image_html}</div>
-        <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
-        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">사내망 폴더 저장, 구글 시트 기록 및 담당자 메일 자동 발송이 동시에 이루어집니다.</p>
-    </div>
-""", unsafe_allow_html=True)
-
-# 💡 [추가] Canvas 대시보드 시각화 프리뷰 적용 섹션
-if dashboard_img_base64:
+col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+with col_m1:
     st.markdown(f"""
-        <div class="dashboard-preview-card">
-            <img src="data:image/png;base64,{dashboard_img_base64}" style="max-width: 100%; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #047857; font-weight: 600;">📊 실시간 현장 안전 모니터링 대시보드 상태 요약</p>
+        <div class="metric-card">
+            <h3>{total_inspections}건</h3>
+            <p>누적 안전 점검 보고</p>
+        </div>
+    """, unsafe_allow_html=True)
+with col_m2:
+    st.markdown("""
+        <div class="metric-card">
+            <h3>실시간</h3>
+            <p>AI 위험도 자동 판별</p>
+        </div>
+    """, unsafe_allow_html=True)
+with col_m3:
+    st.markdown("""
+        <div class="metric-card">
+            <h3>자동 연동</h3>
+            <p>구글 시트 & 사내망 저장</p>
+        </div>
+    """, unsafe_allow_html=True)
+with col_m4:
+    st.markdown("""
+        <div class="metric-card">
+            <h3>즉시 발송</h3>
+            <p>사번 매핑 이메일 리포트</p>
         </div>
     """, unsafe_allow_html=True)
 
+st.markdown("<br>", unsafe_allow_html=True)
 
-# --- 6. 메인 탭 ---
-main_tab1, main_tab2 = st.tabs(["안전 점검 등록", "부서별 점검 이력"])
+# --- 메인 탭 (점검 등록 & 이력 대시보드) ---
+main_tab1, main_tab2 = st.tabs(["📋 신규 안전 점검 등록 (Canvas)", "📊 부서별 점검 이력 대시보드"])
 
 with main_tab1:
-    st.markdown("""
-        <div class="mascot-card">
-            <div>
-                <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">담당 부서와 현장 번호를 선택해 주세요.</span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="canvas-card">', unsafe_allow_html=True)
+    st.subheader("🏗️ 현장 정보 및 점검 항목 구성")
     
     departments = ["시설사업1부", "시설사업2부", "시설사업3부"]
     sites = ["1현장", "2현장", "3현장", "4현장"]
@@ -457,196 +324,90 @@ with main_tab1:
     with col_site:
         selected_site = st.selectbox("🏗️ 점검 현장 선택", sites)
 
-    st.markdown(f"""
-        <div class="select-card">
-            📍 선택된 점검 대상: <strong>[{selected_dept}] - {selected_site}</strong> (작성자 사번: {logged_user_id})
-        </div>
-    """, unsafe_allow_html=True)
-
-    st.subheader("📸 안전 점검 사진 등록 및 AI 위험 분석")
-    st.caption("💡 각 항목마다 여러 장의 사진을 다중 선택하여 동시에 첨부할 수 있습니다.")
+    st.markdown("---")
 
     form_data = {}
-
     for idx in range(1, st.session_state.item_count + 1):
-        st.markdown(f"""
-            <div class="item-card">
-                <h4 style="margin-top:0; color:#007A33;">🔹 [점검 항목 #{idx}]</h4>
-        """, unsafe_allow_html=True)
-        
+        st.markdown(f"#### 🔹 점검 항목 #{idx}")
         col_b, col_a = st.columns(2)
         
-        # --- [조치 전 섹션] ---
         with col_b:
-            st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 가능")
-            before_img_files = st.file_uploader(
-                f"#{idx} 조치 전 사진 첨부",
-                type=["jpg", "jpeg", "png"],
-                accept_multiple_files=True,
-                key=f"before_imgs_{idx}"
-            )
-            
+            before_img_files = st.file_uploader(f"조치 전 (Before) 사진 첨부 #{idx}", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=f"b_img_{idx}")
             if before_img_files:
-                st.write(f"📷 첨부된 조치 전 사진: **{len(before_img_files)}장**")
-                cols = st.columns(min(len(before_img_files), 2))
-                for img_i, img_f in enumerate(before_img_files):
-                    cols[img_i % 2].image(img_f, caption=f"조치 전 #{img_i+1}", use_container_width=True)
-                
-                if st.button(f"🔍 [항목 #{idx}] 조치 전 사진 전체 AI 분석", key=f"btn_ai_{idx}", use_container_width=True):
-                    with st.spinner("푸루 AI가 조치 전 사진들의 위험요인을 분석 중..."):
-                        if idx not in st.session_state.ai_results:
-                            st.session_state.ai_results[idx] = {}
-                        
-                        for img_i, img_f in enumerate(before_img_files, start=1):
-                            try:
-                                result_text = analyze_hazard_auto(api_key, img_f)
-                                st.session_state.ai_results[idx][img_i] = result_text
-                            except Exception as e:
-                                st.session_state.ai_results[idx][img_i] = f"분석 오류: {e}"
-
+                if st.button(f"🔍 [항목 #{idx}] 조치 전 사진 AI 위험 분석", key=f"ai_btn_{idx}"):
+                    with st.spinner("AI가 위험 요소를 분석 중입니다..."):
+                        if idx not in st.session_state.ai_results: st.session_state.ai_results[idx] = {}
+                        for i, img_f in enumerate(before_img_files, start=1):
+                            st.session_state.ai_results[idx][i] = analyze_hazard_auto(api_key, img_f)
+            
             if idx in st.session_state.ai_results and st.session_state.ai_results[idx]:
-                st.markdown("**🤖 AI 위험 분석 결과:**")
-                for img_i, res_text in st.session_state.ai_results[idx].items():
-                    st.markdown(f"""
-                        <div class="analysis-box">
-                            <strong>[사진 #{img_i}]</strong><br>
-                            {res_text.replace('\n', '<br>')}
-                        </div>
-                    """, unsafe_allow_html=True)
+                for i, res in st.session_state.ai_results[idx].items():
+                    st.error(f"**[AI 분석 결과 #{i}]**\n{res}")
 
-        # --- [조치 후 섹션] ---
         with col_a:
-            st.markdown("##### 🟢 조치 후 (After) - 다중 선택 가능")
-            after_img_files = st.file_uploader(
-                f"#{idx} 조치 후 사진 첨부",
-                type=["jpg", "jpeg", "png"],
-                accept_multiple_files=True,
-                key=f"after_imgs_{idx}"
-            )
-            if after_img_files:
-                st.write(f"📷 첨부된 조치 후 사진: **{len(after_img_files)}장**")
-                cols = st.columns(min(len(after_img_files), 2))
-                for img_i, img_f in enumerate(after_img_files):
-                    cols[img_i % 2].image(img_f, caption=f"조치 후 #{img_i+1}", use_container_width=True)
+            after_img_files = st.file_uploader(f"조치 후 (After) 사진 첨부 #{idx}", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=f"a_img_{idx}")
 
-        desc = st.text_area(
-            f"✍️ [항목 #{idx}] 현장 조치 내용 및 설명", 
-            placeholder=f"예: 항목 #{idx} - 개구부 안전난간 설치 및 추락방지망 추가 고정 완료", 
-            key=f"desc_{idx}"
-        )
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+        desc = st.text_area(f"✍️ [항목 #{idx}] 현장 조치 내용 입력", key=f"desc_{idx}")
+        st.markdown("---")
         
         if before_img_files or after_img_files or desc.strip():
-            ai_summary_list = []
-            if idx in st.session_state.ai_results:
-                for img_i, res_text in st.session_state.ai_results[idx].items():
-                    ai_summary_list.append(f"(사진#{img_i}) {res_text}")
-            
+            ai_list = [f"(사진#{i}) {r}" for i, r in st.session_state.ai_results.get(idx, {}).items()]
             form_data[idx] = {
-                "before_files": before_img_files if before_img_files else [],
-                "after_files": after_img_files if after_img_files else [],
+                "before_files": before_img_files or [],
+                "after_files": after_img_files or [],
                 "desc": desc.strip(),
-                "ai_analysis": "\n".join(ai_summary_list) if ai_summary_list else "분석 미실행"
+                "ai_analysis": "\n".join(ai_list) if ai_list else "분석 미실행"
             }
 
-    # --- 동적 항목 추가 / 삭제 버튼 ---
-    btn_col1, btn_col2 = st.columns(2)
-    with btn_col1:
-        if st.button("➕ 점검 항목 추가하기", use_container_width=True):
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        if st.button("➕ 항목 추가"):
             st.session_state.item_count += 1
             st.rerun()
-
-    with btn_col2:
+    with col_btn2:
         if st.session_state.item_count > 1:
-            if st.button("➖ 마지막 항목 삭제", use_container_width=True):
-                last_idx = st.session_state.item_count
-                if last_idx in st.session_state.ai_results:
-                    del st.session_state.ai_results[last_idx]
+            if st.button("➖ 마지막 항목 삭제"):
                 st.session_state.item_count -= 1
                 st.rerun()
 
-    st.markdown("---")
-
-    # 최종 제출 버튼
-    if st.button(f"💾 [{selected_dept} {selected_site}] 전체 점검 내역 저장, 이메일 전송 및 완료", use_container_width=True):
+    if st.button("💾 전체 점검 내역 저장, 이메일 전송 및 대시보드 동기화", use_container_width=True):
         if not form_data:
-            st.warning("⚠️ 최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
+            st.warning("작성된 항목이 없습니다.")
         else:
             internal_folder = st.secrets.get("INTERNAL_FOLDER_PATH", "./KecoSafetyImages")
-            
-            with st.spinner("🔄 사내망 폴더 저장, 구글 시트 동기화 및 이메일 전송 중입니다..."):
-                all_ai_summaries = []
-                details = []
-                all_photo_paths = []
-                
+            with st.spinner("처리 중..."):
+                all_ai, details, all_paths = [], [], []
                 for k, v in form_data.items():
-                    if v['ai_analysis'] != "분석 미실행":
-                        all_ai_summaries.append(f"[항목 #{k}]:\n{v['ai_analysis']}")
-                    
-                    b_paths = []
-                    for img_f in v['before_files']:
-                        saved_path = save_image_to_internal_network(img_f, internal_folder, f"Before_{selected_dept}_{selected_site}_Item{k}")
-                        if saved_path: 
-                            b_paths.append(saved_path)
-                    
-                    a_paths = []
-                    for img_f in v['after_files']:
-                        saved_path = save_image_to_internal_network(img_f, internal_folder, f"After_{selected_dept}_{selected_site}_Item{k}")
-                        if saved_path: 
-                            a_paths.append(saved_path)
-
-                    path_text = f"[항목#{k}] 전:{len(b_paths)}장, 후:{len(a_paths)}장"
-                    if b_paths or a_paths: 
-                        combined_files_path = b_paths + a_paths
-                        path_text += f" (경로: {', '.join(combined_files_path)})"
-                    
-                    all_photo_paths.append(path_text)
-                    details.append(f"[항목 #{k}] 전:{len(v['before_files'])}장, 후:{len(v['after_files'])}장 ({v['desc'][:15]})")
+                    if v['ai_analysis'] != "분석 미실행": all_ai.append(f"[항목 #{k}]: {v['ai_analysis']}")
+                    b_paths = [save_image_to_internal_network(img, internal_folder, f"Before_{selected_dept}_{selected_site}_Item{k}") for img in v['before_files']]
+                    a_paths = [save_image_to_internal_network(img, internal_folder, f"After_{selected_dept}_{selected_site}_Item{k}") for img in v['after_files']]
+                    all_paths.append(f"[항목#{k}] 전:{len(b_paths)}, 후:{len(a_paths)}")
+                    details.append(f"[항목 #{k}] {v['desc'][:15]}")
                 
-                combined_ai = "\n\n".join(all_ai_summaries) if all_ai_summaries else "조치 전 AI 분석 미실행"
-                combined_detail = " | ".join(details)
-                combined_paths_str = " || ".join(all_photo_paths)
+                sheet_ok = save_to_google_sheet(selected_dept, selected_site, len(form_data), "\n".join(all_ai), " | ".join(details), logged_user_id, " || ".join(all_paths))
+                email_ok, email_msg = send_inspection_email(selected_dept, selected_site, logged_user_id, form_data)
                 
-                sheet_success = save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail, logged_user_id, combined_paths_str)
-                email_success, email_msg = send_inspection_email(selected_dept, selected_site, logged_user_id, form_data)
-                
-                if sheet_success and email_success:
-                    st.success(f"🎉 [{selected_dept} {selected_site}] 점검 내역이 사내망 폴더에 저장되고, 구글 시트 기록 및 담당자 메일({mapped_email}) 전송이 완료되었습니다!")
-                elif sheet_success:
-                    st.warning(f"⚠️ 사내망 저장 및 구글 시트는 완료되었으나 이메일 전송에 실패했습니다. (사유: {email_msg})")
+                if sheet_ok and email_ok:
+                    st.success(f"🎉 성공적으로 저장 및 이메일({mapped_email}) 전송이 완료되었습니다!")
                 else:
-                    st.error("❌ 저장 및 전송 과정에서 오류가 발생했습니다.")
+                    st.error(f"저장 중 오류 발생 (메일 오류: {email_msg})")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# ---------------- Tab 2: 이력 조회 ----------------
 with main_tab2:
-    st.subheader("📂 지난 점검 이력 조회")
+    st.markdown('<div class="canvas-card">', unsafe_allow_html=True)
+    st.subheader("📊 부서별 점검 이력 데이터 대시보드")
     rows = get_google_sheet_records()
-    
     if len(rows) <= 1:
-        st.info("저장된 점검 이력이 없습니다.")
+        st.info("등록된 이력이 없습니다.")
     else:
-        filter_col1, filter_col2 = st.columns(2)
-        with filter_col1:
-            filter_dept = st.selectbox("🔍 부서 선택", ["전체 부서"] + departments, key="hist_dept")
-        with filter_col2:
-            filter_site = st.selectbox("🔍 현장 선택", ["전체 현장"] + sites, key="hist_site")
-
-        data_rows = rows[1:][::-1]
+        f_dept = st.selectbox("부서 필터", ["전체 부서"] + departments, key="h_dept")
+        f_site = st.selectbox("현장 필터", ["전체 현장"] + sites, key="h_site")
         
-        for r in data_rows:
-            timestamp = r[0] if len(r) > 0 else "-"
-            dept = r[1] if len(r) > 1 else "-"
-            site = r[2] if len(r) > 2 else "-"
-            count = r[3] if len(r) > 3 else "-"
-            ai_text = r[4] if len(r) > 4 else "-"
-            detail = r[5] if len(r) > 5 else "-"
-            inspector = r[6] if len(r) > 6 else "기록 없음"
-            photo_paths = r[7] if len(r) > 7 else "사진 경로 없음"
-            
-            if (filter_dept in ["전체 부서", dept]) and (filter_site in ["전체 현장", site]):
-                with st.expander(f"🗓️ [{timestamp}] {dept} | {site} ({count}) - 작성자: {inspector}"):
-                    st.write(f"**현장 메모:** {detail}")
-                    st.info(ai_text)
-                    st.markdown("---")
-                    st.markdown(f"📁 **사내망 사진 저장 경로:**\n`{photo_paths}`")
+        for r in rows[1:][::-1]:
+            ts, dept, site, cnt, ai, det, insp, paths = (r + [""]*8)[:8]
+            if (f_dept in ["전체 부서", dept]) and (f_site in ["전체 현장", site]):
+                with st.expander(f"🗓️ [{ts}] {dept} - {site} (작성자 사번: {insp})"):
+                    st.write(f"**상세내용:** {det}")
+                    st.info(ai)
+                    st.text(f"저장 경로: {paths}")
+    st.markdown('</div>', unsafe_allow_html=True)
