@@ -31,6 +31,7 @@ def get_base64_image(image_path):
         return ""
 
 img_base64 = get_base64_image("puru_guru.png")
+dashboard_img_base64 = get_base64_image("dashboard_preview.png")  # 💡 [추가] Canvas 대시보드 이미지 연동
 
 # --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
 st.markdown("""
@@ -84,6 +85,16 @@ st.markdown("""
         border: 2px solid #E2E8F0;
         box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         margin-bottom: 20px;
+    }
+    /* 💡 [추가] 대시보드 시각화 카드 스타일 */
+    .dashboard-preview-card {
+        background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+        border: 1.5px solid #86EFAC;
+        border-radius: 16px;
+        padding: 16px;
+        text-align: center;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0, 122, 51, 0.08);
     }
     .mascot-card {
         background-color: #FFFFFF;
@@ -414,6 +425,15 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
+# 💡 [추가] Canvas 대시보드 시각화 프리뷰 적용 섹션
+if dashboard_img_base64:
+    st.markdown(f"""
+        <div class="dashboard-preview-card">
+            <img src="data:image/png;base64,{dashboard_img_base64}" style="max-width: 100%; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #047857; font-weight: 600;">📊 실시간 현장 안전 모니터링 대시보드 상태 요약</p>
+        </div>
+    """, unsafe_allow_html=True)
+
 
 # --- 6. 메인 탭 ---
 main_tab1, main_tab2 = st.tabs(["안전 점검 등록", "부서별 점검 이력"])
@@ -553,7 +573,6 @@ with main_tab1:
         if not form_data:
             st.warning("⚠️ 최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
         else:
-            # 💡 [보완 완료] secrets나 기본값에서 사내망 폴더 경로 가져오기
             internal_folder = st.secrets.get("INTERNAL_FOLDER_PATH", "./KecoSafetyImages")
             
             with st.spinner("🔄 사내망 폴더 저장, 구글 시트 동기화 및 이메일 전송 중입니다..."):
@@ -565,14 +584,12 @@ with main_tab1:
                     if v['ai_analysis'] != "분석 미실행":
                         all_ai_summaries.append(f"[항목 #{k}]:\n{v['ai_analysis']}")
                     
-                    # 💡 [사내망 폴더 저장 로직 추가] Before 사진 저장
                     b_paths = []
                     for img_f in v['before_files']:
                         saved_path = save_image_to_internal_network(img_f, internal_folder, f"Before_{selected_dept}_{selected_site}_Item{k}")
                         if saved_path: 
                             b_paths.append(saved_path)
                     
-                    # 💡 [사내망 폴더 저장 로직 추가] After 사진 저장
                     a_paths = []
                     for img_f in v['after_files']:
                         saved_path = save_image_to_internal_network(img_f, internal_folder, f"After_{selected_dept}_{selected_site}_Item{k}")
@@ -591,10 +608,7 @@ with main_tab1:
                 combined_detail = " | ".join(details)
                 combined_paths_str = " || ".join(all_photo_paths)
                 
-                # 1. 구글 시트 저장 (사내망 저장 경로 문자열 포함)
                 sheet_success = save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail, logged_user_id, combined_paths_str)
-                
-                # 2. 이메일 전송 (사번 자동 매핑)
                 email_success, email_msg = send_inspection_email(selected_dept, selected_site, logged_user_id, form_data)
                 
                 if sheet_success and email_success:
