@@ -16,7 +16,7 @@ import io
 
 # --- 페이지 기본 설정 ---
 st.set_page_config(
-    page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 점검 시스템",
+    page_title="한국환경공단 수도권서부환경본부 | AI 스마트 안전 점검 시스템",
     page_icon="puru_guru.png",
     layout="centered",
     initial_sidebar_state="expanded"
@@ -32,122 +32,153 @@ def get_base64_image(image_path):
 
 img_base64 = get_base64_image("puru_guru.png")
 
-# --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
+# --- 🎨 프리미엄 커스텀 CSS (모던 공공기관 스타일) ---
 st.markdown("""
     <style>
+    /* 전체 폰트 및 배경 기본 설정 */
     html, body, [data-testid="stAppViewContainer"] {
-        color: #1E293B !important;
+        color: #0F172A !important;
+        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif !important;
+    }
+    .stApp {
+        background-color: #F1F5F9;
     }
     .stMarkdown, p, div, span, label {
         word-break: keep-all !important;
         white-space: normal !important;
     }
-    .stTable, div[data-testid="stTable"] {
-        overflow-x: auto !important;
+    
+    /* 사이드바 스타일링 */
+    [data-testid="stSidebar"] {
+        background-color: #FFFFFF;
+        border-right: 1px solid #E2E8F0;
     }
-    label, div[data-baseweb="select"] span, .stSelectbox label, .stTextInput label, .stTextArea label, .stFileUploader label {
-        color: #1E293B !important;
-        font-weight: 600 !important;
-    }
-    div[role="listbox"] div {
-        color: #1E293B !important;
-    }
-    .stApp {
-        background-color: #F8FBF9;
-    }
+
+    /* 상단 헤더 배너 디자인 */
     .keco-header {
-        background: linear-gradient(135deg, #007A33 0%, #10B981 100%);
-        padding: 22px 18px;
-        border-radius: 16px;
+        background: linear-gradient(135deg, #00662B 0%, #009846 100%);
+        padding: 28px 24px;
+        border-radius: 20px;
         color: white;
         text-align: center;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(0, 122, 51, 0.15);
+        margin-bottom: 24px;
+        box-shadow: 0 10px 25px -5px rgba(0, 102, 43, 0.25);
     }
     .keco-header h2 {
         color: white !important;
-        font-size: 1.5rem !important;
-        font-weight: 700 !important;
+        font-size: 1.65rem !important;
+        font-weight: 800 !important;
         margin: 0 !important;
+        letter-spacing: -0.5px;
     }
     .keco-header p {
-        color: #E6F4EA !important;
-        font-size: 0.9rem !important;
-        margin-top: 6px !important;
+        color: #D1FAE5 !important;
+        font-size: 0.95rem !important;
+        margin-top: 8px !important;
         margin-bottom: 0 !important;
+        font-weight: 400;
     }
+
+    /* 마스코트 안내 배너 */
     .mascot-banner {
         background: white;
-        border-radius: 16px;
-        padding: 20px;
+        border-radius: 18px;
+        padding: 22px;
         text-align: center;
-        border: 2px solid #E2E8F0;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        margin-bottom: 20px;
+        border: 1px solid #E2E8F0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        margin-bottom: 24px;
     }
+
+    /* 섹션 카드 디자인 */
     .mascot-card {
         background-color: #FFFFFF;
-        border: 1.5px solid #E2E8F0;
-        border-radius: 14px;
-        padding: 14px 18px;
+        border: 1px solid #E2E8F0;
+        border-radius: 16px;
+        padding: 16px 20px;
         margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        color: #1E293B !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
     }
+    
+    /* 선택 대상 안내 박스 */
     .select-card {
-        background-color: #E6F4EA;
-        border: 1.5px solid #10B981;
-        border-radius: 12px;
-        padding: 12px 16px;
-        margin-bottom: 18px;
-        color: #005F27 !important;
+        background: linear-gradient(135deg, #ECFDF5 100%, #D1FAE5 0%);
+        border: 1px solid #34D399;
+        border-radius: 14px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        color: #065F46 !important;
         font-weight: 600;
-        box-shadow: 0 2px 6px rgba(0, 122, 51, 0.05);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
     }
-    .analysis-box {
-        background-color: #FEF2F2;
-        border: 1.5px solid #FCA5A5;
-        border-radius: 12px;
-        padding: 14px 16px;
-        margin-top: 10px;
-        margin-bottom: 15px;
-        font-size: 0.93rem;
-        color: #991B1B !important;
-    }
+
+    /* 개별 점검 항목 카드 */
     .item-card {
         background-color: #FFFFFF;
-        border: 1.5px solid #CBD5E1;
-        border-radius: 12px;
-        padding: 18px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-        color: #1E293B !important;
+        border: 1px solid #CBD5E1;
+        border-radius: 16px;
+        padding: 22px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
     }
+
+    /* AI 분석 결과 박스 */
+    .analysis-box {
+        background-color: #FFF1F2;
+        border: 1px solid #FECDD3;
+        border-left: 5px solid #E11D48;
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 12px;
+        margin-bottom: 15px;
+        font-size: 0.94rem;
+        color: #881337 !important;
+        box-shadow: 0 2px 6px rgba(225, 29, 72, 0.04);
+    }
+
+    /* 라벨 텍스트 가독성 강화 */
+    label, div[data-baseweb="select"] span, .stSelectbox label, .stTextInput label, .stTextArea label, .stFileUploader label {
+        color: #334155 !important;
+        font-weight: 700 !important;
+        font-size: 0.95rem !important;
+    }
+
+    /* 메인 액션 버튼 스타일 (그라데이션 & 입체감) */
     div.stButton > button {
-        background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
+        background: linear-gradient(135deg, #00662B 0%, #009846 100%) !important;
         color: white !important;
         border: none !important;
-        border-radius: 10px !important;
-        font-weight: bold !important;
-        height: 48px !important;
-        font-size: 1rem !important;
-        box-shadow: 0 3px 8px rgba(0, 122, 51, 0.2) !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        height: 52px !important;
+        font-size: 1.05rem !important;
+        box-shadow: 0 4px 14px rgba(0, 102, 43, 0.25) !important;
+        transition: all 0.2s ease-in-out;
     }
+    div.stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(0, 102, 43, 0.35) !important;
+    }
+
+    /* 탭 디자인 현대화 */
     div.stTabs [data-baseweb="tab-list"] {
-        background-color: #F1F5F9;
+        background-color: #E2E8F0;
         padding: 6px;
-        border-radius: 12px;
+        border-radius: 14px;
+        gap: 4px;
     }
     div.stTabs [data-baseweb="tab"] {
         background-color: transparent;
-        border-radius: 8px;
-        padding: 8px 16px;
-        font-weight: bold;
-        color: #475569;
+        border-radius: 10px;
+        padding: 10px 20px;
+        font-weight: 700;
+        color: #64748B;
+        border: none;
     }
     div.stTabs [aria-selected="true"] {
-        background-color: #1E293B !important;
-        color: #FFFFFF !important;
+        background-color: #FFFFFF !important;
+        color: #00662B !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -163,9 +194,9 @@ def check_password():
     allowed_users = st.secrets.get("passwords", {})
 
     st.markdown("""
-        <div style="text-align:center; padding: 30px 10px 10px 10px;">
-            <h2 style="color:#007A33;">🌱 한국환경공단 수도권서부환경본부 환경시설관리처 건설현장 안전관리시스템</h2>
-            <p style="color:#64748B;">인증된 사내 감독관만 접근 가능합니다.</p>
+        <div style="text-align:center; padding: 40px 10px 20px 10px;">
+            <h2 style="color:#00662B; font-weight:800;">🌱 한국환경공단 감독관 인증</h2>
+            <p style="color:#64748B; font-size:1rem;">인증된 사내 감독관 계정으로 로그인해 주세요.</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -174,7 +205,8 @@ def check_password():
         user_id = st.text_input("👤 감독관 ID (사번)", key="username_input")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input")
         
-        if st.button("로그인", use_container_width=True):
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        if st.button("안전시스템 로그인", use_container_width=True):
             user_id_clean = str(user_id).strip()
             user_pw_clean = str(user_pw).strip()
             allowed_users_str = {str(k): str(v) for k, v in allowed_users.items()}
@@ -196,9 +228,8 @@ logged_user_id = st.session_state.get('logged_user')
 user_emails_map = st.secrets.get("user_emails", {})
 mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
 
-st.sidebar.markdown("### 🔒 감독관 인증 정보")
-st.sidebar.write(f"접속 사번: **{logged_user_id}**")
-st.sidebar.write(f"수신 이메일: **{mapped_email if mapped_email else '미등록(기본값 사용)'}**")
+st.sidebar.markdown("### 🔒 접속 계정 정보")
+st.sidebar.info(f"사번: **{logged_user_id}**\n\n자동 매핑 이메일:\n`{mapped_email if mapped_email else '미등록'}`")
 
 if st.sidebar.button("🔓 로그아웃", use_container_width=True):
     st.session_state["password_correct"] = False
@@ -244,7 +275,6 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
         if not sender_email or not sender_password:
             return False, "이메일 설정(SMTP)이 누락되었습니다."
 
-        # 💡 [핵심] user_emails 딕셔너리에서 사번 매칭, 없으면 기본 관리자 메일로 폴백
         user_emails_map = st.secrets.get("user_emails", {})
         receiver_email = user_emails_map.get(str(inspector_id), smtp_conf.get("receiver_email", sender_email))
 
@@ -345,7 +375,7 @@ def analyze_hazard_auto(api_key, img_file):
     img = Image.open(img_file)
     
     prompt = (
-        "당신은 한국환경공단(K-ECO) 현장 안전 전문 AI 검수원입니다.\n"
+        "당신은 한국환경공단(KECO) 현장 안전 전문 AI 검수원입니다.\n"
         "제공된 조치 전 사진을 분석하여 다음 3가지 항목만 핵심 요약해서 짧게 답변하세요.\n\n"
         "1. **주요 위험 요소:** (1문장)\n"
         "2. **위험 등급:** [상/중/하 중 선택]\n"
@@ -401,30 +431,30 @@ if "ai_results" not in st.session_state:
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 수도권서부환경본부</h2>
-        <p>환경시설관리처 건설현장 안전관리시스템 (사번 자동 매핑 이메일 연동형)</p>
+        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템</p>
     </div>
 """, unsafe_allow_html=True)
 
-image_html = f'<img src="data:image/png;base64,{img_base64}" style="max-height: 100px;">' if img_base64 else '🌱'
+image_html = f'<img src="data:image/png;base64,{img_base64}" style="max-height: 90px; border-radius: 10px;">' if img_base64 else '🌱'
 
 st.markdown(f"""
     <div class="mascot-banner">
         <div style="margin-bottom: 8px;">{image_html}</div>
-        <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
-        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">사내망 폴더 저장, 구글 시트 기록 및 담당자 메일 자동 발송이 동시에 이루어집니다.</p>
+        <h4 style="margin:0; color:#00662B; font-weight:700;">"안전점검 시작! 푸루와 그루가 든든하게 지원합니다."</h4>
+        <p style="margin-top:6px; font-size:0.9rem; color:#64748B;">사내망 자동 저장, 구글 시트 실시간 기록 및 담당자 메일 자동 발송 시스템</p>
     </div>
 """, unsafe_allow_html=True)
 
 
 # --- 6. 메인 탭 ---
-main_tab1, main_tab2 = st.tabs(["안전 점검 등록", "부서별 점검 이력"])
+main_tab1, main_tab2 = st.tabs(["📝 안전 점검 등록", "📊 부서별 점검 이력"])
 
 with main_tab1:
     st.markdown("""
         <div class="mascot-card">
             <div>
-                <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">담당 부서와 현장 번호를 선택해 주세요.</span>
+                <strong style="color:#059669;">📌 점검 기본 정보 설정</strong><br>
+                <span style="font-size:0.9rem; color:#475569;">점검을 진행할 담당 부서와 현장을 선택해 주세요.</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -434,47 +464,47 @@ with main_tab1:
 
     col_dept, col_site = st.columns(2)
     with col_dept:
-        selected_dept = st.selectbox("📌 담당 부서 선택", departments)
+        selected_dept = st.selectbox("담당 부서", departments)
     with col_site:
-        selected_site = st.selectbox("🏗️ 점검 현장 선택", sites)
+        selected_site = st.selectbox("점검 현장", sites)
 
     st.markdown(f"""
         <div class="select-card">
-            📍 선택된 점검 대상: <strong>[{selected_dept}] - {selected_site}</strong> (작성자 사번: {logged_user_id})
+            📍 선택 대상: <strong>[{selected_dept}] - {selected_site}</strong> &nbsp;|&nbsp; 작성자 사번: <code>{logged_user_id}</code>
         </div>
     """, unsafe_allow_html=True)
 
-    st.subheader("📸 안전 점검 사진 등록 및 AI 위험 분석")
-    st.caption("💡 각 항목마다 여러 장의 사진을 다중 선택하여 동시에 첨부할 수 있습니다.")
+    st.subheader("📸 현장 사진 등록 및 AI 위험성 평가")
+    st.caption("💡 각 항목별로 '조치 전'과 '조치 후' 사진을 여러 장 다중 첨부할 수 있습니다.")
 
     form_data = {}
 
     for idx in range(1, st.session_state.item_count + 1):
         st.markdown(f"""
             <div class="item-card">
-                <h4 style="margin-top:0; color:#007A33;">🔹 [점검 항목 #{idx}]</h4>
+                <h4 style="margin-top:0; color:#00662B; font-weight:700;">🔹 점검 항목 #{idx}</h4>
         """, unsafe_allow_html=True)
         
         col_b, col_a = st.columns(2)
         
         # --- [조치 전 섹션] ---
         with col_b:
-            st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 가능")
+            st.markdown("##### 🔴 조치 전 (Before)")
             before_img_files = st.file_uploader(
-                f"#{idx} 조치 전 사진 첨부",
+                f"항목 #{idx} 조치 전 사진",
                 type=["jpg", "jpeg", "png"],
                 accept_multiple_files=True,
                 key=f"before_imgs_{idx}"
             )
             
             if before_img_files:
-                st.write(f"📷 첨부된 조치 전 사진: **{len(before_img_files)}장**")
+                st.write(f"📷 선택된 사진: **{len(before_img_files)}장**")
                 cols = st.columns(min(len(before_img_files), 2))
                 for img_i, img_f in enumerate(before_img_files):
                     cols[img_i % 2].image(img_f, caption=f"조치 전 #{img_i+1}", use_container_width=True)
                 
-                if st.button(f"🔍 [항목 #{idx}] 조치 전 사진 전체 AI 분석", key=f"btn_ai_{idx}", use_container_width=True):
-                    with st.spinner("푸루 AI가 조치 전 사진들의 위험요인을 분석 중..."):
+                if st.button(f"🔍 [항목 #{idx}] 조치 전 사진 AI 위험 분석", key=f"btn_ai_{idx}", use_container_width=True):
+                    with st.spinner("푸루 AI가 위험 요소를 분석 중입니다..."):
                         if idx not in st.session_state.ai_results:
                             st.session_state.ai_results[idx] = {}
                         
@@ -486,7 +516,7 @@ with main_tab1:
                                 st.session_state.ai_results[idx][img_i] = f"분석 오류: {e}"
 
             if idx in st.session_state.ai_results and st.session_state.ai_results[idx]:
-                st.markdown("**🤖 AI 위험 분석 결과:**")
+                st.markdown("**🤖 AI 위험 분석 결과**")
                 for img_i, res_text in st.session_state.ai_results[idx].items():
                     st.markdown(f"""
                         <div class="analysis-box">
@@ -497,22 +527,22 @@ with main_tab1:
 
         # --- [조치 후 섹션] ---
         with col_a:
-            st.markdown("##### 🟢 조치 후 (After) - 다중 선택 가능")
+            st.markdown("##### 🟢 조치 후 (After)")
             after_img_files = st.file_uploader(
-                f"#{idx} 조치 후 사진 첨부",
+                f"항목 #{idx} 조치 후 사진",
                 type=["jpg", "jpeg", "png"],
                 accept_multiple_files=True,
                 key=f"after_imgs_{idx}"
             )
             if after_img_files:
-                st.write(f"📷 첨부된 조치 후 사진: **{len(after_img_files)}장**")
+                st.write(f"📷 선택된 사진: **{len(after_img_files)}장**")
                 cols = st.columns(min(len(after_img_files), 2))
                 for img_i, img_f in enumerate(after_img_files):
                     cols[img_i % 2].image(img_f, caption=f"조치 후 #{img_i+1}", use_container_width=True)
 
         desc = st.text_area(
-            f"✍️ [항목 #{idx}] 현장 조치 내용 및 설명", 
-            placeholder=f"예: 항목 #{idx} - 개구부 안전난간 설치 및 추락방지망 추가 고정 완료", 
+            f"✍️ 항목 #{idx} 조치 내용 상세 입력", 
+            placeholder="예: 개구부 주변 안전난간 보강 및 추락방지망 추가 설치 완료", 
             key=f"desc_{idx}"
         )
         
@@ -547,16 +577,16 @@ with main_tab1:
                 st.session_state.item_count -= 1
                 st.rerun()
 
-    st.markdown("---")
+    st.markdown("<div style='margin: 30px 0;'></div>", unsafe_allow_html=True)
 
     # 최종 제출 버튼
-    if st.button(f"💾 [{selected_dept} {selected_site}] 전체 점검 내역 저장, 이메일 전송 및 완료", use_container_width=True):
+    if st.button(f"💾 [{selected_dept} {selected_site}] 점검 최종 제출 및 자동 발송", use_container_width=True):
         if not form_data:
-            st.warning("⚠️ 최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
+            st.warning("⚠️ 최소 1개 이상의 항목에 사진이나 조치 내용을 작성해 주세요.")
         else:
             internal_folder = st.secrets.get("INTERNAL_FOLDER_PATH", "./KecoSafetyImages")
             
-            with st.spinner("🔄 사내망 폴더 저장, 구글 시트 동기화 및 이메일 전송 중입니다..."):
+            with st.spinner("🔄 사내망 저장, 구글 시트 기록 및 담당자 메일 발송 처리 중입니다..."):
                 all_ai_summaries = []
                 details = []
                 all_photo_paths = []
@@ -568,17 +598,21 @@ with main_tab1:
                     b_paths = []
                     for img_f in v['before_files']:
                         saved_path = save_image_to_internal_network(img_f, internal_folder, f"Before_{selected_dept}_{selected_site}_Item{k}")
-                        if saved_path: b_paths.append(saved_path)
+                        if saved_path: 
+                            b_paths.append(saved_path)
                     
                     a_paths = []
                     for img_f in v['after_files']:
                         saved_path = save_image_to_internal_network(img_f, internal_folder, f"After_{selected_dept}_{selected_site}_Item{k}")
-                        if saved_path: a_paths.append(saved_path)
+                        if saved_path: 
+                            a_paths.append(saved_path)
 
                     path_text = f"[항목#{k}] 전:{len(b_paths)}장, 후:{len(a_paths)}장"
-                    if b_paths: path_text += f" (경로: {', '.join(b_paths)})"
+                    if b_paths or a_paths: 
+                        combined_files_path = b_paths + a_paths
+                        path_text += f" (경로: {', '.join(combined_files_path)})"
+                    
                     all_photo_paths.append(path_text)
-
                     details.append(f"[항목 #{k}] 전:{len(v['before_files'])}장, 후:{len(v['after_files'])}장 ({v['desc'][:15]})")
                 
                 combined_ai = "\n\n".join(all_ai_summaries) if all_ai_summaries else "조치 전 AI 분석 미실행"
@@ -588,19 +622,19 @@ with main_tab1:
                 # 1. 구글 시트 저장
                 sheet_success = save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail, logged_user_id, combined_paths_str)
                 
-                # 2. 이메일 전송 (사번 자동 매핑)
+                # 2. 이메일 전송
                 email_success, email_msg = send_inspection_email(selected_dept, selected_site, logged_user_id, form_data)
                 
                 if sheet_success and email_success:
-                    st.success(f"🎉 [{selected_dept} {selected_site}] 점검 내역이 구글 시트에 기록되고, 담당자 이메일({mapped_email})로 원본 사진과 함께 안전하게 발송되었습니다!")
+                    st.success(f"🎉 [{selected_dept} {selected_site}] 점검 내역이 사내망 저장, 구글 시트 기록 및 담당자 메일({mapped_email}) 전송까지 모두 완료되었습니다!")
                 elif sheet_success:
-                    st.warning(f"⚠️ 구글 시트는 저장되었으나 이메일 전송에 실패했습니다. (사유: {email_msg})")
+                    st.warning(f"⚠️ 사내망 저장 및 구글 시트 기록은 완료되었으나 이메일 전송에 실패했습니다. (사유: {email_msg})")
                 else:
                     st.error("❌ 저장 및 전송 과정에서 오류가 발생했습니다.")
 
 # ---------------- Tab 2: 이력 조회 ----------------
 with main_tab2:
-    st.subheader("📂 지난 점검 이력 조회")
+    st.subheader("📂 부서별 점검 이력 조회")
     rows = get_google_sheet_records()
     
     if len(rows) <= 1:
@@ -608,9 +642,9 @@ with main_tab2:
     else:
         filter_col1, filter_col2 = st.columns(2)
         with filter_col1:
-            filter_dept = st.selectbox("🔍 부서 선택", ["전체 부서"] + departments, key="hist_dept")
+            filter_dept = st.selectbox("🔍 부서 필터", ["전체 부서"] + departments, key="hist_dept")
         with filter_col2:
-            filter_site = st.selectbox("🔍 현장 선택", ["전체 현장"] + sites, key="hist_site")
+            filter_site = st.selectbox("🔍 현장 필터", ["전체 현장"] + sites, key="hist_site")
 
         data_rows = rows[1:][::-1]
         
@@ -625,8 +659,8 @@ with main_tab2:
             photo_paths = r[7] if len(r) > 7 else "사진 경로 없음"
             
             if (filter_dept in ["전체 부서", dept]) and (filter_site in ["전체 현장", site]):
-                with st.expander(f"🗓️ [{timestamp}] {dept} | {site} ({count}) - 작성자: {inspector}"):
-                    st.write(f"**현장 메모:** {detail}")
+                with st.expander(f"🗓️ [{timestamp}] {dept} | {site} ({count}) — 작성자 사번: {inspector}"):
+                    st.write(f"**현장 조치 요약:** {detail}")
                     st.info(ai_text)
                     st.markdown("---")
                     st.markdown(f"📁 **사내망 사진 저장 경로:**\n`{photo_paths}`")
