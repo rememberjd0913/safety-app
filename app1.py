@@ -601,21 +601,27 @@ with main_tab1:
                     st.error("❌ 저장 및 전송 과정에서 오류가 발생했습니다.")
 
 # ---------------- Tab 2: 이력 조회 및 인터랙티브 대시보드 ----------------
+# ---------------- Tab 2: 이력 조회 및 인터랙티브 대시보드 ----------------
 with main_tab2:
     st.subheader("📊 인터랙티브 안전 트렌드 및 재발 방지 대시보드")
     
     rows = get_google_sheet_records()
     
     if len(rows) > 1:
-        # 구글 시트 데이터를 Pandas DataFrame으로 변환 (헤더: [날짜, 부서, 현장, 항목수, AI분석, 상세내용, 작성자, 사진경로])
         header = rows[0]
         data_values = rows[1:]
-        df = pd.DataFrame(data_values, columns=header[:len(data_values[0])])
+        df = pd.DataFrame(data_values)
         
-        # 컬럼 이름 매핑 정합성 보정 (시트 헤더명에 맞춰 조정)
-        # 만약 시트 컬럼명이 다를 경우를 대비해 인덱스로도 안전하게 이름 재정의
-        if len(df.columns) >= 8:
-            df.columns = ["날짜", "점검 부서", "점검 현장", "항목수", "AI분석", "지적 분류", "작성자", "사진경로"]
+        # 데이터프레임의 실제 컬럼 수에 맞춰 동적으로 컬럼명 설정
+        expected_cols = ["날짜", "점검 부서", "점검 현장", "항목수", "AI분석", "지적 분류", "작성자", "사진경로"]
+        if len(df.columns) == len(expected_cols):
+            df.columns = expected_cols
+        else:
+            # 컬럼 수가 다를 경우 앞부분은 매핑하고 나머지는 일반 이름 부여
+            cols = expected_cols[:len(df.columns)]
+            while len(cols) < len(df.columns):
+                cols.append(f"추가컬럼_{len(cols)+1}")
+            df.columns = cols
         
         # 데이터 정제 (날짜 형식 변환 등)
         if "날짜" in df.columns:
@@ -648,8 +654,9 @@ with main_tab2:
         # ----------------------------------------------------
         with col_b:
             st.markdown("##### ⚠️ 주요 지적 유형별 비율")
-            if "지적 분류" in df.columns and not df.empty:
-                cat_counts = df["지적 분류"].value_counts().reset_index()
+            target_col = "지적 분류" if "지적 분류" in df.columns else df.columns[-1]
+            if not df.empty:
+                cat_counts = df[target_col].value_counts().reset_index()
                 cat_counts.columns = ["지적 분류", "건수"]
                 
                 fig_pie = px.pie(
