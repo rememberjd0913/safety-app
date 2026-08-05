@@ -601,7 +601,6 @@ with main_tab1:
                     st.error("❌ 저장 및 전송 과정에서 오류가 발생했습니다.")
 
 # ---------------- Tab 2: 이력 조회 및 인터랙티브 대시보드 ----------------
-# ---------------- Tab 2: 이력 조회 및 인터랙티브 대시보드 ----------------
 with main_tab2:
     st.subheader("📊 인터랙티브 안전 트렌드 및 재발 방지 대시보드")
     
@@ -629,7 +628,7 @@ with main_tab2:
 
         col_a, col_b = st.columns(2)
         
-       # ----------------------------------------------------
+        # ----------------------------------------------------
         # 1. 현장별/부서별 안전 지적 빈도 (파스텔 톤 부서별 색상 구분)
         # ----------------------------------------------------
         with col_a:
@@ -659,7 +658,6 @@ with main_tab2:
                     text="건수"
                 )
                 
-                # 오른쪽 그라데이션 컬러바(color_axis 등)가 표시되지 않도록 레이아웃 정리
                 fig_bar.update_layout(
                     xaxis_title="", 
                     yaxis_title="건수", 
@@ -743,7 +741,7 @@ with main_tab3:
     st.subheader("📖 건설안전실무자가이드 기반 AI Q&A")
     st.markdown("현장 안전 관리 규정, 가이드라인, 조치 기준에 대해 무엇이든 물어보세요! 업로드된 PDF 기반으로 정확한 근거를 찾아 답변해 드립니다.")
 
-    # LlamaIndex 및 Gemini RAG 초기화 (캐싱 처리로 속도 향상)
+    # LlamaIndex 및 Gemini RAG 초기화 (상세 에러 출력 적용)
     @st.cache_resource
     def get_rag_engine():
         try:
@@ -751,21 +749,26 @@ with main_tab3:
             from llama_index.embeddings.gemini import GeminiEmbedding
             from llama_index.llms.gemini import Gemini
             
-            # API Key 연동 (기존에 선언된 api_key 활용)
+            # API Key 연동
             Settings.llm = Gemini(model="models/gemini-2.5-flash", api_key=api_key)
             Settings.embed_model = GeminiEmbedding(model_name="models/text-embedding-004", api_key=api_key)
             
-            # data 폴더 내의 PDF 읽기
+            # ./data 폴더 내의 문서 불러오기
             documents = SimpleDirectoryReader("./data").load_data()
+            if not documents:
+                st.error("⚠️ `./data` 폴더 안에서 문서를 읽어오지 못했습니다. 파일 위치나 포맷을 확인해 주세요.")
+                return None
+
             index = VectorStoreIndex.from_documents(documents)
             return index.as_query_engine()
         except Exception as e:
+            st.error(f"⚠️ RAG 엔진 초기화 실패 상세 사유: {e}")
             return None
 
     query_engine = get_rag_engine()
 
     if query_engine is None:
-        st.error("⚠️ `./data` 폴더 안에 'guide.pdf' 파일이 있는지 확인해 주세요.")
+        st.warning("💡 `./data` 폴더 위치와 'guide.pdf' 파일명이 올바른지, 필요한 패키지가 모두 설치되어 있는지 확인해 주세요.")
     else:
         # 사용자 질문 입력창
         user_question = st.text_input("💬 가이드북에 대해 질문하세요 (예: 비계 설치 시 안전기준은 어떻게 되나요?)", key="rag_question")
@@ -784,11 +787,12 @@ with main_tab3:
                         """, unsafe_allow_html=True)
                         
                         # 참고된 소스 문서(PDF 내용) 확인용 익스팬더
-                        with st.expander("🔍 참고된 가이드 원문 발췌 확인"):
-                            for node in response.source_nodes:
-                                st.write(f"- **유사도 점격/출처:** {node.score:.4f}")
-                                st.caption(node.text[:300] + "...")
-                                
+                        if hasattr(response, 'source_nodes') and response.source_nodes:
+                            with st.expander("🔍 참고된 가이드 원문 발췌 확인"):
+                                for node in response.source_nodes:
+                                    score_str = f"{node.score:.4f}" if node.score is not None else "N/A"
+                                    st.write(f"- **유사도 점수:** {score_str}")
+                                    st.caption(node.text[:300] + "...")
                     except Exception as e:
                         st.error(f"답변 생성 중 오류가 발생했습니다: {e}")
             else:
