@@ -412,7 +412,7 @@ st.markdown(f"""
     <div class="mascot-banner">
         <div style="margin-bottom: 8px;">{image_html}</div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
-        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;">사내망 폴더 저장, 구글 시트 기록 및 담당자 메일 자동 발송이 동시에 이루어집니다.</p>
+        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;"> 구글 시트 기록 및 담당자 메일 자동 발송이 동시에 이루어집니다.</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -557,7 +557,7 @@ with main_tab1:
         else:
             internal_folder = st.secrets.get("INTERNAL_FOLDER_PATH", "./KecoSafetyImages")
             
-            with st.spinner("🔄 사내망 폴더 저장, 구글 시트 동기화 및 이메일 전송 중입니다..."):
+            with st.spinner("🔄 구글 시트 동기화 및 이메일 전송 중입니다..."):
                 all_ai_summaries = []
                 details = []
                 all_photo_paths = []
@@ -594,9 +594,9 @@ with main_tab1:
                 email_success, email_msg = send_inspection_email(selected_dept, selected_site, logged_user_id, form_data)
                 
                 if sheet_success and email_success:
-                    st.success(f"🎉 [{selected_dept} {selected_site}] 점검 내역이 사내망 폴더에 저장되고, 구글 시트 기록 및 담당자 메일({mapped_email}) 전송이 완료되었습니다!")
+                    st.success(f"🎉 [{selected_dept} {selected_site}] 점검 내역이 구글 시트 기록 및 담당자 메일({mapped_email}) 전송이 완료되었습니다!")
                 elif sheet_success:
-                    st.warning(f"⚠️ 사내망 저장 및 구글 시트는 완료되었으나 이메일 전송에 실패했습니다. (사유: {email_msg})")
+                    st.warning(f"⚠️ 저장 및 구글 시트는 완료되었으나 이메일 전송에 실패했습니다. (사유: {email_msg})")
                 else:
                     st.error("❌ 저장 및 전송 과정에서 오류가 발생했습니다.")
 
