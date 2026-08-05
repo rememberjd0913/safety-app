@@ -765,14 +765,14 @@ with main_tab3:
     query_engine = get_rag_engine()
 
     if query_engine is None:
-        st.error("⚠️ `./data` 폴더 안에 '건설안전실무자가이드.pdf' 파일이 있는지 확인해 주세요.")
+        st.error("⚠️ `./data` 폴더 안에 'guide.pdf' 파일이 있는지 확인해 주세요.")
     else:
         # 사용자 질문 입력창
         user_question = st.text_input("💬 가이드북에 대해 질문하세요 (예: 비계 설치 시 안전기준은 어떻게 되나요?)", key="rag_question")
         
         if st.button("AI에게 질문하기", key="rag_btn"):
             if user_question.strip():
-                with st.spinner("📚 건설안전실무자가이드에서 관련 내용을 정밀 검색 및 분석 중입니다..."):
+                with st.spinner("📚 guide에서 관련 내용을 정밀 검색 및 분석 중입니다..."):
                     try:
                         response = query_engine.query(user_question)
                         
