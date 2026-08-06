@@ -230,7 +230,7 @@ st.sidebar.markdown("### 🚨 긴급 연락망")
 st.sidebar.info(
     "**수도권서부환경본부 상황실**\n\n"
     "📞 02-XXX-XXXX\n\n"
-    "⚠️ **중대재해 신고 직통**\n"
+    "⚠️ **중대재해 신고 직통**\n\n"
     "📞 010-XXX-XXXX"
 )
 
