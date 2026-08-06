@@ -624,7 +624,7 @@ with main_tab1:
 
 # ---------------- Tab 2: 이력 조회 및 인터랙티브 대시보드 ----------------
 with main_tab2:
-    st.subheader("📊 인터랙티브 안전 트렌드 및 재발 방지 대시보드")
+    st.subheader("📊 안전사고 현황 대시보드")
     
     rows = get_google_sheet_records()
     
@@ -685,19 +685,40 @@ with main_tab2:
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
 
-        # ----------------------------------------------------
-        # 2. 주요 지적 유형별 비율 (도넛 차트 - Pie Chart)
+       # ----------------------------------------------------
+        # 2. 주요 지적 유형별 비율 (도넛 차트 - Pie Chart) -> 사고유형별 자동 분류
         # ----------------------------------------------------
         with col_b:
-            st.markdown("##### ⚠️ 주요 지적 유형별 비율")
-            target_col = "지적 분류" if "지적 분류" in df.columns else df.columns[-1]
+            st.markdown("##### ⚠️ 주요 사고 유형별 비율")
             if not df.empty:
-                cat_counts = df[target_col].value_counts().reset_index()
-                cat_counts.columns = ["지적 분류", "건수"]
+                # 텍스트 데이터(AI분석 혹은 지적 분류)에서 사고유형 키워드 추출 함수
+                def classify_accident_type(text):
+                    text_str = str(text)
+                    if "추락" in text_str or "떨림" in text_str or "낙하" in text_str:
+                        return "추락"
+                    elif "전도" in text_str or "넘어" in text_str or "미끄러" in text_str:
+                        return "전도"
+                    elif "끼임" in text_str or "협착" in text_str:
+                        return "끼임"
+                    elif "베임" in text_str or "자상" in text_str or "절단" in text_str:
+                        return "베임"
+                    elif "골절" in text_str or "부상" in text_str or "충돌" in text_str:
+                        return "골절"
+                    else:
+                        return "기타/일반"
+
+                # 기존 데이터에서 분석 텍스트 또는 지적 분류 컬럼 활용
+                target_text_col = "AI분석" if "AI분석" in df.columns else (df.columns[4] if len(df.columns) > 4 else df.columns[-1])
+                
+                # 데이터프레임에 '사고유형' 컬럼 생성
+                df["사고유형"] = df[target_text_col].apply(classify_accident_type)
+                
+                cat_counts = df["사고유형"].value_counts().reset_index()
+                cat_counts.columns = ["사고유형", "건수"]
                 
                 fig_pie = px.pie(
                     cat_counts, 
-                    names="지적 분류", 
+                    names="사고유형", 
                     values="건수", 
                     hole=0.4, 
                     color_discrete_sequence=px.colors.qualitative.Pastel
