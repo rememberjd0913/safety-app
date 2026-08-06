@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh  # 👈 추가
-import streamlit.components.v1 as components
+from streamlit_autorefresh import st_autorefresh
+from streamlit_image_coordinates import streamlit_image_coordinates
 from google import genai
 import gspread
 from google.oauth2.service_account import Credentials
 import datetime
-from zoneinfo import ZoneInfo  # 파이썬 3.9 이상 기본 내장
-import time
+from zoneinfo import ZoneInfo
 import base64
 import os
 import smtplib
@@ -67,7 +66,7 @@ st.markdown("""
         border-radius: 16px;
         color: white;
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         box-shadow: 0 4px 15px rgba(0, 122, 51, 0.15);
     }
     .keco-header h2 {
@@ -81,6 +80,21 @@ st.markdown("""
         font-size: 0.9rem !important;
         margin-top: 6px !important;
         margin-bottom: 0 !important;
+    }
+    /* ⏱️ 상단 실시간 상태 바 디자인 */
+    .top-status-bar {
+        background-color: #E6F4EA;
+        border: 1.5px solid #10B981;
+        border-radius: 12px;
+        padding: 10px 18px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.92rem;
+        color: #005F27;
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(0, 122, 51, 0.05);
     }
     .mascot-banner {
         background: white;
@@ -205,7 +219,7 @@ logged_user_id = st.session_state.get('logged_user')
 user_emails_map = st.secrets.get("user_emails", {})
 mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
 
-# --- 사이드바 실시간 업무 현황 (안정형) ---
+# --- 사이드바 영역 ---
 st.sidebar.markdown("### 🔒 감독관 인증 정보")
 st.sidebar.write(f"접속 사번: **{logged_user_id}**")
 st.sidebar.write(f"수신 이메일: **{mapped_email if mapped_email else '미등록(기본값 사용)'}**")
@@ -213,7 +227,7 @@ st.sidebar.write(f"수신 이메일: **{mapped_email if mapped_email else '미�
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ⏱️ 실시간 업무 현황")
 
-# 한국 시간(KST) 구하기
+# 한국 시간(KST) 기준 현재 날짜 및 시각 계산
 try:
     kst_now = datetime.datetime.now(ZoneInfo("Asia/Seoul"))
 except Exception:
@@ -230,16 +244,16 @@ st.sidebar.markdown("### 🚨 긴급 연락망")
 st.sidebar.info(
     "**수도권서부환경본부 상황실**\n\n"
     "📞 02-XXX-XXXX\n\n"
-    "⚠️ **중대재해 신고 직통**\n\n"
+    "⚠️ **중대재해 신고 직통**\n"
     "📞 010-XXX-XXXX"
 )
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ⚡ 현장 3대 안전 수칙")
 st.sidebar.markdown(
-    "> 1. **안전모:** 생명을 지키는 가장 확실한 실천\n\n"
-    "> 2. **안전대:** 사고 시 생명줄로 작용\n\n"
-    "> 3. **안전띠:** 추락 사고를 예방"
+    "> 1. **추락 방지:** 안전모·안전대 필수 착용\n\n"
+    "> 2. **끼임 방지:** 방호덮개 및 정비 중 LOTO\n\n"
+    "> 3. **화재 예방:** 용접 작업 시 소화기 비치"
 )
 
 st.sidebar.markdown("---")
@@ -257,7 +271,6 @@ def get_gcp_credentials():
     )
 
 def save_image_to_internal_network(uploaded_file, folder_path, prefix):
-    """업로드된 이미지를 사내망 공용 폴더(경로)에 저장하는 함수"""
     try:
         if not os.path.exists(folder_path):
             os.makedirs(folder_path, exist_ok=True)
@@ -276,7 +289,6 @@ def save_image_to_internal_network(uploaded_file, folder_path, prefix):
         return None
 
 def send_inspection_email(dept_name, site_name, inspector_id, form_data):
-    """로그인된 사번(inspector_id)을 기반으로 secrets에서 이메일을 자동 매핑하여 전송하는 함수"""
     try:
         smtp_conf = st.secrets.get("smtp", {})
         smtp_server = smtp_conf.get("server", "smtp.gmail.com")
@@ -300,7 +312,6 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
         msg['From'] = Header(f"KECO 안전점검시스템 <{sender_email}>", 'utf-8')
         msg['To'] = Header(receiver_email, 'utf-8')
 
-        # 본문 구성
         body_html = f"""
         <h3>🌱 한국환경공단 현장 안전 점검 보고</h3>
         <p><b>- 담당 부서:</b> {dept_name}</p>
@@ -312,11 +323,11 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
         """
 
         for k, v in form_data.items():
-            body_html += f"<p><b>[항목 #{k}]</b><br>• 조치 내용: {v['desc']}<br>• AI 분석: {v['ai_analysis'].replace(chr(10), '<br>')}</p>"
+            loc_str = f"📍 도면 위치(X:{v['coord_x']}, Y:{v['coord_y']})<br>" if v.get('coord_x') is not None else ""
+            body_html += f"<p><b>[항목 #{k}]</b><br>{loc_str}• 조치 내용: {v['desc']}<br>• AI 분석: {v['ai_analysis'].replace(chr(10), '<br>')}</p>"
 
         msg.attach(MIMEText(body_html, 'html', 'utf-8'))
 
-        # 이미지 첨부 (BytesIO 활용)
         for k, v in form_data.items():
             if 'before_files' in v and v['before_files']:
                 for idx, img_f in enumerate(v['before_files']):
@@ -344,7 +355,6 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
                     except Exception as img_err:
                         print(f"After 이미지 첨부 실패: {img_err}")
                 
-        # SMTP 전송
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
             server.login(sender_email, sender_password)
@@ -438,12 +448,24 @@ if "item_count" not in st.session_state:
 if "ai_results" not in st.session_state:
     st.session_state.ai_results = {}
 
+if "item_coords" not in st.session_state:
+    st.session_state.item_coords = {}  # {idx: {"x": x, "y": y}}
 
-# --- 5. 헤더 UI ---
+
+# --- 5. 헤더 UI 및 상단 실시간 시계 바 ---
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 수도권서부환경본부</h2>
-        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템 (사번 자동 매핑 이메일 연동형)</p>
+        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템 (도면 실시간 검측 연동형)</p>
+    </div>
+""", unsafe_allow_html=True)
+
+# ⏱️ 상단 실시간 상태 바 (초 단위 자동 갱신 적용)
+st.markdown(f"""
+    <div class="top-status-bar">
+        <span>📅 <b>오늘 날짜:</b> {current_date_str}</span>
+        <span>⏱️ <b>실시간 시각:</b> <span style="color:#007A33; font-size:1.05rem;">{current_time_str}</span></span>
+        <span>👤 <b>접속 사번:</b> {logged_user_id}</span>
     </div>
 """, unsafe_allow_html=True)
 
@@ -453,7 +475,7 @@ st.markdown(f"""
     <div class="mascot-banner">
         <div style="margin-bottom: 8px;">{image_html}</div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
-        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;"> 구글 시트 기록 및 담당자 메일 자동 발송이 동시에 이루어집니다.</p>
+        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;"> 현장 도면을 보며 검측 위치를 찍고 스마트하게 점검하세요.</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -479,15 +501,20 @@ department_sites_map = {
 
 departments = list(department_sites_map.keys())
 
-# --- 메인 탭 확장 ("AI 안전 가이드 Q&A" 포함) ---
-main_tab1, main_tab2, main_tab3 = st.tabs(["안전 점검 등록", "부서별 점검 이력 및 대시보드", "📖 AI 안전 가이드 Q&A (RAG)"])
+# --- 메인 탭 확장 ---
+main_tab1, main_tab2, main_tab3, main_tab4 = st.tabs([
+    "안전 점검 등록", 
+    "🗺️ 실시간 도면 검측 뷰어", 
+    "부서별 점검 이력 및 대시보드", 
+    "📖 AI 안전 가이드 Q&A (RAG)"
+])
 
 with main_tab1:
     st.markdown("""
         <div class="mascot-card">
             <div>
                 <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">담당 부서와 현장 번호를 선택해 주세요.</span>
+                <span style="font-size:0.92rem; color:#334155;">담당 부서와 현장을 선택하고 각 항목별 조치 내용과 사진을 등록하세요.</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -496,7 +523,6 @@ with main_tab1:
     with col_dept:
         selected_dept = st.selectbox("📌 담당 부서 선택", departments, key="selected_dept_box")
     
-    # 선택된 부서에 해당하는 현장 리스트 가져오기
     available_sites = department_sites_map.get(selected_dept, ["현장 없음"])
     
     with col_site:
@@ -514,14 +540,16 @@ with main_tab1:
     form_data = {}
 
     for idx in range(1, st.session_state.item_count + 1):
+        coord_info = st.session_state.item_coords.get(idx)
+        coord_badge = f"📍 도면 좌표 지정됨 (X: {coord_info['x']}, Y: {coord_info['y']})" if coord_info else "📍 도면 위치 미지정 (상단 [실시간 도면 검측 뷰어] 탭에서 지정 가능)"
+        
         st.markdown(f"""
             <div class="item-card">
-                <h4 style="margin-top:0; color:#007A33;">🔹 [점검 항목 #{idx}]</h4>
+                <h4 style="margin-top:0; color:#007A33;">🔹 [점검 항목 #{idx}] <span style="font-size:0.8rem; color:#64748B; font-weight:normal;">({coord_badge})</span></h4>
         """, unsafe_allow_html=True)
         
         col_b, col_a = st.columns(2)
         
-        # --- [조치 전 섹션] ---
         with col_b:
             st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 가능")
             before_img_files = st.file_uploader(
@@ -559,7 +587,6 @@ with main_tab1:
                         </div>
                     """, unsafe_allow_html=True)
 
-        # --- [조치 후 섹션] ---
         with col_a:
             st.markdown("##### 🟢 조치 후 (After) - 다중 선택 가능")
             after_img_files = st.file_uploader(
@@ -588,14 +615,16 @@ with main_tab1:
                 for img_i, res_text in st.session_state.ai_results[idx].items():
                     ai_summary_list.append(f"(사진#{img_i}) {res_text}")
             
+            c_info = st.session_state.item_coords.get(idx)
             form_data[idx] = {
                 "before_files": before_img_files if before_img_files else [],
                 "after_files": after_img_files if after_img_files else [],
                 "desc": desc.strip(),
-                "ai_analysis": "\n".join(ai_summary_list) if ai_summary_list else "분석 미실행"
+                "ai_analysis": "\n".join(ai_summary_list) if ai_summary_list else "분석 미실행",
+                "coord_x": c_info['x'] if c_info else None,
+                "coord_y": c_info['y'] if c_info else None
             }
 
-    # --- 동적 항목 추가 / 삭제 버튼 ---
     btn_col1, btn_col2 = st.columns(2)
     with btn_col1:
         if st.button("➕ 점검 항목 추가하기", use_container_width=True):
@@ -608,12 +637,13 @@ with main_tab1:
                 last_idx = st.session_state.item_count
                 if last_idx in st.session_state.ai_results:
                     del st.session_state.ai_results[last_idx]
+                if last_idx in st.session_state.item_coords:
+                    del st.session_state.item_coords[last_idx]
                 st.session_state.item_count -= 1
                 st.rerun()
 
     st.markdown("---")
 
-    # 최종 제출 버튼
     if st.button(f"💾 [{selected_dept} {selected_site}] 전체 점검 내역 저장, 이메일 전송 및 완료", use_container_width=True):
         if not form_data:
             st.warning("⚠️ 최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
@@ -641,13 +671,14 @@ with main_tab1:
                         if saved_path: 
                             a_paths.append(saved_path)
 
-                    path_text = f"[항목#{k}] 전:{len(b_paths)}장, 후:{len(a_paths)}장"
+                    coord_txt = f"핀좌표(X:{v['coord_x']}, Y:{v['coord_y']})" if v.get('coord_x') is not None else "좌표미지정"
+                    path_text = f"[항목#{k} | {coord_txt}] 전:{len(b_paths)}장, 후:{len(a_paths)}장"
                     if b_paths or a_paths: 
                         combined_files_path = b_paths + a_paths
                         path_text += f" (경로: {', '.join(combined_files_path)})"
                     
                     all_photo_paths.append(path_text)
-                    details.append(f"[항목 #{k}] 전:{len(v['before_files'])}장, 후:{len(v['after_files'])}장 ({v['desc'][:15]})")
+                    details.append(f"[항목 #{k}] {coord_txt}, 전:{len(v['before_files'])}장, 후:{len(v['after_files'])}장 ({v['desc'][:10]})")
                 
                 combined_ai = "\n\n".join(all_ai_summaries) if all_ai_summaries else "조치 전 AI 분석 미실행"
                 combined_detail = " | ".join(details)
@@ -663,8 +694,54 @@ with main_tab1:
                 else:
                     st.error("❌ 저장 및 전송 과정에서 오류가 발생했습니다.")
 
-# ---------------- Tab 2: 이력 조회 및 인터랙티브 대시보드 ----------------
+# ---------------- Tab 2: 실시간 도면 검측 뷰어 ----------------
 with main_tab2:
+    st.subheader("🗺️ 현장 도면 실시간 핀 찍기 및 검측 뷰어")
+    st.markdown("점검할 현장의 도면(이미지 파일)을 업로드한 뒤, 도면 위에서 **문제가 발견된 위치를 마우스로 클릭**하여 점검 항목 번호와 연결하세요.")
+
+    col_map_setting1, col_map_setting2 = st.columns([2, 1])
+    with col_map_setting1:
+        map_file = st.file_uploader("📂 현장 도면 이미지 업로드 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="blueprint_upload")
+    
+    with col_map_setting2:
+        target_item_to_pin = st.selectbox(
+            "📌 매칭할 점검 항목 선택", 
+            options=list(range(1, st.session_state.item_count + 1)),
+            format_func=lambda x: f"점검 항목 #{x}",
+            key="pin_target_item"
+        )
+
+    if map_file is not None:
+        try:
+            image = Image.open(map_file)
+            st.markdown(f"**🎯 현재 '점검 항목 #{target_item_to_pin}'에 할당할 도면 위치를 마우스로 클릭하세요.**")
+            
+            # 도면 클릭 좌표를 실시간으로 받아오는 인터랙티브 위젯
+            coords = streamlit_image_coordinates(image, key="blueprint_click_canvas")
+
+            if coords is not None:
+                clicked_x = coords["x"]
+                clicked_y = coords["y"]
+                
+                st.success(f"✅ 항목 #{target_item_to_pin} 위치가 지정되었습니다! (X좌표: {clicked_x}, Y좌표: {clicked_y})")
+                
+                if st.button(f"📌 [항목 #{target_item_to_pin}]에 이 위치 확정 저장", key="save_coord_btn"):
+                    st.session_state.item_coords[target_item_to_pin] = {"x": clicked_x, "y": clicked_y}
+                    st.success(f"항목 #{target_item_to_pin}에 좌표가 정상 저장되었습니다. [안전 점검 등록] 탭에서 확인해 보세요!")
+        except Exception as e:
+            st.error(f"도면을 불러오는 중 오류가 발생했습니다: {e}")
+    else:
+        st.info("💡 검측을 시작하려면 먼저 상단에서 현장 도면 이미지(JPG 또는 PNG)를 업로드해 주세요.")
+        
+        # 현재 등록된 핀 현황 요약 표시
+        if st.session_state.item_coords:
+            st.markdown("---")
+            st.markdown("##### 📌 현재까지 지정된 도면 핀 현황")
+            for item_idx, pos in st.session_state.item_coords.items():
+                st.write(f"- **점검 항목 #{item_idx}**: X = {pos['x']}, Y = {pos['y']}")
+
+# ---------------- Tab 3: 이력 조회 및 인터랙티브 대시보드 ----------------
+with main_tab3:
     st.subheader("📊 인터랙티브 안전 트렌드 및 재발 방지 대시보드")
     
     rows = get_google_sheet_records()
@@ -688,9 +765,6 @@ with main_tab2:
 
         col_a, col_b = st.columns(2)
         
-        # ----------------------------------------------------
-        # 1. 현장별/부서별 안전 지적 빈도
-        # ----------------------------------------------------
         with col_a:
             st.markdown("##### 🏗️ 현장 및 부서별 안전 지적 빈도")
             if "점검 현장" in df.columns and not df.empty:
@@ -724,9 +798,6 @@ with main_tab2:
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
 
-        # ----------------------------------------------------
-        # 2. 주요 사고 유형별 비율 (도넛 차트 - 추락, 전도, 끼임, 베임, 골절 등 자동 분류)
-        # ----------------------------------------------------
         with col_b:
             st.markdown("##### ⚠️ 주요 사고 유형별 비율")
             if not df.empty:
@@ -762,9 +833,6 @@ with main_tab2:
                 fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10))
                 st.plotly_chart(fig_pie, use_container_width=True)
 
-        # ----------------------------------------------------
-        # 3. 월별/날짜별 안전 지적 추이 (시계열 라인 그래프)
-        # ----------------------------------------------------
         st.markdown("##### 📈 시간 흐름에 따른 안전 지적 추이")
         if "날짜" in df.columns and not df.empty:
             trend_df = df.groupby("날짜").size().reset_index(name="건수")
@@ -817,10 +885,10 @@ with main_tab2:
                     st.write(f"**현장 메모:** {detail}")
                     st.info(ai_text)
                     st.markdown("---")
-                    st.markdown(f"📁 **사내망 사진 저장 경로:**\n`{photo_paths}`")
+                    st.markdown(f"📁 **사내망 사진 저장 경로 및 검측 위치:**\n`{photo_paths}`")
 
-# ---------------- Tab 3: AI 안전 가이드 Q&A (RAG) ----------------
-with main_tab3:
+# ---------------- Tab 4: AI 안전 가이드 Q&A (RAG) ----------------
+with main_tab4:
     st.subheader("📖 건설안전실무자가이드 기반 AI Q&A")
     st.markdown("현장 안전 관리 규정, 가이드라인, 조치 기준에 대해 무엇이든 물어보세요! 업로드된 PDF 기반으로 정확한 근거를 찾아 답변해 드립니다.")
 
