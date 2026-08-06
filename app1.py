@@ -198,10 +198,35 @@ logged_user_id = st.session_state.get('logged_user')
 user_emails_map = st.secrets.get("user_emails", {})
 mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
 
+# --- 사이드바 허전함 채우기 (타이머, 긴급연락망, 3대 안전수칙) ---
 st.sidebar.markdown("### 🔒 감독관 인증 정보")
 st.sidebar.write(f"접속 사번: **{logged_user_id}**")
 st.sidebar.write(f"수신 이메일: **{mapped_email if mapped_email else '미등록(기본값 사용)'}**")
 
+st.sidebar.markdown("---")
+st.sidebar.markdown("### ⏱️ 실시간 업무 현황")
+now = datetime.datetime.now()
+st.sidebar.write(f"**오늘 날짜:** {now.strftime('%Y년 %m월 %d일')}")
+st.sidebar.write(f"**현재 시각:** {now.strftime('%H:%M:%S')}")
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🚨 긴급 연락망")
+st.sidebar.info(
+    "**수도권서부환경본부 상황실**\n\n"
+    "📞 02-XXX-XXXX\n\n"
+    "⚠️ **중대재해 신고 직통**\n"
+    "📞 010-XXX-XXXX"
+)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### ⚡ 현장 3대 안전 수칙")
+st.sidebar.markdown(
+    "> 1. **추락 방지:** 안전모·안전대 필수 착용\n\n"
+    "> 2. **끼임 방지:** 방호덮개 및 정비 중 LOTO\n\n"
+    "> 3. **화재 예방:** 용접 작업 시 소화기 비치"
+)
+
+st.sidebar.markdown("---")
 if st.sidebar.button("🔓 로그아웃", use_container_width=True):
     st.session_state["password_correct"] = False
     st.rerun()
@@ -438,7 +463,7 @@ department_sites_map = {
 
 departments = list(department_sites_map.keys())
 
-# --- 메인 탭 확장 ("AI 안전 가이드 Q&A" 추가) ---
+# --- 메인 탭 확장 ("AI 안전 가이드 Q&A" 포함) ---
 main_tab1, main_tab2, main_tab3 = st.tabs(["안전 점검 등록", "부서별 점검 이력 및 대시보드", "📖 AI 안전 가이드 Q&A (RAG)"])
 
 with main_tab1:
@@ -446,7 +471,7 @@ with main_tab1:
         <div class="mascot-card">
             <div>
                 <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">소속부와 현장을 선택해 주세요.</span>
+                <span style="font-size:0.92rem; color:#334155;">담당 부서와 현장 번호를 선택해 주세요.</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -624,7 +649,7 @@ with main_tab1:
 
 # ---------------- Tab 2: 이력 조회 및 인터랙티브 대시보드 ----------------
 with main_tab2:
-    st.subheader("📊 안전사고 현황 대시보드")
+    st.subheader("📊 인터랙티브 안전 트렌드 및 재발 방지 대시보드")
     
     rows = get_google_sheet_records()
     
@@ -633,7 +658,6 @@ with main_tab2:
         data_values = rows[1:]
         df = pd.DataFrame(data_values)
         
-        # 데이터프레임의 실제 컬럼 수에 맞춰 동적으로 컬럼명 설정
         expected_cols = ["날짜", "점검 부서", "점검 현장", "항목수", "AI분석", "지적 분류", "작성자", "사진경로"]
         if len(df.columns) == len(expected_cols):
             df.columns = expected_cols
@@ -643,7 +667,6 @@ with main_tab2:
                 cols.append(f"추가컬럼_{len(cols)+1}")
             df.columns = cols
         
-        # 데이터 정제 (날짜 형식 변환 등)
         if "날짜" in df.columns:
             df["날짜"] = pd.to_datetime(df["날짜"], errors='coerce').dt.date
 
@@ -662,9 +685,9 @@ with main_tab2:
                 site_counts = df.groupby(group_cols).size().reset_index(name="건수")
                 
                 pastel_colors = {
-                    "시설사업1부": "#A3C1AD",  # 파스텔 그린
-                    "시설사업2부": "#A0C4FF",  # 파스텔 블루
-                    "시설사업3부": "#FFD6A5"   # 파스텔 오렌지/옐로우
+                    "시설사업1부": "#A3C1AD",
+                    "시설사업2부": "#A0C4FF",
+                    "시설사업3부": "#FFD6A5"
                 }
                 
                 fig_bar = px.bar(
@@ -685,13 +708,12 @@ with main_tab2:
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
 
-       # ----------------------------------------------------
-        # 2. 주요 지적 유형별 비율 (도넛 차트 - Pie Chart) -> 사고유형별 자동 분류
+        # ----------------------------------------------------
+        # 2. 주요 사고 유형별 비율 (도넛 차트 - 추락, 전도, 끼임, 베임, 골절 등 자동 분류)
         # ----------------------------------------------------
         with col_b:
             st.markdown("##### ⚠️ 주요 사고 유형별 비율")
             if not df.empty:
-                # 텍스트 데이터(AI분석 혹은 지적 분류)에서 사고유형 키워드 추출 함수
                 def classify_accident_type(text):
                     text_str = str(text)
                     if "추락" in text_str or "떨림" in text_str or "낙하" in text_str:
@@ -707,10 +729,8 @@ with main_tab2:
                     else:
                         return "기타/일반"
 
-                # 기존 데이터에서 분석 텍스트 또는 지적 분류 컬럼 활용
                 target_text_col = "AI분석" if "AI분석" in df.columns else (df.columns[4] if len(df.columns) > 4 else df.columns[-1])
                 
-                # 데이터프레임에 '사고유형' 컬럼 생성
                 df["사고유형"] = df[target_text_col].apply(classify_accident_type)
                 
                 cat_counts = df["사고유형"].value_counts().reset_index()
@@ -755,7 +775,6 @@ with main_tab2:
         with filter_col1:
             filter_dept = st.selectbox("🔍 부서 선택", ["전체 부서"] + departments, key="hist_dept")
         with filter_col2:
-            # 선택된 이력 부서 필터에 따른 현장 목록 동적 구성
             all_sites_flatten = ["전체 현장"]
             if filter_dept == "전체 부서":
                 for s_list in department_sites_map.values():
@@ -789,7 +808,6 @@ with main_tab3:
     st.subheader("📖 건설안전실무자가이드 기반 AI Q&A")
     st.markdown("현장 안전 관리 규정, 가이드라인, 조치 기준에 대해 무엇이든 물어보세요! 업로드된 PDF 기반으로 정확한 근거를 찾아 답변해 드립니다.")
 
-    # LlamaIndex 및 Gemini RAG 초기화 (상세 에러 출력 적용)
     @st.cache_resource
     def get_rag_engine():
         try:
@@ -797,11 +815,9 @@ with main_tab3:
             from llama_index.embeddings.gemini import GeminiEmbedding
             from llama_index.llms.gemini import Gemini
             
-            # API Key 연동
             Settings.llm = Gemini(model="models/gemini-2.5-flash", api_key=api_key)
             Settings.embed_model = GeminiEmbedding(model_name="models/text-embedding-004", api_key=api_key)
             
-            # ./data 폴더 내의 문서 불러오기
             documents = SimpleDirectoryReader("./data").load_data()
             if not documents:
                 st.error("⚠️ `./data` 폴더 안에서 문서를 읽어오지 못했습니다. 파일 위치나 포맷을 확인해 주세요.")
@@ -818,7 +834,6 @@ with main_tab3:
     if query_engine is None:
         st.warning("💡 `./data` 폴더 위치와 'guide.pdf' 파일명이 올바른지, 필요한 패키지가 모두 설치되어 있는지 확인해 주세요.")
     else:
-        # 사용자 질문 입력창
         user_question = st.text_input("💬 가이드북에 대해 질문하세요 (예: 비계 설치 시 안전기준은 어떻게 되나요?)", key="rag_question")
         
         if st.button("AI에게 질문하기", key="rag_btn"):
@@ -834,7 +849,6 @@ with main_tab3:
                             </div>
                         """, unsafe_allow_html=True)
                         
-                        # 참고된 소스 문서(PDF 내용) 확인용 익스팬더
                         if hasattr(response, 'source_nodes') and response.source_nodes:
                             with st.expander("🔍 참고된 가이드 원문 발췌 확인"):
                                 for node in response.source_nodes:
