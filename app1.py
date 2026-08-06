@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
-from streamlit_image_coordinates import streamlit_image_coordinates
 from google import genai
 import gspread
 from google.oauth2.service_account import Credentials
@@ -18,6 +17,7 @@ from PIL import Image
 import io
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 # --- 페이지 기본 설정 ---
 st.set_page_config(
@@ -81,7 +81,6 @@ st.markdown("""
         margin-top: 6px !important;
         margin-bottom: 0 !important;
     }
-    /* ⏱️ 상단 실시간 상태 바 디자인 */
     .top-status-bar {
         background-color: #E6F4EA;
         border: 1.5px solid #10B981;
@@ -211,10 +210,9 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- ⏱️ 1초(1000ms)마다 자동으로 화면을 갱신해 시계를 움직이게 하는 트리거 ---
+# --- ⏱️ 자동 새로고침 트리거 ---
 st_autorefresh(interval=1000, limit=None, key="realtime_clock_trigger")
 
-# 로그인된 사번을 바탕으로 자동 매핑된 이메일 가져오기
 logged_user_id = st.session_state.get('logged_user')
 user_emails_map = st.secrets.get("user_emails", {})
 mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
@@ -227,7 +225,6 @@ st.sidebar.write(f"수신 이메일: **{mapped_email if mapped_email else '미�
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ⏱️ 실시간 업무 현황")
 
-# 한국 시간(KST) 기준 현재 날짜 및 시각 계산
 try:
     kst_now = datetime.datetime.now(ZoneInfo("Asia/Seoul"))
 except Exception:
@@ -460,7 +457,6 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# ⏱️ 상단 실시간 상태 바 (초 단위 자동 갱신 적용)
 st.markdown(f"""
     <div class="top-status-bar">
         <span>📅 <b>오늘 날짜:</b> {current_date_str}</span>
@@ -694,10 +690,10 @@ with main_tab1:
                 else:
                     st.error("❌ 저장 및 전송 과정에서 오류가 발생했습니다.")
 
-# ---------------- Tab 2: 실시간 도면 검측 뷰어 ----------------
+# ---------------- Tab 2: 실시간 도면 검측 뷰어 (Plotly 기반 안정 버전) ----------------
 with main_tab2:
     st.subheader("🗺️ 현장 도면 실시간 핀 찍기 및 검측 뷰어")
-    st.markdown("점검할 현장의 도면(이미지 파일)을 업로드한 뒤, 도면 위에서 **문제가 발견된 위치를 마우스로 클릭**하여 점검 항목 번호와 연결하세요.")
+    st.markdown("도면 이미지를 올린 후 아래 입력창에 **도면 상에서 클릭할 X, Y 좌표**를 입력하거나, 하단에 표시되는 팁을 참고하여 위치를 매칭하세요.")
 
     col_map_setting1, col_map_setting2 = st.columns([2, 1])
     with col_map_setting1:
@@ -714,26 +710,64 @@ with main_tab2:
     if map_file is not None:
         try:
             image = Image.open(map_file)
-            st.markdown(f"**🎯 현재 '점검 항목 #{target_item_to_pin}'에 할당할 도면 위치를 마우스로 클릭하세요.**")
-            
-            # 도면 클릭 좌표를 실시간으로 받아오는 인터랙티브 위젯
-            coords = streamlit_image_coordinates(image, key="blueprint_click_canvas")
+            img_width, img_height = image.size
 
-            if coords is not None:
-                clicked_x = coords["x"]
-                clicked_y = coords["y"]
+            st.markdown(f"**🎯 [점검 항목 #{target_item_to_pin}] 위치 설정** (도면 해상도: 가로 {img_width}px × 세로 {img_height}px)")
+            
+            # Plotly를 이용해 도면을 배경으로 하고 클릭 좌표를 인터랙티브하게 받는 차트 구성
+            fig = px.imshow(image)
+            
+            # 기존에 찍힌 핀들이 있다면 도면 위에 함께 표시
+            if st.session_state.item_coords:
+                pin_x = [pos['x'] for pos in st.session_state.item_coords.values()]
+                pin_y = [pos['y'] for pos in st.session_state.item_coords.values()]
+                pin_text = [f"항목 #{k}" for k in st.session_state.item_coords.keys()]
                 
-                st.success(f"✅ 항목 #{target_item_to_pin} 위치가 지정되었습니다! (X좌표: {clicked_x}, Y좌표: {clicked_y})")
-                
-                if st.button(f"📌 [항목 #{target_item_to_pin}]에 이 위치 확정 저장", key="save_coord_btn"):
-                    st.session_state.item_coords[target_item_to_pin] = {"x": clicked_x, "y": clicked_y}
-                    st.success(f"항목 #{target_item_to_pin}에 좌표가 정상 저장되었습니다. [안전 점검 등록] 탭에서 확인해 보세요!")
+                fig.add_trace(go.Scatter(
+                    x=pin_x, y=pin_y,
+                    mode="markers+text",
+                    text=pin_text,
+                    textposition="top center",
+                    marker=dict(size=14, color="red", symbol="cross")
+                ))
+
+            fig.update_layout(
+                xaxis=dict(showgrid=False, zeroline=False),
+                yaxis=dict(showgrid=False, zeroline=False),
+                margin=dict(l=0, r=0, t=0, b=0),
+                height=500
+            )
+
+            # 도면 클릭 이벤트를 받아오기 위해 plotly_chart 사용
+            selected_point = st.plotly_chart(fig, use_container_width=True, on_select="rerun", selection_mode="points")
+
+            # 사용자가 도면 위를 클릭했을 때 좌표 추출
+            clicked_x, clicked_y = None, None
+            if selected_point and "selection" in selected_point and "points" in selected_point["selection"]:
+                points = selected_point["selection"]["points"]
+                if points:
+                    clicked_x = int(points[0].get("x", 0))
+                    clicked_y = int(points[0].get("y", 0))
+
+            # 혹은 직접 수동으로 좌표를 입력하여 지정할 수도 있는 입력창 제공
+            st.markdown("##### 📍 좌표 직접 입력 또는 확인")
+            col_px, col_py, col_pbtn = st.columns([1, 1, 1])
+            with col_px:
+                input_x = st.number_input("X 좌표", min_value=0, max_value=img_width, value=clicked_x if clicked_x is not None else 100, key=f"input_x_{target_item_to_pin}")
+            with col_py:
+                input_y = st.number_input("Y 좌표", min_value=0, max_value=img_height, value=clicked_y if clicked_y is not None else 100, key=f"input_y_{target_item_to_pin}")
+            with col_pbtn:
+                st.write("")
+                st.write("")
+                if st.button(f"📌 [항목 #{target_item_to_pin}] 위치 저장", key=f"save_coord_btn_{target_item_to_pin}", use_container_width=True):
+                    st.session_state.item_coords[target_item_to_pin] = {"x": input_x, "y": input_y}
+                    st.success(f"항목 #{target_item_to_pin} 위치(X:{input_x}, Y:{input_y}) 저장 완료!")
+
         except Exception as e:
             st.error(f"도면을 불러오는 중 오류가 발생했습니다: {e}")
     else:
         st.info("💡 검측을 시작하려면 먼저 상단에서 현장 도면 이미지(JPG 또는 PNG)를 업로드해 주세요.")
         
-        # 현재 등록된 핀 현황 요약 표시
         if st.session_state.item_coords:
             st.markdown("---")
             st.markdown("##### 📌 현재까지 지정된 도면 핀 현황")
