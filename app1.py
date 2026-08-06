@@ -4,6 +4,7 @@ from google import genai
 import gspread
 from google.oauth2.service_account import Credentials
 import datetime
+from zoneinfo import ZoneInfo  # 파이썬 3.9 이상 기본 내장
 import base64
 import os
 import smtplib
@@ -205,12 +206,20 @@ st.sidebar.write(f"수신 이메일: **{mapped_email if mapped_email else '미�
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ⏱️ 실시간 업무 현황")
-now = datetime.datetime.now()
-st.sidebar.write(f"**오늘 날짜:** {now.strftime('%Y년 %m월 %d일')}")
-st.sidebar.write(f"**현재 시각:** {now.strftime('%H:%M:%S')}")
+
+# 한국 시간(KST) 기준 객체 생성
+try:
+    kst_now = datetime.datetime.now(ZoneInfo("Asia/Seoul"))
+except Exception:
+    # 혹시 모를 환경 대비 fallback (UTC + 9시간)
+    kst_now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
+
+st.sidebar.write(f"**오늘 날짜:** {kst_now.strftime('%Y년 %m월 %d일')}")
+st.sidebar.write(f"**현재 시각:** {kst_now.strftime('%H:%M:%S')}")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🚨 긴급 연락망")
+# (이하 생략...)
 st.sidebar.info(
     "**수도권서부환경본부 상황실**\n\n"
     "📞 02-XXX-XXXX\n\n"
