@@ -5,6 +5,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import datetime
 from zoneinfo import ZoneInfo  # 파이썬 3.9 이상 기본 내장
+import time
 import base64
 import os
 import smtplib
@@ -199,7 +200,7 @@ logged_user_id = st.session_state.get('logged_user')
 user_emails_map = st.secrets.get("user_emails", {})
 mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
 
-# --- 사이드바 허전함 채우기 (타이머, 긴급연락망, 3대 안전수칙) ---
+# --- 사이드바 실시간 업무 현황 (실시간 갱신형) ---
 st.sidebar.markdown("### 🔒 감독관 인증 정보")
 st.sidebar.write(f"접속 사번: **{logged_user_id}**")
 st.sidebar.write(f"수신 이메일: **{mapped_email if mapped_email else '미등록(기본값 사용)'}**")
@@ -207,19 +208,22 @@ st.sidebar.write(f"수신 이메일: **{mapped_email if mapped_email else '미�
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ⏱️ 실시간 업무 현황")
 
-# 한국 시간(KST) 기준 객체 생성
-try:
-    kst_now = datetime.datetime.now(ZoneInfo("Asia/Seoul"))
-except Exception:
-    # 혹시 모를 환경 대비 fallback (UTC + 9시간)
-    kst_now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
+# 실시간 시계를 그려줄 빈 공간(Placeholder) 생성
+timer_placeholder = st.sidebar.empty()
 
-st.sidebar.write(f"**오늘 날짜:** {kst_now.strftime('%Y년 %m월 %d일')}")
-st.sidebar.write(f"**현재 시각:** {kst_now.strftime('%H:%M:%S')}")
+# 한국 시간(KST) 기준 시간 문자열 생성 함수
+def get_kst_time():
+    try:
+        kst_now = datetime.datetime.now(ZoneInfo("Asia/Seoul"))
+    except Exception:
+        kst_now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
+    return kst_now.strftime('%Y년 %m월 %d일'), kst_now.strftime('%H:%M:%S')
+
+date_str, time_str = get_kst_time()
+timer_placeholder.markdown(f"**오늘 날짜:** {date_str}\n\n**현재 시각:** {time_str}")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🚨 긴급 연락망")
-# (이하 생략...)
 st.sidebar.info(
     "**수도권서부환경본부 상황실**\n\n"
     "📞 02-XXX-XXXX\n\n"
