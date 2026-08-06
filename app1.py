@@ -417,6 +417,27 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
+# --- 부서 및 현장 매핑 정의 ---
+department_sites_map = {
+    "시설사업1부": [
+        "파주 환경순환센터 현대화사업",
+        "수도권서부환경본부 청사 건립사업"
+    ],
+    "시설사업2부": [
+        "김포시 통진레코파크 증설사업(2단계)",
+        "김포시 통진레코파크 증설사업(3단계)",
+        "광명 소각"
+    ],
+    "시설사업3부": [
+        "부천시 굴포천 비점오염저감시설 설치사업",
+        "평택축협 가축분뇨 공공처리시설 설치사업",
+        "안성시 공공하수도시설 하수처리수 재이용사업",
+        "평택 브레인시티 일반산업단지 공공폐수처리시설 설치사업(1-2단계)"
+    ]
+}
+
+departments = list(department_sites_map.keys())
+
 # --- 메인 탭 확장 ("AI 안전 가이드 Q&A" 추가) ---
 main_tab1, main_tab2, main_tab3 = st.tabs(["안전 점검 등록", "부서별 점검 이력 및 대시보드", "📖 AI 안전 가이드 Q&A (RAG)"])
 
@@ -430,14 +451,15 @@ with main_tab1:
         </div>
     """, unsafe_allow_html=True)
     
-    departments = ["시설사업1부", "시설사업2부", "시설사업3부"]
-    sites = ["1현장", "2현장", "3현장", "4현장"]
-
     col_dept, col_site = st.columns(2)
     with col_dept:
-        selected_dept = st.selectbox("📌 담당 부서 선택", departments)
+        selected_dept = st.selectbox("📌 담당 부서 선택", departments, key="selected_dept_box")
+    
+    # 선택된 부서에 해당하는 현장 리스트 가져오기
+    available_sites = department_sites_map.get(selected_dept, ["현장 없음"])
+    
     with col_site:
-        selected_site = st.selectbox("🏗️ 점검 현장 선택", sites)
+        selected_site = st.selectbox("🏗️ 점검 현장 선택", available_sites, key="selected_site_box")
 
     st.markdown(f"""
         <div class="select-card">
@@ -616,7 +638,6 @@ with main_tab2:
         if len(df.columns) == len(expected_cols):
             df.columns = expected_cols
         else:
-            # 컬럼 수가 다를 경우 앞부분은 매핑하고 나머지는 일반 이름 부여
             cols = expected_cols[:len(df.columns)]
             while len(cols) < len(df.columns):
                 cols.append(f"추가컬럼_{len(cols)+1}")
@@ -629,19 +650,17 @@ with main_tab2:
         col_a, col_b = st.columns(2)
         
         # ----------------------------------------------------
-        # 1. 현장별/부서별 안전 지적 빈도 (파스텔 톤 부서별 색상 구분)
+        # 1. 현장별/부서별 안전 지적 빈도
         # ----------------------------------------------------
         with col_a:
             st.markdown("##### 🏗️ 현장 및 부서별 안전 지적 빈도")
             if "점검 현장" in df.columns and not df.empty:
-                # 현장과 점검 부서별로 그룹화하여 카운트
                 group_cols = ["점검 현장"]
                 if "점검 부서" in df.columns:
                     group_cols.append("점검 부서")
                 
                 site_counts = df.groupby(group_cols).size().reset_index(name="건수")
                 
-                # 부서별 파스텔 톤 색상 맵핑 사전
                 pastel_colors = {
                     "시설사업1부": "#A3C1AD",  # 파스텔 그린
                     "시설사업2부": "#A0C4FF",  # 파스텔 블루
@@ -715,7 +734,15 @@ with main_tab2:
         with filter_col1:
             filter_dept = st.selectbox("🔍 부서 선택", ["전체 부서"] + departments, key="hist_dept")
         with filter_col2:
-            filter_site = st.selectbox("🔍 현장 선택", ["전체 현장"] + sites, key="hist_site")
+            # 선택된 이력 부서 필터에 따른 현장 목록 동적 구성
+            all_sites_flatten = ["전체 현장"]
+            if filter_dept == "전체 부서":
+                for s_list in department_sites_map.values():
+                    all_sites_flatten.extend(s_list)
+            else:
+                all_sites_flatten.extend(department_sites_map.get(filter_dept, []))
+            
+            filter_site = st.selectbox("🔍 현장 선택", all_sites_flatten, key="hist_site")
 
         data_rows = rows[1:][::-1]
         
