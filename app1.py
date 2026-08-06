@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh  # 👈 추가
 import streamlit.components.v1 as components
 from google import genai
 import gspread
@@ -195,6 +196,9 @@ def check_password():
 
 if not check_password():
     st.stop()
+
+# --- ⏱️ 1초(1000ms)마다 자동으로 화면을 갱신해 시계를 움직이게 하는 트리거 ---
+st_autorefresh(interval=1000, limit=None, key="realtime_clock_trigger")
 
 # 로그인된 사번을 바탕으로 자동 매핑된 이메일 가져오기
 logged_user_id = st.session_state.get('logged_user')
