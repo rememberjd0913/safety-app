@@ -201,7 +201,7 @@ logged_user_id = st.session_state.get('logged_user')
 user_emails_map = st.secrets.get("user_emails", {})
 mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
 
-# --- 사이드바 실시간 업무 현황 (자바스크립트 실시간 갱신형) ---
+# --- 사이드바 실시간 업무 현황 (안정형) ---
 st.sidebar.markdown("### 🔒 감독관 인증 정보")
 st.sidebar.write(f"접속 사번: **{logged_user_id}**")
 st.sidebar.write(f"수신 이메일: **{mapped_email if mapped_email else '미등록(기본값 사용)'}**")
@@ -209,30 +209,17 @@ st.sidebar.write(f"수신 이메일: **{mapped_email if mapped_email else '미�
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ⏱️ 실시간 업무 현황")
 
-# 자바스크립트를 이용해 브라우저에서 직접 초 단위로 한국 시간(KST)을 렌더링하는 실시간 시계
-clock_html = """
-<div style="font-family: sans-serif; color: #1E293B; font-size: 0.9rem; line-height: 1.5;">
-    <div><strong>오늘 날짜:</strong> <span id="korean-date">-</span></div>
-    <div><strong>현재 시각:</strong> <span id="korean-time" style="font-weight: bold; color: #007A33;">-</span></div>
-</div>
+# 한국 시간(KST) 구하기
+try:
+    kst_now = datetime.datetime.now(ZoneInfo("Asia/Seoul"))
+except Exception:
+    kst_now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
 
-<script>
-function updateClock() {
-    const now = new Date();
-    // 한국 시간(KST, UTC+9) 기준 포맷팅
-    const optionsDate = { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' };
-    const optionsTime = { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-    
-    document.getElementById('korean-date').innerText = new Intl.DateTimeFormat('ko-KR', optionsDate).format(now);
-    document.getElementById('korean-time').innerText = new Intl.DateTimeFormat('ko-KR', optionsTime).format(now);
-}
-updateClock();
-setInterval(updateClock, 1000); // 1초마다 실행
-</script>
-"""
+current_date_str = kst_now.strftime('%Y년 %m월 %d일')
+current_time_str = kst_now.strftime('%H시 %M분 %S초')
 
-# 사이드바에 실시간 시계 컴포넌트 삽입 (높이 55px 지정)
-components.html(clock_html, height=55)
+st.sidebar.write(f"**오늘 날짜:** {current_date_str}")
+st.sidebar.write(f"**현재 시각:** {current_time_str}")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🚨 긴급 연락망")
