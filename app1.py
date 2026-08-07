@@ -894,7 +894,8 @@ with main_tab4:
                         "다음 질문에 대해 정확하고 실무에 도움이 되는 조치 사항을 친절하게 답변해주세요.\n\n"
                         f"질문: {user_query}"
                     )
-                    response = client.models.generate_content(model="gemini-2.5-flash", contents=rag_prompt)
+                    # 모델 이름을 'gemini-1.5-flash' (또는 'gemini-1.5-pro')로 변경합니다.
+                    response = client.models.generate_content(model="gemini-1.5-flash", contents=rag_prompt)
                     answer_text = response.text if response and response.text else "답변을 생성하지 못했습니다."
                     st.markdown(answer_text)
                     st.session_state.qa_messages.append({"role": "assistant", "content": answer_text})
