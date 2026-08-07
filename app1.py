@@ -237,9 +237,9 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### 🚨 긴급 연락망")
 st.sidebar.info(
     "**수도권서부환경본부 상황실**\n\n"
-    "📞 02-XXX-XXXX\n\n"
+    "📞 02-3153-0600\n\n"
     "⚠️ **중대재해 신고 직통**\n\n"
-    "📞 010-XXX-XXXX"
+    "📞 02-3153-0660"
 )
 
 st.sidebar.markdown("---")
@@ -711,10 +711,8 @@ with main_tab2:
 
             st.markdown(f"**🎯 [점검 항목 #{target_item_to_pin}] 위치 설정** (도면 해상도: 가로 {img_width}px × 세로 {img_height}px)")
             
-            # Plotly를 이용해 도면을 배경으로 하고 클릭 좌표를 인터랙티브하게 받는 차트 구성
             fig = px.imshow(image)
             
-            # 기존에 찍힌 핀들이 있다면 도면 위에 함께 표시
             if st.session_state.item_coords:
                 pin_x = [pos['x'] for pos in st.session_state.item_coords.values()]
                 pin_y = [pos['y'] for pos in st.session_state.item_coords.values()]
@@ -735,10 +733,8 @@ with main_tab2:
                 height=500
             )
 
-            # 도면 클릭 이벤트를 받아오기 위해 plotly_chart 사용
             selected_point = st.plotly_chart(fig, use_container_width=True, on_select="rerun", selection_mode="points")
 
-            # 사용자가 도면 위를 클릭했을 때 좌표 추출
             clicked_x, clicked_y = None, None
             if selected_point and "selection" in selected_point and "points" in selected_point["selection"]:
                 points = selected_point["selection"]["points"]
@@ -746,7 +742,6 @@ with main_tab2:
                     clicked_x = int(points[0].get("x", 0))
                     clicked_y = int(points[0].get("y", 0))
 
-            # 혹은 직접 수동으로 좌표를 입력하여 지정할 수도 있는 입력창 제공
             st.markdown("##### 📍 좌표 직접 입력 또는 확인")
             col_px, col_py, col_pbtn = st.columns([1, 1, 1])
             with col_px:
@@ -834,143 +829,76 @@ with main_tab3:
             if not df.empty:
                 def classify_accident_type(text):
                     text_str = str(text)
-                    if "추락" in text_str or "떨림" in text_str or "낙하" in text_str:
-                        return "추락"
-                    elif "전도" in text_str or "넘어" in text_str or "미끄러" in text_str:
-                        return "전도"
-                    elif "끼임" in text_str or "협착" in text_str:
-                        return "끼임"
-                    elif "베임" in text_str or "자상" in text_str or "절단" in text_str:
-                        return "베임"
-                    elif "골절" in text_str or "부상" in text_str or "충돌" in text_str:
-                        return "골절"
+                    if any(k in text_str for k in ["추락", "난간", "개구부", "비계", "발판"]):
+                        return "추락 위험"
+                    elif any(k in text_str for k in ["끼임", "협착", "벨트", "롤러", "회전체"]):
+                        return "끼임 위험"
+                    elif any(k in text_str for k in ["화재", "용접", "불꽃", "소화기", "인화성"]):
+                        return "화재/폭발 위험"
+                    elif any(k in text_str for k in ["전기", "누전", "배선", "충전부"]):
+                        return "전기 안전"
                     else:
-                        return "기타/일반"
+                        return "기타 일반 안전"
 
-                target_text_col = "AI분석" if "AI분석" in df.columns else (df.columns[4] if len(df.columns) > 4 else df.columns[-1])
-                
-                df["사고유형"] = df[target_text_col].apply(classify_accident_type)
-                
-                cat_counts = df["사고유형"].value_counts().reset_index()
-                cat_counts.columns = ["사고유형", "건수"]
-                
+                df["사고유형"] = df["AI분석"].apply(classify_accident_type)
+                type_counts = df["사고유형"].value_counts().reset_index()
+                type_counts.columns = ["유형", "건수"]
+
                 fig_pie = px.pie(
-                    cat_counts, 
-                    names="사고유형", 
+                    type_counts, 
+                    names="유형", 
                     values="건수", 
-                    hole=0.4, 
+                    hole=0.4,
                     color_discrete_sequence=px.colors.qualitative.Pastel
                 )
-                fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10))
+                fig_pie.update_layout(
+                    margin=dict(t=10, b=10, l=10, r=10),
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
+                )
                 st.plotly_chart(fig_pie, use_container_width=True)
-
-        st.markdown("##### 📈 시간 흐름에 따른 안전 지적 추이")
-        if "날짜" in df.columns and not df.empty:
-            trend_df = df.groupby("날짜").size().reset_index(name="건수")
-            
-            fig_line = px.line(
-                trend_df, 
-                x="날짜", 
-                y="건수", 
-                markers=True, 
-                line_shape="spline"
-            )
-            fig_line.update_traces(line_color="#FF4B4B", line_width=3)
-            fig_line.update_layout(xaxis_title="점검 일자", yaxis_title="발생 건수", margin=dict(t=10, b=10, l=10, r=10))
-            st.plotly_chart(fig_line, use_container_width=True)
-            
-        st.markdown("---")
-
-    st.subheader("📂 지난 점검 상세 이력 조회")
-    
-    if len(rows) <= 1:
-        st.info("저장된 점검 이력이 없습니다.")
-    else:
-        filter_col1, filter_col2 = st.columns(2)
-        with filter_col1:
-            filter_dept = st.selectbox("🔍 부서 선택", ["전체 부서"] + departments, key="hist_dept")
-        with filter_col2:
-            all_sites_flatten = ["전체 현장"]
-            if filter_dept == "전체 부서":
-                for s_list in department_sites_map.values():
-                    all_sites_flatten.extend(s_list)
             else:
-                all_sites_flatten.extend(department_sites_map.get(filter_dept, []))
-            
-            filter_site = st.selectbox("🔍 현장 선택", all_sites_flatten, key="hist_site")
+                st.info("데이터가 부족하여 사고 유형 분석을 표시할 수 없습니다.")
 
-        data_rows = rows[1:][::-1]
-        
-        for r in data_rows:
-            timestamp = r[0] if len(r) > 0 else "-"
-            dept = r[1] if len(r) > 1 else "-"
-            site = r[2] if len(r) > 2 else "-"
-            count = r[3] if len(r) > 3 else "-"
-            ai_text = r[4] if len(r) > 4 else "-"
-            detail = r[5] if len(r) > 5 else "-"
-            inspector = r[6] if len(r) > 6 else "기록 없음"
-            photo_paths = r[7] if len(r) > 7 else "사진 경로 없음"
-            
-            if (filter_dept in ["전체 부서", dept]) and (filter_site in ["전체 현장", site]):
-                with st.expander(f"🗓️ [{timestamp}] {dept} | {site} ({count}) - 작성자: {inspector}"):
-                    st.write(f"**현장 메모:** {detail}")
-                    st.info(ai_text)
-                    st.markdown("---")
-                    st.markdown(f"📁 **사내망 사진 저장 경로 및 검측 위치:**\n`{photo_paths}`")
+        st.markdown("---")
+        st.markdown("##### 📋 전체 점검 이력 원본 데이터")
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.info("📝 아직 구글 시트에 저장된 점검 이력이 없습니다. [안전 점검 등록] 탭에서 첫 점검을 완료해 보세요.")
 
 # ---------------- Tab 4: AI 안전 가이드 Q&A (RAG) ----------------
 with main_tab4:
-    st.subheader("📖 건설안전실무자가이드 기반 AI Q&A")
-    st.markdown("현장 안전 관리 규정, 가이드라인, 조치 기준에 대해 무엇이든 물어보세요! 업로드된 PDF 기반으로 정확한 근거를 찾아 답변해 드립니다.")
+    st.subheader("📖 AI 환경시설 안전 가이드 및 규정 Q&A")
+    st.markdown("산업안전보건기준 및 한국환경공단 환경시설 시공 지침에 대해 궁금한 점을 질문하세요.")
 
-    @st.cache_resource
-    def get_rag_engine():
-        try:
-            from llama_index.core import Settings, SimpleDirectoryReader, VectorStoreIndex
-            from llama_index.embeddings.gemini import GeminiEmbedding
-            from llama_index.llms.gemini import Gemini
-            
-            Settings.llm = Gemini(model="models/gemini-2.5-flash", api_key=api_key)
-            Settings.embed_model = GeminiEmbedding(model_name="models/text-embedding-004", api_key=api_key)
-            
-            documents = SimpleDirectoryReader("./data").load_data()
-            if not documents:
-                st.error("⚠️ `./data` 폴더 안에서 문서를 읽어오지 못했습니다. 파일 위치나 포맷을 확인해 주세요.")
-                return None
+    if "qa_messages" not in st.session_state:
+        st.session_state.qa_messages = [
+            {"role": "assistant", "content": "안녕하세요! 푸루·그루입니다. 환경시설 현장 안전 규정이나 지침에 대해 무엇이든 물어보세요!"}
+        ]
 
-            index = VectorStoreIndex.from_documents(documents)
-            return index.as_query_engine()
-        except Exception as e:
-            st.error(f"⚠️ RAG 엔진 초기화 실패 상세 사유: {e}")
-            return None
+    for msg in st.session_state.qa_messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-    query_engine = get_rag_engine()
+    if user_query := st.chat_input("예: 밀폐공간 작업 시 산소 및 유해가스 측정 기준이 어떻게 되나요?"):
+        st.session_state.qa_messages.append({"role": "user", "content": user_query})
+        with st.chat_message("user"):
+            st.markdown(user_query)
 
-    if query_engine is None:
-        st.warning("💡 `./data` 폴더 위치와 'guide.pdf' 파일명이 올바른지, 필요한 패키지가 모두 설치되어 있는지 확인해 주세요.")
-    else:
-        user_question = st.text_input("💬 가이드북에 대해 질문하세요 (예: 비계 설치 시 안전기준은 어떻게 되나요?)", key="rag_question")
-        
-        if st.button("AI에게 질문하기", key="rag_btn"):
-            if user_question.strip():
-                with st.spinner("📚 guide에서 관련 내용을 정밀 검색 및 분석 중입니다..."):
-                    try:
-                        response = query_engine.query(user_question)
-                        
-                        st.markdown("### 🤖 AI 답변")
-                        st.markdown(f"""
-                            <div style="background-color: #FFFFFF; border: 1.5px solid #10B981; border-radius: 12px; padding: 18px; color: #1E293B; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
-                                {str(response).replace(chr(10), '<br>')}
-                            </div>
-                        """, unsafe_allow_html=True)
-                        
-                        if hasattr(response, 'source_nodes') and response.source_nodes:
-                            with st.expander("🔍 참고된 가이드 원문 발췌 확인"):
-                                for node in response.source_nodes:
-                                    score_str = f"{node.score:.4f}" if node.score is not None else "N/A"
-                                    st.write(f"- **유사도 점수:** {score_str}")
-                                    st.caption(node.text[:300] + "...")
-                    except Exception as e:
-                        st.error(f"답변 생성 중 오류가 발생했습니다: {e}")
-            else:
-                st.warning("질문 내용을 입력해 주세요.")
+        with st.chat_message("assistant"):
+            with st.spinner("관련 안전 규정을 검토 중입니다..."):
+                try:
+                    client = genai.Client(api_key=api_key)
+                    rag_prompt = (
+                        "당신은 한국환경공단(KECO) 수도권서부환경본부의 전문 안전 기술 자문 AI입니다.\n"
+                        "산업안전보건기준에 관한 규칙 및 환경시설 공사 현장 안전 가이드를 바탕으로, "
+                        "다음 질문에 대해 정확하고 실무에 도움이 되는 조치 사항을 친절하게 답변해주세요.\n\n"
+                        f"질문: {user_query}"
+                    )
+                    response = client.models.generate_content(model="gemini-2.5-flash", contents=rag_prompt)
+                    answer_text = response.text if response and response.text else "답변을 생성하지 못했습니다."
+                    st.markdown(answer_text)
+                    st.session_state.qa_messages.append({"role": "assistant", "content": answer_text})
+                except Exception as e:
+                    err_msg = f"답변 생성 중 오류가 발생했습니다: {e}"
+                    st.error(err_msg)
+                    st.session_state.qa_messages.append({"role": "assistant", "content": err_msg})
