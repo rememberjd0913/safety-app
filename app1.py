@@ -895,7 +895,7 @@ with main_tab4:
                         f"질문: {user_query}"
                     )
                     # 모델 이름을 'gemini-1.5-flash' (또는 'gemini-1.5-pro')로 변경합니다.
-                    response = client.models.generate_content(model="gemini-1.5-flash", contents=rag_prompt)
+                    response = client.models.generate_content(model="gemini-3.6-flash", contents=rag_prompt)
                     answer_text = response.text if response and response.text else "답변을 생성하지 못했습니다."
                     st.markdown(answer_text)
                     st.session_state.qa_messages.append({"role": "assistant", "content": answer_text})
