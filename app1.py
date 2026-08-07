@@ -210,9 +210,6 @@ def check_password():
 if not check_password():
     st.stop()
 
-# --- ⏱️ 자동 새로고침 트리거 ---
-st_autorefresh(interval=1000, limit=None, key="realtime_clock_trigger")
-
 logged_user_id = st.session_state.get('logged_user')
 user_emails_map = st.secrets.get("user_emails", {})
 mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
@@ -231,7 +228,7 @@ except Exception:
     kst_now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
 
 current_date_str = kst_now.strftime('%Y년 %m월 %d일')
-current_time_str = kst_now.strftime('%H시 %M분 %S초')
+current_time_str = kst_now.strftime('%H시 %M분')
 
 st.sidebar.write(f"**오늘 날짜:** {current_date_str}")
 st.sidebar.write(f"**현재 시각:** {current_time_str}")
