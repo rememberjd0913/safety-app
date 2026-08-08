@@ -870,11 +870,11 @@ import os
 # ---------------- Tab 4: AI 안전 가이드 Q&A (RAG) ----------------
 with main_tab4:
     st.subheader("📖 AI 환경시설 안전 가이드 및 규정 Q&A")
-    st.markdown("산업안전보건기준 및 한국환경공단 환경시설 시공 지침에 대해 궁금한 점을 질문하세요.")
+    st.markdown("환경시설 건설현장 안전에 관련된 모든것을 물어보세요.")
 
     if "qa_messages" not in st.session_state:
         st.session_state.qa_messages = [
-            {"role": "assistant", "content": "안녕하세요! 푸루·그루입니다. 환경시설 현장 안전 규정이나 지침에 대해 무엇이든 물어보세요!"}
+            {"role": "assistant", "content": "안녕하세요! 푸루·그루입니다. 환경시설 건설현장 안전 규정이나 지침에 대해 무엇이든 물어보세요!"}
         ]
 
     for msg in st.session_state.qa_messages:
