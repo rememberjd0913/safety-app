@@ -938,7 +938,7 @@ with main_tab4:
                         f"질문: {user_query}"
                     )
                     
-                    response = client.models.generate_content(model="gemini-2.5-flash", contents=rag_prompt)
+                    response = client.models.generate_content(model="gemini-3.6-flash", contents=rag_prompt)
                     answer_text = response.text if response and response.text else "답변을 생성하지 못했습니다."
                     
                     # AI 답변 화면 출력
