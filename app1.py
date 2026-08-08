@@ -28,6 +28,32 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ---------------- PDF 생성 함수 정의 ----------------
+def generate_pdf(title, content):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # 윈도우 환경 기본 한글 폰트 등록 (NanumGothic 이나 malgun 등 사용 가능)
+    # 리눅스 환경(Streamlit Cloud 등)인 경우 나눔고딕 폰트 파일을 경로에 포함해야 합니다.
+    font_path = "C:/Windows/Fonts/malgun.ttf"  # 윈도우 기준 경로
+    if os.path.exists(font_path):
+        pdf.add_font("Malgun", "", font_path, uni=True)
+        pdf.set_font("Malgun", size=12)
+    else:
+        # 폰트 파일이 없을 경우 기본 폰트 사용 (한글이 깨질 수 있으므로 위 폰트 경로 확인 필요)
+        pdf.set_font("Arial", size=12)
+
+    # 문서 제목 추가
+    pdf.cell(200, 10, text=title, new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.ln(10)
+    
+    # 본문 내용 추가 (줄바꿈 자동 처리)
+    # 멀티라인 텍스트 입력
+    pdf.multi_cell(0, 10, text=content)
+    
+    # PDF를 바이트로 반환
+    return pdf.output()
+
 # --- Base64 이미지 변환 함수 ---
 def get_base64_image(image_path):
     try:
@@ -936,3 +962,39 @@ with main_tab4:
                     err_msg = f"답변 생성 중 오류가 발생했습니다: {e}"
                     st.error(err_msg)
                     st.session_state.qa_messages.append({"role": "assistant", "content": err_msg})
+
+# (전략 생략... 사용자의 질문을 받고 AI 모델이 답변을 생성하는 구간)
+
+    if user_query := st.chat_input("질문을 입력하세요"):
+        # ... 사용자 입력 처리 및 AI 답변 생성 로직 ...
+        
+        # 예시: AI가 답변을 만들어 answer_text 변수에 담았다고 가정해봅시다.
+        answer_text = response.text 
+        
+        # 화면에 AI 답변 출력
+        st.markdown(answer_text)
+
+        # ====================================================
+        # 💡 [여기에 넣어주시면 됩니다!] 
+        # AI 답변이 생성되어 화면에 나온 바로 다음 줄
+        # ====================================================
+        st.markdown("---")
+        st.subheader("📄 보고서 문서 출력")
+        
+        # PDF 생성 버튼
+        if st.button("📥 PDF 문서로 다운로드"):
+            try:
+                # PDF 바이트 데이터 생성
+                pdf_data = generate_pdf("KECO 현장 안전 점검 및 규정 검토 보고서", answer_text)
+                
+                # 다운로드 버튼 제공
+                st.download_button(
+                    label="클릭하여 PDF 파일 저장",
+                    data=pdf_data,
+                    file_name="safety_inspection_report.pdf",
+                    mime="application/pdf"
+                )
+                st.success("PDF 문서가 성공적으로 준비되었습니다! 위 버튼을 눌러 저장하세요.")
+            except Exception as e:
+                st.error(f"PDF 생성 중 오류가 발생했습니다: {e}")
+        # ====================================================
