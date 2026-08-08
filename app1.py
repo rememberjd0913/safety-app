@@ -904,10 +904,12 @@ with main_tab4:
             {"role": "assistant", "content": "안녕하세요! 푸루·그루입니다. 환경시설 건설현장 안전 규정이나 지침에 대해 무엇이든 물어보세요!"}
         ]
 
+    # 기존 대화 기록 출력
     for msg in st.session_state.qa_messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
+    # 단 하나의 채팅 입력창
     if user_query := st.chat_input("예: 밀폐공간 작업 시 산소 및 유해가스 측정 기준이 어떻게 되나요?"):
         st.session_state.qa_messages.append({"role": "user", "content": user_query})
         with st.chat_message("user"):
@@ -916,34 +918,18 @@ with main_tab4:
         with st.chat_message("assistant"):
             with st.spinner("관련 안전 규정을 검토 중입니다..."):
                 try:
-                    # 1. DATA 폴더 내 파일 내용을 읽어오는 로직 추가
-                    # (예시로 'safety_guidelines.txt' 파일을 읽는다고 가정합니다. 파일명은 실제 추가하신 이름으로 변경하세요)
                     data_dir = "DATA"
                     context_text = ""
-                    
-                    # 읽어올 파일들의 목록 (확장자에 따라 .pdf 또는 .txt 로 수정 가능)
-                    # 파일 이름에 공백이나 괄호가 있으므로 정확히 일치시켜 줍니다.
-                    target_files = [
-                        "건설안전실무자가이드.pdf", 
-                        "산업안전보건기준에 관한 규칙(고용노동부령)(제00450호).pdf", 
-                        "중대재해 처벌 등에관한 법률(3단비교).pdf"
-                        "건설기술 진흥법(3단비교).pdf"
-                    ]
-                    
-                    # 만약 파일이 .txt 라면 위 확장자를 .txt 로 변경하시고 아래 pypdf 대신 일반 open을 쓰시면 됩니다.
                     
                     if os.path.exists(data_dir):
                         for filename in os.listdir(data_dir):
                             file_path = os.path.join(data_dir, filename)
-                            # 텍스트 파일인 경우 읽어오기
                             if filename.endswith(".txt") and os.path.isfile(file_path):
                                 with open(file_path, "r", encoding="utf-8") as f:
                                     context_text += f"\n--- [문서 파일: {filename}] ---\n" + f.read()
-                            # 만약 PDF 파일을 넣으셨다면 pypdf 등을 이용해 추출할 수도 있습니다.
 
                     client = genai.Client(api_key=api_key)
                     
-                    # 2. 읽어온 파일 내용을 프롬프트에 포함
                     rag_prompt = (
                         "당신은 한국환경공단(KECO) 수도권서부환경본부의 전문 안전 기술 자문 AI입니다.\n"
                         "아래 제공된 참고 문서 및 산업안전보건기준에 관한 규칙을 바탕으로, "
@@ -952,40 +938,39 @@ with main_tab4:
                         f"질문: {user_query}"
                     )
                     
-                    # 모델 호출 (사용 가능한 최신 모델명 적용)
-                    response = client.models.generate_content(model="gemini-3.6-flash", contents=rag_prompt)
+                    response = client.models.generate_content(model="gemini-2.5-flash", contents=rag_prompt)
                     answer_text = response.text if response and response.text else "답변을 생성하지 못했습니다."
                     
+                    # AI 답변 화면 출력
                     st.markdown(answer_text)
                     st.session_state.qa_messages.append({"role": "assistant", "content": answer_text})
+
+                    # ====================================================
+                    # 📄 PDF 문서 출력 및 다운로드 기능 (답변 바로 밑에 통합)
+                    # ====================================================
+                    st.markdown("---")
+                    st.subheader("📄 보고서 문서 출력")
+                    
+                    # PDF 생성 버튼 (Streamlit 특성상 버튼 클릭 시 실행)
+                    if st.button("📥 PDF 문서로 다운로드", key="pdf_download_btn"):
+                        try:
+                            # PDF 바이트 데이터 생성
+                            pdf_data = generate_pdf("KECO 현장 안전 점검 및 규정 검토 보고서", answer_text)
+                            
+                            # 다운로드 버튼 제공
+                            st.download_button(
+                                label="클릭하여 PDF 파일 저장",
+                                data=pdf_data,
+                                file_name="safety_inspection_report.pdf",
+                                mime="application/pdf",
+                                key="final_pdf_download"
+                            )
+                            st.success("PDF 문서가 성공적으로 준비되었습니다! 위 버튼을 눌러 저장하세요.")
+                        except Exception as pdf_err:
+                            st.error(f"PDF 생성 중 오류가 발생했습니다: {pdf_err}")
+                    # ====================================================
+
                 except Exception as e:
                     err_msg = f"답변 생성 중 오류가 발생했습니다: {e}"
                     st.error(err_msg)
                     st.session_state.qa_messages.append({"role": "assistant", "content": err_msg})
-
-# (전략 생략... 사용자의 질문을 받고 AI 모델이 답변을 생성하는 구간)
-
-        # ====================================================
-        # 💡 [여기에 넣어주시면 됩니다!] 
-        # AI 답변이 생성되어 화면에 나온 바로 다음 줄
-        # ====================================================
-        st.markdown("---")
-        st.subheader("📄 보고서 문서 출력")
-        
-        # PDF 생성 버튼
-        if st.button("📥 PDF 문서로 다운로드"):
-            try:
-                # PDF 바이트 데이터 생성
-                pdf_data = generate_pdf("KECO 현장 안전 점검 및 규정 검토 보고서", answer_text)
-                
-                # 다운로드 버튼 제공
-                st.download_button(
-                    label="클릭하여 PDF 파일 저장",
-                    data=pdf_data,
-                    file_name="safety_inspection_report.pdf",
-                    mime="application/pdf"
-                )
-                st.success("PDF 문서가 성공적으로 준비되었습니다! 위 버튼을 눌러 저장하세요.")
-            except Exception as e:
-                st.error(f"PDF 생성 중 오류가 발생했습니다: {e}")
-        # ====================================================
