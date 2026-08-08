@@ -865,6 +865,8 @@ with main_tab3:
     else:
         st.info("📝 아직 구글 시트에 저장된 점검 이력이 없습니다. [안전 점검 등록] 탭에서 첫 점검을 완료해 보세요.")
 
+import os
+
 # ---------------- Tab 4: AI 안전 가이드 Q&A (RAG) ----------------
 with main_tab4:
     st.subheader("📖 AI 환경시설 안전 가이드 및 규정 Q&A")
@@ -887,16 +889,45 @@ with main_tab4:
         with st.chat_message("assistant"):
             with st.spinner("관련 안전 규정을 검토 중입니다..."):
                 try:
+                    # 1. DATA 폴더 내 파일 내용을 읽어오는 로직 추가
+                    # (예시로 'safety_guidelines.txt' 파일을 읽는다고 가정합니다. 파일명은 실제 추가하신 이름으로 변경하세요)
+                    data_dir = "DATA"
+                    context_text = ""
+                    
+                    # 읽어올 파일들의 목록 (확장자에 따라 .pdf 또는 .txt 로 수정 가능)
+                    # 파일 이름에 공백이나 괄호가 있으므로 정확히 일치시켜 줍니다.
+                    target_files = [
+                        "건설안전실무자가이드.pdf", 
+                        "산업안전보건기준에 관한 규칙(고용노동부령)(제00450호).pdf", 
+                        "중대재해 처벌 등에관한 법률(3단비교).pdf"
+                    ]
+                    
+                    # 만약 파일이 .txt 라면 위 확장자를 .txt 로 변경하시고 아래 pypdf 대신 일반 open을 쓰시면 됩니다.
+                    
+                    if os.path.exists(data_dir):
+                        for filename in os.listdir(data_dir):
+                            file_path = os.path.join(data_dir, filename)
+                            # 텍스트 파일인 경우 읽어오기
+                            if filename.endswith(".txt") and os.path.isfile(file_path):
+                                with open(file_path, "r", encoding="utf-8") as f:
+                                    context_text += f"\n--- [문서 파일: {filename}] ---\n" + f.read()
+                            # 만약 PDF 파일을 넣으셨다면 pypdf 등을 이용해 추출할 수도 있습니다.
+
                     client = genai.Client(api_key=api_key)
+                    
+                    # 2. 읽어온 파일 내용을 프롬프트에 포함
                     rag_prompt = (
                         "당신은 한국환경공단(KECO) 수도권서부환경본부의 전문 안전 기술 자문 AI입니다.\n"
-                        "산업안전보건기준에 관한 규칙 및 환경시설 공사 현장 안전 가이드를 바탕으로, "
+                        "아래 제공된 참고 문서 및 산업안전보건기준에 관한 규칙을 바탕으로, "
                         "다음 질문에 대해 정확하고 실무에 도움이 되는 조치 사항을 친절하게 답변해주세요.\n\n"
+                        f"[참고 문서 내용]\n{context_text if context_text else '추가 문서 없음'}\n\n"
                         f"질문: {user_query}"
                     )
-                    # 모델 이름을 'gemini-1.5-flash' (또는 'gemini-1.5-pro')로 변경합니다.
-                    response = client.models.generate_content(model="gemini-3.6-flash", contents=rag_prompt)
+                    
+                    # 모델 호출 (사용 가능한 최신 모델명 적용)
+                    response = client.models.generate_content(model="gemini-2.5-flash", contents=rag_prompt)
                     answer_text = response.text if response and response.text else "답변을 생성하지 못했습니다."
+                    
                     st.markdown(answer_text)
                     st.session_state.qa_messages.append({"role": "assistant", "content": answer_text})
                 except Exception as e:
