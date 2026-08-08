@@ -925,7 +925,7 @@ with main_tab4:
                     )
                     
                     # 모델 호출 (사용 가능한 최신 모델명 적용)
-                    response = client.models.generate_content(model="gemini-2.5-flash", contents=rag_prompt)
+                    response = client.models.generate_content(model="gemini-3.6-flash", contents=rag_prompt)
                     answer_text = response.text if response and response.text else "답변을 생성하지 못했습니다."
                     
                     st.markdown(answer_text)
