@@ -44,12 +44,15 @@ def show_splash_screen():
             with container:
                 # 📌 실제 로고 이미지 불러오기 시도 (없으면 세련된 심볼 표시)
                 try:
-                    logo_img = Image.open("keco_logo.png")
-                    # 이미지 정중앙 배치를 위해 컬럼 활용
-                    img_col1, img_col2, img_col3 = st.columns([1, 2, 1])
-                    with img_col2:
-                        st.image(logo_img, width=130)
-                except:
+                    # 대소문자 정확히 일치시키기 (Keco_logo.png)
+                    logo_img = Image.open("Keco_logo.png")
+                    ic1, ic2, ic3 = st.columns([1, 2, 1])
+                    with ic2:
+                        st.image(logo_img, width=140)
+                except Exception:
+                    st.markdown("""
+                        <div style="text-align: center; font-size: 3rem; margin-bottom: 10px;">🌱</div>
+                    """, unsafe_allow_html=True)
                     st.markdown("""
                         <div style="
                             width: 80px; height: 80px; 
