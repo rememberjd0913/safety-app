@@ -46,7 +46,7 @@ def show_splash_screen():
                     logo_img = Image.open("Keco_logo.png")
                     ic1, ic2, ic3 = st.columns([1, 2, 1])
                     with ic2:
-                        st.image(logo_img, width=140)
+                        st.image(logo_img, width=200)
                 except Exception:
                     st.markdown('<div style="text-align: center; font-size: 3rem;">🌱</div>', unsafe_allow_html=True)
                 
