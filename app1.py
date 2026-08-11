@@ -87,8 +87,8 @@ def check_password():
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        user_id = st.text_input("👤 감독관 ID (사번)", key="username_input")
-        user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input")
+        user_id = st.text_input("👤 감독관 ID (사번)", key="login_username_input")
+        user_pw = st.text_input("🔑 비밀번호", type="password", key="login_password_input")
         
         if st.button("로그인", use_container_width=True):
             user_id_clean = str(user_id).strip()
