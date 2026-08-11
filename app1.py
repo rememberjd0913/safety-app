@@ -39,20 +39,39 @@ def show_splash_screen():
         
         with splash_placeholder.container():
             st.markdown("""
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 75vh; text-align: center;">
+                <div style="
+                    display: flex; 
+                    flex-direction: column; 
+                    align-items: center; 
+                    justify-content: center; 
+                    height: 80vh; 
+                    text-align: center;
+                ">
             """, unsafe_allow_html=True)
             
-            # 📌 프로젝트 폴더에 넣은 실제 로고 이미지 출력 (크기 조절 가능)
+            # 📌 실제 로고 이미지 불러오기 시도 (없으면 깔끔한 텍스트형 심볼로 대체)
             try:
                 logo_img = Image.open("keco_logo.png")
-                st.image(logo_img, width=120)
+                st.image(logo_img, width=150)
             except:
-                st.markdown("🌱") # 이미지를 못 찾을 경우를 대비한 대체 이모지
+                # 이미지가 없을 때 화면에 큼직하게 뜨는 공단 심볼 디자인
+                st.markdown("""
+                    <div style="
+                        width: 90px; height: 90px; 
+                        background: linear-gradient(135deg, #84CC16, #0284C7); 
+                        border-radius: 50%; 
+                        display: flex; align-items: center; justify-content: center; 
+                        margin: 0 auto 20px auto; 
+                        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                    ">
+                        <span style="color: white; font-size: 2rem; font-weight: bold;">🌱</span>
+                    </div>
+                """, unsafe_allow_html=True)
                 
             st.markdown("""
-                    <h2 style="color: #1E293B; font-weight: 700; margin-top: 15px; margin-bottom: 5px;">한국환경공단</h2>
-                    <h3 style="color: #007A33; font-weight: 600; margin-bottom: 25px;">수도권서부환경본부</h3>
-                    <p style="color: #64748B; font-size: 1.1rem; font-weight: 500; letter-spacing: 1px;">"안전은 우리 가족의 행복"</p>
+                    <h1 style="color: #1E293B; font-weight: 800; font-size: 2.2rem; margin-top: 10px; margin-bottom: 5px;">한국환경공단</h1>
+                    <h2 style="color: #007A33; font-weight: 700; font-size: 1.5rem; margin-bottom: 25px;">수도권서부환경본부</h2>
+                    <p style="color: #64748B; font-size: 1.2rem; font-weight: 600; letter-spacing: 1.5px;">"안전은 우리 가족의 행복"</p>
                 </div>
             """, unsafe_allow_html=True)
             
@@ -62,7 +81,6 @@ def show_splash_screen():
         # 스플래시 화면 비우기
         splash_placeholder.empty()
         st.session_state["splash_shown"] = True
-
 
 # ==========================================
 # 🔒 [보안] 감독관 로그인 제어 게이트웨이
