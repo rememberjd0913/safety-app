@@ -29,38 +29,45 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded"
 )
-# 1. 페이지 설정
-st.set_page_config(page_title="한국환경공단 감독관 인증", page_icon="🌱")
 
-# 2. 스플래시 화면 실행 여부 체크 (세션 상태 초기화)
+# ==========================================
+# 1. 세션 상태 초기화 (가장 처음에 위치해야 함)
+# ==========================================
 if "splash_done" not in st.session_state:
     st.session_state.splash_done = False
+if "password_correct" not in st.session_state:
+    st.session_state.password_correct = False
 
-# 3. 스플래시 화면 함수
-def show_splash():
-    # 로고 불러오기 (절대 경로)
-    try:
-        logo_img = Image.open("Keco_logo.png")
-    except:
-        logo_img = None
-
-    # 중앙 정렬을 위한 컬럼 분할
-    _, col_center, _ = st.columns([1, 2, 1])
-    with col_center:
-        if logo_img:
-            st.image(logo_img, width=220)
-        st.markdown("""
-            <div style="text-align: center; margin-top: 20px;">
-                <h1 style="color: #1E293B;">한국환경공단</h1>
-                <h2 style="color: #007A33;">수도권서부환경본부</h2>
-                <p style="font-size: 1.2rem; font-weight: bold; margin-top: 10px;">"안전은 우리 가족의 행복"</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    # 3초 대기
-    time.sleep(3)
-    st.session_state.splash_done = True
-    st.rerun()
+# ==========================================
+# 2. 3초 인트로 스플래시 화면 함수
+# ==========================================
+def run_splash_screen():
+    if not st.session_state.splash_done:
+        # 화면 전체를 채우기 위한 빈 공간 컨테이너
+        placeholder = st.empty()
+        with placeholder.container():
+            st.markdown("<br><br><br>", unsafe_allow_html=True)
+            _, col2, _ = st.columns([1, 2, 1])
+            with col2:
+                try:
+                    logo_img = Image.open(r"C:/Users/P/Desktop/safety-file/Keco_logo.png")
+                    st.image(logo_img, width=220)
+                except Exception:
+                    st.markdown('<div style="text-align: center; font-size: 3rem;">🌱</div>', unsafe_allow_html=True)
+                
+                st.markdown("""
+                    <div style="text-align: center; margin-top: 15px;">
+                        <h1 style="color: #1E293B; font-weight: 800; font-size: 2.2rem; margin-bottom: 5px;">한국환경공단</h1>
+                        <h2 style="color: #007A33; font-weight: 700; font-size: 1.4rem; margin-bottom: 25px;">수도권서부환경본부</h2>
+                        <p style="color: #64748B; font-size: 1.15rem; font-weight: 600; letter-spacing: 1px;">"안전은 우리 가족의 행복"</p>
+                    </div>
+                """, unsafe_allow_html=True)
+        
+        # 3초 대기 후 화면 비우기 및 상태 변경
+        time.sleep(3.0)
+        placeholder.empty()
+        st.session_state.splash_done = True
+        st.rerun()
 
 # 4. 앱 실행 로직
 if not st.session_state.splash_done:
