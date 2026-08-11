@@ -50,7 +50,7 @@ def show_splash_screen():
                     with img_col2:
                         st.image(logo_img, width=140)
                 except Exception:
-                st.markdown('<div style="text-align: center; font-size: 3rem;">🌱</div>', unsafe_allow_html=True)
+                    st.markdown('<div style="text-align: center; font-size: 3rem;">🌱</div>', unsafe_allow_html=True)
                     st.markdown("""
                         <div style="
                             width: 80px; height: 80px; 
