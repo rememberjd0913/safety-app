@@ -362,49 +362,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-
-# ==========================================
-# 🔒 [보안] 감독관 로그인 제어 게이트웨이
-# ==========================================
-def check_password():
-    if st.session_state.get("password_correct", False):
-        return True
-
-    allowed_users = st.secrets.get("passwords", {})
-
-    st.markdown("""
-        <div style="text-align:center; padding: 30px 10px 10px 10px;">
-            <h2 style="color:#007A33;">🌱 한국환경공단 감독관 인증</h2>
-            <p style="color:#64748B;">인증된 사내 감독관만 접근 가능한 스마트 점검 시스템입니다.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        user_id = st.text_input("👤 감독관 ID (사번)", key="username_input")
-        user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input")
-        
-        if st.button("로그인", use_container_width=True):
-            user_id_clean = str(user_id).strip()
-            user_pw_clean = str(user_pw).strip()
-            allowed_users_str = {str(k): str(v) for k, v in allowed_users.items()}
-            
-            if user_id_clean in allowed_users_str and allowed_users_str[user_id_clean] == user_pw_clean:
-                st.session_state["password_correct"] = True
-                st.session_state["logged_user"] = user_id_clean
-                st.rerun()
-            else:
-                st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
-
-    return False
-
-if not check_password():
-    st.stop()
-
-logged_user_id = st.session_state.get('logged_user')
-user_emails_map = st.secrets.get("user_emails", {})
-mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
-
 # --- 사이드바 영역 ---
 st.sidebar.markdown("### 🔒 감독관 인증 정보")
 st.sidebar.write(f"접속 사번: **{logged_user_id}**")
