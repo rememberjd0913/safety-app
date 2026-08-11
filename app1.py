@@ -34,19 +34,18 @@ st.set_page_config(
 # ==========================================
 def show_splash_screen():
     if not st.session_state.get("splash_done", False):
-        # 화면 전체를 채우는 공간
-        placeholder = st.empty()
+        # 화면 전체를 덮는 임시 공간
+        splash_placeholder = st.empty()
         
-        with placeholder.container():
+        with splash_placeholder.container():
             st.markdown("<br><br><br>", unsafe_allow_html=True)
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                # 대소문자가 정확히 일치하는 Keco_logo.png 불러오기
                 try:
-                    logo_img = Image.open("Keco_logo.png")
+                    logo_img = Image.open(r"C:/Users/P/Desktop/safety-file/Keco_logo.png")
                     ic1, ic2, ic3 = st.columns([1, 2, 1])
                     with ic2:
-                        st.image(logo_img, width=200)
+                        st.image(logo_img, width=220)
                 except Exception:
                     st.markdown('<div style="text-align: center; font-size: 3rem;">🌱</div>', unsafe_allow_html=True)
                 
@@ -58,28 +57,30 @@ def show_splash_screen():
                     </div>
                 """, unsafe_allow_html=True)
         
-        # 정확히 3초 대기
+        # 3초 대기
         time.sleep(3.0)
         
-        # 화면을 비우고 완료 상태 기록 후 새로고침
-        placeholder.empty()
+        # 스플래시 화면을 완전히 지우고 완료 상태 기록
+        splash_placeholder.empty()
         st.session_state["splash_done"] = True
         st.rerun()
 
 # ==========================================
-# 🔒 [보안] 로그인 인증 게이트웨이 (중복 출력 방지 버전)
+# 🔒 [보안] 로그인 인증 게이트웨이
 # ==========================================
 def check_password():
-    # 1. 3초 인트로 스플래시 화면 실행
-    show_splash_screen()
-    
-    # 만약 로그인이 이미 통과되었다면 True 반환
+    # 1. 스플래시가 아직 안 끝났다면 스플래시만 실행하고 함수 중단
+    if not st.session_state.get("splash_done", False):
+        show_splash_screen()
+        st.stop() # 👈 핵심: 스플래시 실행 중에는 아래 로그인 코드가 절대 실행되지 않게 막음!
+
+    # 2. 로그인이 이미 완료된 경우
     if st.session_state.get("password_correct", False):
         return True
 
     allowed_users = st.secrets.get("passwords", {})
 
-    # 📌 로그인 화면 UI (중복 출력되지 않도록 단독 블록으로 구성)
+    # 3. 단일 로그인 화면 UI
     st.markdown("""
         <div style="text-align:center; padding: 30px 10px 10px 10px;">
             <h2 style="color:#007A33;">🌱 한국환경공단 감독관 인증</h2>
