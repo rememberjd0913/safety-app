@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
-from PIL import Image
 from google import genai
 import gspread
 from google.oauth2.service_account import Credentials
@@ -28,136 +27,7 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded"
 )
-# --- 🔑 Streamlit Secrets에서 API 키 로드 ---
-if "GEMINI_API_KEY" in st.secrets:
-    api_key = st.secrets["GEMINI_API_KEY"]
-else:
-    st.error("🔑 API Key를 찾을 수 없습니다. Streamlit Cloud의 Secrets 설정을 확인해 주세요.")
-    st.stop()
 
-# --- 🎨 스타일 커스텀 CSS (모바일 및 포털 룩앤필) ---
-st.markdown("""
-    <style>
-    .stApp {
-        background-color: #F8FBF9;
-    }
-    .portal-banner {
-        background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80');
-        background-size: cover;
-        background-position: center;
-        padding: 35px 20px;
-        border-radius: 16px;
-        color: white;
-        text-align: center;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    }
-    .notice-box {
-        background: white;
-        border: 1.5px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# --- 1. 상단 공단 포털형 히어로 배너 ---
-st.markdown("""
-    <div class="portal-banner">
-        <h4 style="margin: 0; font-size: 1.1rem; font-weight: 400; color: #E2E8F0;">반갑습니다.</h4>
-        <h2 style="margin: 8px 0 0 0; font-size: 1.35rem; font-weight: 700; color: #FFFFFF;">탄소중립과 미래 환경을 선도하는<br>한국환경공단 스마트 안전 분석 시스템</h2>
-    </div>
-""", unsafe_allow_html=True)
-
-# --- 2. 빠른 메뉴 바로가기 버튼 그리드 ---
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.button("📸 현장분석", use_container_width=True)
-with col2:
-    st.button("📋 점검현황", use_container_width=True)
-with col3:
-    st.button("📖 안전가이드", use_container_width=True)
-
-st.markdown("---")
-
-# --- 3. 공지사항 스타일 섹션 ---
-st.markdown("""
-    <div class="notice-box">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #007A33; padding-bottom: 8px; margin-bottom: 10px;">
-            <strong style="color: #007A33; font-size: 1.05rem;">📌 공지사항 및 알림</strong>
-            <span style="font-size: 0.8rem; color: #64748B;">+ 더보기</span>
-        </div>
-        <div style="font-size: 0.9rem; color: #334155; padding: 6px 0;">
-            <span style="background: #007A33; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-right: 6px;">필독</span> 
-            2026년 하반기 현장 시설물 특별 안전 점검 가이드 게시 <span style="float: right; color: #94A3B8; font-size: 0.8rem;">2026-08-11</span>
-        </div>
-    </div>
-""", unsafe_allow_html=True)
-
-# --- 4. 기존 AI 위험요소 분석 기능 영역 ---
-st.subheader("📸 AI 건설/현장 위험요소 분석")
-st.write("현장 사진을 업로드하면 Gemini AI가 안전 위험 요소를 정밀 진단해 드립니다.")
-
-uploaded_file = st.file_uploader("분석할 사진을 선택하세요 (JPG, PNG)", type=["jpg", "jpeg", "png"])
-
-if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="업로드된 현장 사진", use_container_width=True)
-    
-    if st.button("🔍 AI 위험요소 분석 시작", type="primary", use_container_width=True):
-        status_box = st.empty()
-        
-        try:
-            client = genai.Client(api_key=api_key)
-            
-            status_box.info("🔍 사용 가능한 Gemini 모델 목록을 불러오는 중입니다...")
-            all_models = list(client.models.list())
-            model_names = [m.name.replace("models/", "") for m in all_models]
-
-            prompt = (
-                "이 사진은 작업 현장 사진입니다. "
-                "사진 속에서 발생할 수 있는 안전 위험요소를 정밀하게 분석해 주고, "
-                "각 위험요소에 대한 예방대책을 항목별로 깔끔하게 작성해 주세요."
-            )
-
-            response = None
-            used_model = ""
-
-            for m_name in model_names:
-                try:
-                    status_box.info(f"⏳ 위험요소 분석 중... (연결 모델: {m_name})")
-                    response = client.models.generate_content(
-                        model=m_name,
-                        contents=[image, prompt]
-                    )
-                    used_model = m_name
-                    break  
-                except Exception:
-                    continue
-
-            if response:
-                status_box.empty()
-                st.success(f"분석이 완료되었습니다! (성공 모델: {used_model})")
-                st.markdown("---")
-                st.subheader("📋 분석 결과")
-                st.markdown(f"""
-                    <div style="background-color: #FFFFFF; border: 1.5px solid #10B981; border-radius: 12px; padding: 18px; color: #1E293B; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
-                        {response.text.replace(chr(10), '<br>')}
-                    </div>
-                """, unsafe_allow_html=True)
-            else:
-                status_box.empty()
-                st.error("❌ 연결 가능한 Gemini 모델을 찾지 못했습니다. API 키 권한을 확인해 주세요.")
-
-        except Exception as e:
-            status_box.empty()
-            err_msg = str(e)
-            if "API_KEY_INVALID" in err_msg or "API key not valid" in err_msg:
-                st.error("❌ Secrets에 입력하신 API Key가 올바르지 않습니다. 키를 다시 확인해 주세요.")
-            else:
-                st.error(f"오류가 발생했습니다: {e}")
 # ---------------- PDF 생성 함수 정의 ----------------
 def generate_pdf(title, content):
     pdf = FPDF()
