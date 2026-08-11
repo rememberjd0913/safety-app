@@ -40,7 +40,7 @@ if "splash_done" not in st.session_state:
 def show_splash():
     # 로고 불러오기 (절대 경로)
     try:
-        logo_img = Image.open(r"C:/Users/P/Desktop/safety-file/Keco_logo.png")
+        logo_img = Image.open("Keco_logo.png")
     except:
         logo_img = None
 
