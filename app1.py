@@ -28,10 +28,7 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded"
 )
-import os
 
-# 현재 파이썬이 실행되고 있는 폴더 경로를 화면에 출력
-st.write("현재 폴더 위치:", os.getcwd())
 # ==========================================
 # 🚀 [인트로] 3초 스플래시 화면 함수
 # ==========================================
@@ -46,7 +43,7 @@ def show_splash_screen():
             with col2:
                 # 대소문자가 정확히 일치하는 Keco_logo.png 불러오기
                 try:
-                    logo_img = Image.open("C:/Users/P/Desktop/safety-file/Keco_logo.png")
+                    logo_img = Image.open("Keco_logo.png")
                     ic1, ic2, ic3 = st.columns([1, 2, 1])
                     with ic2:
                         st.image(logo_img, width=140)
