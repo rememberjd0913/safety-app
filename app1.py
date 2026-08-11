@@ -65,47 +65,6 @@ def show_splash_screen():
         st.session_state["splash_done"] = True
         st.rerun()
 
-# ==========================================
-# 🔒 [보안] 로그인 인증 게이트웨이
-# ==========================================
-def check_password():
-    # 1. 스플래시가 아직 안 끝났다면 스플래시만 실행하고 함수 중단
-    if not st.session_state.get("splash_done", False):
-        show_splash_screen()
-        st.stop() # 👈 핵심: 스플래시 실행 중에는 아래 로그인 코드가 절대 실행되지 않게 막음!
-
-    # 2. 로그인이 이미 완료된 경우
-    if st.session_state.get("password_correct", False):
-        return True
-
-    allowed_users = st.secrets.get("passwords", {})
-
-    # 3. 단일 로그인 화면 UI
-    st.markdown("""
-        <div style="text-align:center; padding: 30px 10px 10px 10px;">
-            <h2 style="color:#007A33;">🌱 한국환경공단 감독관 인증</h2>
-            <p style="color:#64748B;">인증된 사내 감독관만 접근 가능한 스마트 점검 시스템입니다.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        user_id = st.text_input("👤 감독관 ID (사번)", key="login_username_input")
-        user_pw = st.text_input("🔑 비밀번호", type="password", key="login_password_input")
-        
-        if st.button("로그인", use_container_width=True, key="login_submit_btn"):
-            user_id_clean = str(user_id).strip()
-            user_pw_clean = str(user_pw).strip()
-            allowed_users_str = {str(k): str(v) for k, v in allowed_users.items()}
-            
-            if user_id_clean in allowed_users_str and allowed_users_str[user_id_clean] == user_pw_clean:
-                st.session_state["password_correct"] = True
-                st.session_state["logged_user"] = user_id_clean
-                st.rerun()
-            else:
-                st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
-
-    return False
 
 # ==========================================
 # 🛑 핵심 기능 실행 제어 (로그인 통과 시에만 실행)
