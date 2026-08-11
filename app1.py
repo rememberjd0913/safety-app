@@ -40,10 +40,18 @@ def show_splash_screen():
         with splash_placeholder.container():
             st.markdown("""
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 75vh; text-align: center;">
-                    <!-- 한국환경공단 로고 심볼 -->
-                    <div style="font-size: 3.5rem; margin-bottom: 20px;">🌱</div>
-                    <h2 style="color: #1E293B; font-weight: 700; margin-bottom: 5px;">한국환경공단</h2>
-                    <h3 style="color: #007A33; font-weight: 600; margin-bottom: 30px;">수도권서부환경본부</h3>
+            """, unsafe_allow_html=True)
+            
+            # 📌 프로젝트 폴더에 넣은 실제 로고 이미지 출력 (크기 조절 가능)
+            try:
+                logo_img = Image.open("keco_logo.png")
+                st.image(logo_img, width=120)
+            except:
+                st.markdown("🌱") # 이미지를 못 찾을 경우를 대비한 대체 이모지
+                
+            st.markdown("""
+                    <h2 style="color: #1E293B; font-weight: 700; margin-top: 15px; margin-bottom: 5px;">한국환경공단</h2>
+                    <h3 style="color: #007A33; font-weight: 600; margin-bottom: 25px;">수도권서부환경본부</h3>
                     <p style="color: #64748B; font-size: 1.1rem; font-weight: 500; letter-spacing: 1px;">"안전은 우리 가족의 행복"</p>
                 </div>
             """, unsafe_allow_html=True)
