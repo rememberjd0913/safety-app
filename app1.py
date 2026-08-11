@@ -35,55 +35,47 @@ st.set_page_config(
 def show_splash_screen():
     # 앱 실행 후 최초 1회만 스플래시 화면이 뜨도록 세션 상태 활용
     if "splash_shown" not in st.session_state:
-        splash_placeholder = st.empty()
+        # 화면 전체를 꽉 채우기 위해 여백과 컨테이너 활용
+        st.markdown("<br><br>", unsafe_allow_html=True)
         
-        with splash_placeholder.container():
-            st.markdown("""
-                <div style="
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100vw;
-                    height: 100vh;
-                    background-color: #FFFFFF;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 99999;
-                ">
-            """, unsafe_allow_html=True)
-            
-            # 📌 실제 로고 이미지 불러오기 시도 (없으면 세련된 원형 심볼 표시)
-            try:
-                logo_img = Image.open("keco_logo.png")
-                st.image(logo_img, width=150)
-            except:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            container = st.container()
+            with container:
+                # 📌 실제 로고 이미지 불러오기 시도 (없으면 세련된 심볼 표시)
+                try:
+                    logo_img = Image.open("keco_logo.png")
+                    # 이미지 정중앙 배치를 위해 컬럼 활용
+                    img_col1, img_col2, img_col3 = st.columns([1, 2, 1])
+                    with img_col2:
+                        st.image(logo_img, width=130)
+                except:
+                    st.markdown("""
+                        <div style="
+                            width: 80px; height: 80px; 
+                            background: linear-gradient(135deg, #84CC16, #0284C7); 
+                            border-radius: 50%; 
+                            display: flex; align-items: center; justify-content: center; 
+                            margin: 0 auto 15px auto; 
+                            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                        ">
+                            <span style="color: white; font-size: 2rem;">🌱</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
                 st.markdown("""
-                    <div style="
-                        width: 90px; height: 90px; 
-                        background: linear-gradient(135deg, #84CC16, #0284C7); 
-                        border-radius: 50%; 
-                        display: flex; align-items: center; justify-content: center; 
-                        margin-bottom: 20px; 
-                        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-                    ">
-                        <span style="color: white; font-size: 2.2rem;">🌱</span>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <h1 style="color: #1E293B; font-weight: 800; font-size: 2rem; margin-bottom: 5px;">한국환경공단</h1>
+                        <h2 style="color: #007A33; font-weight: 700; font-size: 1.3rem; margin-bottom: 20px;">수도권서부환경본부</h2>
+                        <p style="color: #64748B; font-size: 1.1rem; font-weight: 600; letter-spacing: 1px;">"안전은 우리 가족의 행복"</p>
                     </div>
                 """, unsafe_allow_html=True)
                 
-            st.markdown("""
-                    <h1 style="color: #1E293B; font-weight: 800; font-size: 2.2rem; margin-top: 10px; margin-bottom: 5px; text-align: center;">한국환경공단</h1>
-                    <h2 style="color: #007A33; font-weight: 700; font-size: 1.5rem; margin-bottom: 25px; text-align: center;">수도권서부환경본부</h2>
-                    <p style="color: #64748B; font-size: 1.2rem; font-weight: 600; letter-spacing: 1.5px; text-align: center;">"안전은 우리 가족의 행복"</p>
-                </div>
-            """, unsafe_allow_html=True)
-            
         # 3초 동안 대기
         time.sleep(3.0)
         
-        # 스플래시 화면 비우기
-        splash_placeholder.empty()
+        # 화면 전체 초기화 후 로그인 화면으로 전환
+        st.rerun()
         st.session_state["splash_shown"] = True
 
 # ==========================================
