@@ -40,38 +40,42 @@ def show_splash_screen():
         with splash_placeholder.container():
             st.markdown("""
                 <div style="
-                    display: flex; 
-                    flex-direction: column; 
-                    align-items: center; 
-                    justify-content: center; 
-                    height: 80vh; 
-                    text-align: center;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background-color: #FFFFFF;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 99999;
                 ">
             """, unsafe_allow_html=True)
             
-            # 📌 실제 로고 이미지 불러오기 시도 (없으면 깔끔한 텍스트형 심볼로 대체)
+            # 📌 실제 로고 이미지 불러오기 시도 (없으면 세련된 원형 심볼 표시)
             try:
                 logo_img = Image.open("keco_logo.png")
                 st.image(logo_img, width=150)
             except:
-                # 이미지가 없을 때 화면에 큼직하게 뜨는 공단 심볼 디자인
                 st.markdown("""
                     <div style="
                         width: 90px; height: 90px; 
                         background: linear-gradient(135deg, #84CC16, #0284C7); 
                         border-radius: 50%; 
                         display: flex; align-items: center; justify-content: center; 
-                        margin: 0 auto 20px auto; 
+                        margin-bottom: 20px; 
                         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
                     ">
-                        <span style="color: white; font-size: 2rem; font-weight: bold;">🌱</span>
+                        <span style="color: white; font-size: 2.2rem;">🌱</span>
                     </div>
                 """, unsafe_allow_html=True)
                 
             st.markdown("""
-                    <h1 style="color: #1E293B; font-weight: 800; font-size: 2.2rem; margin-top: 10px; margin-bottom: 5px;">한국환경공단</h1>
-                    <h2 style="color: #007A33; font-weight: 700; font-size: 1.5rem; margin-bottom: 25px;">수도권서부환경본부</h2>
-                    <p style="color: #64748B; font-size: 1.2rem; font-weight: 600; letter-spacing: 1.5px;">"안전은 우리 가족의 행복"</p>
+                    <h1 style="color: #1E293B; font-weight: 800; font-size: 2.2rem; margin-top: 10px; margin-bottom: 5px; text-align: center;">한국환경공단</h1>
+                    <h2 style="color: #007A33; font-weight: 700; font-size: 1.5rem; margin-bottom: 25px; text-align: center;">수도권서부환경본부</h2>
+                    <p style="color: #64748B; font-size: 1.2rem; font-weight: 600; letter-spacing: 1.5px; text-align: center;">"안전은 우리 가족의 행복"</p>
                 </div>
             """, unsafe_allow_html=True)
             
