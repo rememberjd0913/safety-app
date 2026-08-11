@@ -30,56 +30,41 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🚀 [인트로] 3초 스플래시 화면 구현 함수
+# 🚀 [인트로] 3초 스플래시 화면 함수
 # ==========================================
 def show_splash_screen():
-    # 앱 실행 후 최초 1회만 스플래시 화면이 뜨도록 세션 상태 활용
-    if "splash_shown" not in st.session_state:
-        # 화면 전체를 꽉 채우기 위해 여백과 컨테이너 활용
-        st.markdown("<br><br>", unsafe_allow_html=True)
+    if not st.session_state.get("splash_done", False):
+        # 화면 전체를 채우는 공간
+        placeholder = st.empty()
         
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            container = st.container()
-            with container:
-                # 📌 실제 로고 이미지 불러오기 시도 (없으면 세련된 심볼 표시)
+        with placeholder.container():
+            st.markdown("<br><br><br>", unsafe_allow_html=True)
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                # 대소문자가 정확히 일치하는 Keco_logo.png 불러오기
                 try:
-                    # 대소문자 정확히 일치시키기 (Keco_logo.png)
                     logo_img = Image.open("Keco_logo.png")
                     ic1, ic2, ic3 = st.columns([1, 2, 1])
                     with ic2:
                         st.image(logo_img, width=140)
                 except Exception:
-                    st.markdown("""
-                        <div style="text-align: center; font-size: 3rem; margin-bottom: 10px;">🌱</div>
-                    """, unsafe_allow_html=True)
-                    st.markdown("""
-                        <div style="
-                            width: 80px; height: 80px; 
-                            background: linear-gradient(135deg, #84CC16, #0284C7); 
-                            border-radius: 50%; 
-                            display: flex; align-items: center; justify-content: center; 
-                            margin: 0 auto 15px auto; 
-                            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-                        ">
-                            <span style="color: white; font-size: 2rem;">🌱</span>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    
+                    st.markdown('<div style="text-align: center; font-size: 3rem;">🌱</div>', unsafe_allow_html=True)
+                
                 st.markdown("""
                     <div style="text-align: center; margin-top: 15px;">
-                        <h1 style="color: #1E293B; font-weight: 800; font-size: 2rem; margin-bottom: 5px;">한국환경공단</h1>
-                        <h2 style="color: #007A33; font-weight: 700; font-size: 1.3rem; margin-bottom: 20px;">수도권서부환경본부</h2>
-                        <p style="color: #64748B; font-size: 1.1rem; font-weight: 600; letter-spacing: 1px;">"안전은 우리 가족의 행복"</p>
+                        <h1 style="color: #1E293B; font-weight: 800; font-size: 2.2rem; margin-bottom: 5px;">한국환경공단</h1>
+                        <h2 style="color: #007A33; font-weight: 700; font-size: 1.4rem; margin-bottom: 25px;">수도권서부환경본부</h2>
+                        <p style="color: #64748B; font-size: 1.15rem; font-weight: 600; letter-spacing: 1px;">"안전은 우리 가족의 행복"</p>
                     </div>
                 """, unsafe_allow_html=True)
-                
-        # 3초 동안 대기
+        
+        # 정확히 3초 대기
         time.sleep(3.0)
         
-        # 화면 전체 초기화 후 로그인 화면으로 전환
+        # 화면을 비우고 완료 상태 기록 후 새로고침
+        placeholder.empty()
+        st.session_state["splash_done"] = True
         st.rerun()
-        st.session_state["splash_shown"] = True
 
 # ==========================================
 # 🔒 [보안] 감독관 로그인 제어 게이트웨이
