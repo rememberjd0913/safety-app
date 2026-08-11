@@ -67,17 +67,19 @@ def show_splash_screen():
         st.rerun()
 
 # ==========================================
-# 🔒 [보안] 감독관 로그인 제어 게이트웨이
+# 🔒 [보안] 로그인 인증 게이트웨이 (중복 출력 방지 버전)
 # ==========================================
 def check_password():
-    # 1. 3초 인트로 스플래시 화면 먼저 실행
+    # 1. 3초 인트로 스플래시 화면 실행
     show_splash_screen()
-
+    
+    # 만약 로그인이 이미 통과되었다면 True 반환
     if st.session_state.get("password_correct", False):
         return True
 
     allowed_users = st.secrets.get("passwords", {})
 
+    # 📌 로그인 화면 UI (중복 출력되지 않도록 단독 블록으로 구성)
     st.markdown("""
         <div style="text-align:center; padding: 30px 10px 10px 10px;">
             <h2 style="color:#007A33;">🌱 한국환경공단 감독관 인증</h2>
@@ -103,7 +105,6 @@ def check_password():
                 st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
 
     return False
-
 
 # ==========================================
 # 🛑 핵심 기능 실행 제어 (로그인 통과 시에만 실행)
