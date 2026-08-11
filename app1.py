@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
+import time
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
-from PIL import Image
 from google import genai
 import gspread
 from google.oauth2.service_account import Credentials
@@ -23,12 +23,163 @@ from fpdf import FPDF
 
 # --- 페이지 기본 설정 ---
 st.set_page_config(
-    page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 점검 시스템",
+    page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전관리시스템",
     page_icon="puru_guru.png",
     layout="centered",
     initial_sidebar_state="expanded"
 )
 
+# ==========================================
+# 🚀 [인트로] 3초 스플래시 화면 구현 함수
+# ==========================================
+def show_splash_screen():
+    # 앱 실행 후 최초 1회만 스플래시 화면이 뜨도록 세션 상태 활용
+    if "splash_shown" not in st.session_state:
+        splash_placeholder = st.empty()
+        
+        with splash_placeholder.container():
+            st.markdown("""
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 75vh; text-align: center;">
+                    <!-- 한국환경공단 로고 심볼 -->
+                    <div style="font-size: 3.5rem; margin-bottom: 20px;">🌱</div>
+                    <h2 style="color: #1E293B; font-weight: 700; margin-bottom: 5px;">한국환경공단</h2>
+                    <h3 style="color: #007A33; font-weight: 600; margin-bottom: 30px;">수도권서부환경본부</h3>
+                    <p style="color: #64748B; font-size: 1.1rem; font-weight: 500; letter-spacing: 1px;">"안전은 우리 가족의 행복"</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        # 3초 동안 대기
+        time.sleep(3.0)
+        
+        # 스플래시 화면 비우기
+        splash_placeholder.empty()
+        st.session_state["splash_shown"] = True
+
+
+# ==========================================
+# 🔒 [보안] 감독관 로그인 제어 게이트웨이
+# ==========================================
+def check_password():
+    # 1. 3초 인트로 스플래시 화면 먼저 실행
+    show_splash_screen()
+
+    if st.session_state.get("password_correct", False):
+        return True
+
+    allowed_users = st.secrets.get("passwords", {})
+
+    st.markdown("""
+        <div style="text-align:center; padding: 30px 10px 10px 10px;">
+            <h2 style="color:#007A33;">🌱 한국환경공단 감독관 인증</h2>
+            <p style="color:#64748B;">인증된 사내 감독관만 접근 가능한 스마트 점검 시스템입니다.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        user_id = st.text_input("👤 감독관 ID (사번)", key="username_input")
+        user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input")
+        
+        if st.button("로그인", use_container_width=True):
+            user_id_clean = str(user_id).strip()
+            user_pw_clean = str(user_pw).strip()
+            allowed_users_str = {str(k): str(v) for k, v in allowed_users.items()}
+            
+            if user_id_clean in allowed_users_str and allowed_users_str[user_id_clean] == user_pw_clean:
+                st.session_state["password_correct"] = True
+                st.session_state["logged_user"] = user_id_clean
+                st.rerun()
+            else:
+                st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
+
+    return False
+
+
+# ==========================================
+# 🛑 핵심 기능 실행 제어 (로그인 통과 시에만 실행)
+# ==========================================
+if check_password():
+    
+    # 🔑 Streamlit Secrets에서 API 키 로드
+    if "GEMINI_API_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_API_KEY"]
+    else:
+        st.error("🔑 API Key를 찾을 수 없습니다. Streamlit Cloud의 Secrets 설정을 확인해 주세요.")
+        st.stop()
+
+    # --- 🎨 스타일 커스텀 CSS ---
+    st.markdown("""
+        <style>
+        .stApp { background-color: #F8FBF9; }
+        .portal-banner {
+            background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80');
+            background-size: cover; background-position: center;
+            padding: 35px 20px; border-radius: 16px; color: white; text-align: center; margin-bottom: 20px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # --- 상단 포털 배너 ---
+    st.markdown("""
+        <div class="portal-banner">
+            <h4 style="margin: 0; font-size: 1.1rem; color: #E2E8F0;">반갑습니다. (감독관: """ + st.session_state.get("logged_user", "") + """)</h4>
+            <h2 style="margin: 8px 0 0 0; font-size: 1.35rem; color: #FFFFFF;">탄소중립과 미래 환경을 선도하는<br>한국환경공단 수도권서부환경본부 스마트 안전 시스템</h2>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # --- 기존 AI 위험요소 분석 기능 영역 ---
+    st.subheader("📸 AI 건설/현장 위험요소 분석")
+    st.write("현장 사진을 업로드하면 Gemini AI가 안전 위험 요소를 정밀 진단해 드립니다.")
+
+    uploaded_file = st.file_uploader("분석할 사진을 선택하세요 (JPG, PNG)", type=["jpg", "jpeg", "png"])
+
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        st.image(image, caption="업로드된 현장 사진", use_container_width=True)
+        
+        if st.button("🔍 AI 위험요소 분석 시작", type="primary", use_container_width=True):
+            status_box = st.empty()
+            try:
+                client = genai.Client(api_key=api_key)
+                status_box.info("🔍 사용 가능한 Gemini 모델 목록을 불러오는 중입니다...")
+                all_models = list(client.models.list())
+                model_names = [m.name.replace("models/", "") for m in all_models]
+
+                prompt = (
+                    "이 사진은 작업 현장 사진입니다. "
+                    "사진 속에서 발생할 수 있는 안전 위험요소를 정밀하게 분석해 주고, "
+                    "각 위험요소에 대한 예방대책을 항목별로 깔끔하게 작성해 주세요."
+                )
+
+                response = None
+                used_model = ""
+
+                for m_name in model_names:
+                    try:
+                        status_box.info(f"⏳ 위험요소 분석 중... (연결 모델: {m_name})")
+                        response = client.models.generate_content(model=m_name, contents=[image, prompt])
+                        used_model = m_name
+                        break  
+                    except Exception:
+                        continue
+
+                if response:
+                    status_box.empty()
+                    st.success(f"분석이 완료되었습니다! (성공 모델: {used_model})")
+                    st.markdown("---")
+                    st.subheader("📋 분석 결과")
+                    st.markdown(f"""
+                        <div style="background-color: #FFFFFF; border: 1.5px solid #10B981; border-radius: 12px; padding: 18px; color: #1E293B;">
+                            {response.text.replace(chr(10), '<br>')}
+                        </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    status_box.empty()
+                    st.error("❌ 연결 가능한 Gemini 모델을 찾지 못했습니다.")
+
+            except Exception as e:
+                status_box.empty()
+                st.error(f"오류가 발생했습니다: {e}")
 # ---------------- PDF 생성 함수 정의 ----------------
 def generate_pdf(title, content):
     pdf = FPDF()
