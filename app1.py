@@ -28,6 +28,31 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded"
 )
+# ==========================================
+# 🚀 [인트로] 3초 스플래시 화면 구현 함수
+# ==========================================
+def show_splash_screen():
+    # 앱 실행 후 최초 1회만 스플래시 화면이 뜨도록 세션 상태 활용
+    if "splash_shown" not in st.session_state:
+        splash_placeholder = st.empty()
+        
+        with splash_placeholder.container():
+            st.markdown("""
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 75vh; text-align: center;">
+                    <!-- 한국환경공단 로고 이미지 또는 심볼 -->
+                    <div style="font-size: 3.5rem; margin-bottom: 20px;">🌱</div>
+                    <h2 style="color: #1E293B; font-weight: 700; margin-bottom: 5px;">한국환경공단</h2>
+                    <h3 style="color: #007A33; font-weight: 600; margin-bottom: 30px;">수도권서부환경본부</h3>
+                    <p style="color: #64748B; font-size: 1.1rem; font-weight: 500; letter-spacing: 1px;">"안전은 우리 가족의 행복"</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        # 3초 동안 대기
+        time.sleep(3.0)
+        
+        # 스플래시 화면 비우기
+        splash_placeholder.empty()
+        st.session_state["splash_shown"] = True
 
 # ---------------- PDF 생성 함수 정의 ----------------
 def generate_pdf(title, content):
