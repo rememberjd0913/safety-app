@@ -48,8 +48,9 @@ def show_splash_screen():
                     # 이미지 정중앙 배치를 위해 컬럼 활용
                     img_col1, img_col2, img_col3 = st.columns([1, 2, 1])
                     with img_col2:
-                        st.image(logo_img, width=130)
-                except:
+                        st.image(logo_img, width=140)
+                except Exception:
+    st.markdown('<div style="text-align: center; font-size: 3rem;">🌱</div>', unsafe_allow_html=True)
                     st.markdown("""
                         <div style="
                             width: 80px; height: 80px; 
