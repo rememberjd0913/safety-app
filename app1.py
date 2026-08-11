@@ -90,7 +90,7 @@ def check_password():
         user_id = st.text_input("👤 감독관 ID (사번)", key="login_username_input")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="login_password_input")
         
-        if st.button("로그인", use_container_width=True):
+        if st.button("로그인", use_container_width=True, key="login_submit_btn"):
             user_id_clean = str(user_id).strip()
             user_pw_clean = str(user_pw).strip()
             allowed_users_str = {str(k): str(v) for k, v in allowed_users.items()}
