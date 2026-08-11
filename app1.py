@@ -29,55 +29,50 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded"
 )
-# ==========================================
-# 🚀 [인트로] 3초 스플래시 화면 구현 함수
-# ==========================================
-def show_splash_screen():
-    # 앱 실행 후 최초 1회만 스플래시 화면이 뜨도록 세션 상태 활용
-    if "splash_shown" not in st.session_state:
-        # 화면 전체를 꽉 채우기 위해 여백과 컨테이너 활용
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            container = st.container()
-            with container:
-                # 📌 실제 로고 이미지 불러오기 시도 (없으면 세련된 심볼 표시)
-                try:
-                    logo_img = Image.open("keco_logo.png")
-                    # 이미지 정중앙 배치를 위해 컬럼 활용
-                    img_col1, img_col2, img_col3 = st.columns([1, 2, 1])
-                    with img_col2:
-                        st.image(logo_img, width=140)
-                except Exception:
-                    st.markdown('<div style="text-align: center; font-size: 3rem;">🌱</div>', unsafe_allow_html=True)
-                    st.markdown("""
-                        <div style="
-                            width: 80px; height: 80px; 
-                            background: linear-gradient(135deg, #84CC16, #0284C7); 
-                            border-radius: 50%; 
-                            display: flex; align-items: center; justify-content: center; 
-                            margin: 0 auto 15px auto; 
-                            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-                        ">
-                            <span style="color: white; font-size: 2rem;">🌱</span>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    
-                st.markdown("""
-                    <div style="text-align: center; margin-top: 15px;">
-                        <h1 style="color: #1E293B; font-weight: 800; font-size: 2rem; margin-bottom: 5px;">한국환경공단</h1>
-                        <h2 style="color: #007A33; font-weight: 700; font-size: 1.3rem; margin-bottom: 20px;">수도권서부환경본부</h2>
-                        <p style="color: #64748B; font-size: 1.1rem; font-weight: 600; letter-spacing: 1px;">"안전은 우리 가족의 행복"</p>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-        # 3초 동안 대기
-        time.sleep(3.0)
-        
-        # 화면 전체 초기화 후 로그인 화면으로 전환
-        st.rerun()
-        st.session_state["splash_shown"] = True
+# 1. 페이지 설정
+st.set_page_config(page_title="한국환경공단 감독관 인증", page_icon="🌱")
+
+# 2. 스플래시 화면 실행 여부 체크 (세션 상태 초기화)
+if "splash_done" not in st.session_state:
+    st.session_state.splash_done = False
+
+# 3. 스플래시 화면 함수
+def show_splash():
+    # 로고 불러오기 (절대 경로)
+    try:
+        logo_img = Image.open(r"C:/Users/P/Desktop/safety-file/Keco_logo.png")
+    except:
+        logo_img = None
+
+    # 중앙 정렬을 위한 컬럼 분할
+    _, col_center, _ = st.columns([1, 2, 1])
+    with col_center:
+        if logo_img:
+            st.image(logo_img, width=220)
+        st.markdown("""
+            <div style="text-align: center; margin-top: 20px;">
+                <h1 style="color: #1E293B;">한국환경공단</h1>
+                <h2 style="color: #007A33;">수도권서부환경본부</h2>
+                <p style="font-size: 1.2rem; font-weight: bold; margin-top: 10px;">"안전은 우리 가족의 행복"</p>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    # 3초 대기
+    time.sleep(3)
+    st.session_state.splash_done = True
+    st.rerun()
+
+# 4. 앱 실행 로직
+if not st.session_state.splash_done:
+    show_splash()
+else:
+    # 💡 3초가 지난 후 여기에 감독관 인증 화면(로그인 코드)이 오면 됩니다.
+    st.title("🌱 한국환경공단 감독관 인증")
+    st.write("인증된 사내 감독관만 접근 가능한 스마트 점검 시스템입니다.")
+    
+    # 기존에 만드셨던 로그인/인증 코드들을 아래에 붙여넣으세요!
+    user_id = st.text_input("👤 감독관 ID (사번)")
+    # ... (나머지 기존 로그인 로직)
 
 # ---------------- PDF 생성 함수 정의 ----------------
 def generate_pdf(title, content):
