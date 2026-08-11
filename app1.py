@@ -43,7 +43,7 @@ def show_splash_screen():
             with col2:
                 # 대소문자가 정확히 일치하는 Keco_logo.png 불러오기
                 try:
-                    logo_img = Image.open("Keco_logo.png")
+                    logo_img = Image.open("C:/Users/P/Desktop/safety-file/Keco_logo.png")
                     ic1, ic2, ic3 = st.columns([1, 2, 1])
                     with ic2:
                         st.image(logo_img, width=140)
