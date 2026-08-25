@@ -37,6 +37,16 @@ if not st.session_state.get("password_correct", False):
 
     # --- [섹션 1] 메인 히어로 영역 (Wix 감성) ---
     st.markdown("""
+    <div class="wix-section" style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="flex: 1; padding-right: 40px;">
+            <p class="wix-subtitle">SAFETY MISSION</p>
+            <h1 class="wix-title">수도권 서부 환경시설의 안전과 무재해 건설 현장 실현</h1>
+            <p class="wix-desc">한국환경공단 수도권서부환경본부는 현장 근로자의 안전을 최우선으로 합니다.</p>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+    
+    st.markdown("""
         <div style="padding: 40px 10px 20px 10px; text-align: center;">
             <p style="color: #10B981; font-size: 0.85rem; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">SAFETY MISSION</p>
             <h1 style="color: #FFFFFF; font-size: 2.2rem; font-weight: 800; margin-bottom: 15px;">수도권 서부 환경시설의 안전과 무재해 건설 현장 실현</h1>
