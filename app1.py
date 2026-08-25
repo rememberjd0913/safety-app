@@ -19,8 +19,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from fpdf import FPDF
-import requests
-from io import BytesIO
 
 # --- 페이지 기본 설정 ---
 st.set_page_config(
@@ -214,22 +212,15 @@ def check_password():
     
     _, col_center, _ = st.columns([1, 2.5, 1])
     
-    with col_center:
-        # 1. 💡 GitHub에 올라간 이미지의 Raw URL을 여기에 넣습니다.
-        logo_url = "https://github.com/rememberjd0913/safety-app/blob/main/Keco_logo.png"
-
-        try:
-            response = requests.get(logo_url)
-            logo_img = Image.open(BytesIO(response.content))
-            
-            lc1, lc2, lc3 = st.columns([1, 2, 1])
-            with lc2:
-                st.image(logo_img, width=150)
-        except Exception:
-            # 불러오기 실패 시 대체 이모지
-            st.markdown('<div style="text-align: center; font-size: 2.5rem; margin-bottom: 10px;">🌱</div>', unsafe_allow_html=True)
-
-        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        with col_center:
+        # 💡 HTML 태그를 사용해 GitHub 이미지를 직접 띄우기 (가장 확실한 방법)
+        logo_url =  "https://github.com/rememberjd0913/safety-app/blob/main/Keco_logo.png"
+        
+        st.markdown(f"""
+            <div style="text-align: center; margin-bottom: 10px;">
+                <img src="{logo_url}" width="150" style="max-width: 100%; height: auto;">
+            </div>
+        """, unsafe_allow_html=True)
 
         # 2. 💡 입력창과 타이틀을 감싸는 모던 카드 박스 시작
         st.markdown("""
