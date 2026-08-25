@@ -22,7 +22,7 @@ from fpdf import FPDF
 
 # --- 페이지 기본 설정 ---
 # 페이지 설정 (와이드 모드)
-st.set_page_config(page_title="한국환경공단 스마트 안전관리 시스템", layout="wide")
+st.set_page_config(page_title="한국환경공단 건설현장 스마트 안전관리 시스템", layout="wide")
 
 # 🎨 Wix 스타일을 Streamlit에 입히는 CSS 커스텀
 st.markdown("""
@@ -65,14 +65,14 @@ st.markdown("""
     <div class="wix-section" style="display: flex; align-items: center; justify-content: space-between;">
         <div style="flex: 1; padding-right: 40px;">
             <p class="wix-subtitle">SAFETY MISSION</p>
-            <h1 class="wix-title">수도권 서부 환경시설의 안전과 무재해 건설 현장 실현</h1>
-            <p class="wix-desc">한국환경공단 수도권서부환경본부는 현장 근로자의 안전을 최우선으로 합니다.</p>
+            <h1 class="wix-title">한국환경공단 수도권서부환경본부 환경시설관리처 스마트 안전관리 시스템</h1>
+            <p class="wix-desc">한국환경공단 수도권서부환경본부 환경시설관리처는 현장 근로자의 안전을 최우선으로 합니다.</p>
         </div>
     </div>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 📊 [섹션 2] 건설현장 안전관리 시스템 (캡처 3번 참고 - 3열 카드 그리드)
+# 📊 [섹션 2] 건설현장 안전관리 시스템
 # ==========================================
 st.markdown("""
     <div class="wix-section">
@@ -108,206 +108,6 @@ with col3:
             <p style="color: #8B949E; font-size: 0.9rem;">관할 소방서 및 의료 기관의 연락처를 즉시 호출합니다.</p>
         </div>
     """, unsafe_allow_html=True)
-
-# ==========================================
-# 🚨 [섹션 3] 비상 대응 가이드 (캡처 4번 참고)
-# ==========================================
-st.markdown("""
-    <div class="wix-section">
-        <h2 class="wix-title">비상 대응 가이드</h2>
-        <p style="color: #94A3B8; margin-bottom: 30px;">위기 상황 발생 시 단계별 행동 요령입니다.</p>
-        
-        <div style="background: #161B22; padding: 20px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #3B82F6;">
-            <span style="color: #3B82F6; font-weight: bold; margin-right: 15px;">01</span> 사고 발생 즉시 현장 통제 및 상부 보고 체계 가동
-        </div>
-        <div style="background: #161B22; padding: 20px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #3B82F6;">
-            <span style="color: #3B82F6; font-weight: bold; margin-right: 15px;">02</span> 부상자 상태 확인 및 최우선 응급 구호 조치 실시
-        </div>
-        <div style="background: #161B22; padding: 20px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #3B82F6;">
-            <span style="color: #3B82F6; font-weight: bold; margin-right: 15px;">03</span> 상황별 비상 연락망 가동 및 유관기관 협조 요청
-        </div>
-    </div>
-""", unsafe_allow_html=True)
-
-# ==========================================
-# 🔑 시스템 진입 버튼 (로그인으로 연결)
-# ==========================================
-st.markdown("<br><br>", unsafe_allow_html=True)
-col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
-with col_btn2:
-    if st.button("🚀 시스템 안전 점검 및 로그인하기", use_container_width=True, type="primary"):
-        st.session_state["show_login"] = True
-        st.rerun()
-
-# ---------------- PDF 생성 함수 정의 ----------------
-def generate_pdf(title, content):
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # 윈도우 환경 기본 한글 폰트 등록 (NanumGothic 이나 malgun 등 사용 가능)
-    # 리눅스 환경(Streamlit Cloud 등)인 경우 나눔고딕 폰트 파일을 경로에 포함해야 합니다.
-    font_path = "C:/Windows/Fonts/malgun.ttf"  # 윈도우 기준 경로
-    if os.path.exists(font_path):
-        pdf.add_font("Malgun", "", font_path, uni=True)
-        pdf.set_font("Malgun", size=12)
-    else:
-        # 폰트 파일이 없을 경우 기본 폰트 사용 (한글이 깨질 수 있으므로 위 폰트 경로 확인 필요)
-        pdf.set_font("Arial", size=12)
-
-    # 문서 제목 추가
-    pdf.cell(200, 10, text=title, new_x="LMARGIN", new_y="NEXT", align="C")
-    pdf.ln(10)
-    
-    # 본문 내용 추가 (줄바꿈 자동 처리)
-    # 멀티라인 텍스트 입력
-    pdf.multi_cell(0, 10, text=content)
-    
-    # PDF를 바이트로 반환
-    return pdf.output()
-
-# --- Base64 이미지 변환 함수 ---
-def get_base64_image(image_path):
-    try:
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
-    except Exception:
-        return ""
-
-img_base64 = get_base64_image("puru_guru.png")
-
-# --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
-st.markdown("""
-    <style>
-    html, body, [data-testid="stAppViewContainer"] {
-        color: #1E293B !important;
-    }
-    .stMarkdown, p, div, span, label {
-        word-break: keep-all !important;
-        white-space: normal !important;
-    }
-    .stTable, div[data-testid="stTable"] {
-        overflow-x: auto !important;
-    }
-    label, div[data-baseweb="select"] span, .stSelectbox label, .stTextInput label, .stTextArea label, .stFileUploader label {
-        color: #1E293B !important;
-        font-weight: 600 !important;
-    }
-    div[role="listbox"] div {
-        color: #1E293B !important;
-    }
-    .stApp {
-        background-color: #F8FBF9;
-    }
-    .keco-header {
-        background: linear-gradient(135deg, #007A33 0%, #10B981 100%);
-        padding: 22px 18px;
-        border-radius: 16px;
-        color: white;
-        text-align: center;
-        margin-bottom: 15px;
-        box-shadow: 0 4px 15px rgba(0, 122, 51, 0.15);
-    }
-    .keco-header h2 {
-        color: white !important;
-        font-size: 1.5rem !important;
-        font-weight: 700 !important;
-        margin: 0 !important;
-    }
-    .keco-header p {
-        color: #E6F4EA !important;
-        font-size: 0.9rem !important;
-        margin-top: 6px !important;
-        margin-bottom: 0 !important;
-    }
-    .top-status-bar {
-        background-color: #E6F4EA;
-        border: 1.5px solid #10B981;
-        border-radius: 12px;
-        padding: 10px 18px;
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.92rem;
-        color: #005F27;
-        font-weight: 600;
-        box-shadow: 0 2px 6px rgba(0, 122, 51, 0.05);
-    }
-    .mascot-banner {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
-        text-align: center;
-        border: 2px solid #E2E8F0;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        margin-bottom: 20px;
-    }
-    .mascot-card {
-        background-color: #FFFFFF;
-        border: 1.5px solid #E2E8F0;
-        border-radius: 14px;
-        padding: 14px 18px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        color: #1E293B !important;
-    }
-    .select-card {
-        background-color: #E6F4EA;
-        border: 1.5px solid #10B981;
-        border-radius: 12px;
-        padding: 12px 16px;
-        margin-bottom: 18px;
-        color: #005F27 !important;
-        font-weight: 600;
-        box-shadow: 0 2px 6px rgba(0, 122, 51, 0.05);
-    }
-    .analysis-box {
-        background-color: #FEF2F2;
-        border: 1.5px solid #FCA5A5;
-        border-radius: 12px;
-        padding: 14px 16px;
-        margin-top: 10px;
-        margin-bottom: 15px;
-        font-size: 0.93rem;
-        color: #991B1B !important;
-    }
-    .item-card {
-        background-color: #FFFFFF;
-        border: 1.5px solid #CBD5E1;
-        border-radius: 12px;
-        padding: 18px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-        color: #1E293B !important;
-    }
-    div.stButton > button {
-        background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 10px !important;
-        font-weight: bold !important;
-        height: 48px !important;
-        font-size: 1rem !important;
-        box-shadow: 0 3px 8px rgba(0, 122, 51, 0.2) !important;
-    }
-    div.stTabs [data-baseweb="tab-list"] {
-        background-color: #F1F5F9;
-        padding: 6px;
-        border-radius: 12px;
-    }
-    div.stTabs [data-baseweb="tab"] {
-        background-color: transparent;
-        border-radius: 8px;
-        padding: 8px 16px;
-        font-weight: bold;
-        color: #475569;
-    }
-    div.stTabs [aria-selected="true"] {
-        background-color: #1E293B !important;
-        color: #FFFFFF !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
 
 # ==========================================
 # 🔒 [보안] 감독관 로그인 제어 게이트웨이 (완전 통합 카드 박스 버전)
