@@ -21,96 +21,185 @@ import plotly.graph_objects as go
 from fpdf import FPDF
 
 # --- 페이지 기본 설정 ---
-# 페이지 설정 (와이드 모드)
-st.set_page_config(page_title="한국환경공단 건설현장 스마트 안전관리 시스템", layout="wide")
+st.set_page_config(
+    page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 점검 시스템",
+    page_icon="puru_guru.png",
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
 
-# 🎨 Wix 스타일을 Streamlit에 입히는 CSS 커스텀
+# ---------------- PDF 생성 함수 정의 ----------------
+def generate_pdf(title, content):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # 윈도우 환경 기본 한글 폰트 등록 (NanumGothic 이나 malgun 등 사용 가능)
+    # 리눅스 환경(Streamlit Cloud 등)인 경우 나눔고딕 폰트 파일을 경로에 포함해야 합니다.
+    font_path = "C:/Windows/Fonts/malgun.ttf"  # 윈도우 기준 경로
+    if os.path.exists(font_path):
+        pdf.add_font("Malgun", "", font_path, uni=True)
+        pdf.set_font("Malgun", size=12)
+    else:
+        # 폰트 파일이 없을 경우 기본 폰트 사용 (한글이 깨질 수 있으므로 위 폰트 경로 확인 필요)
+        pdf.set_font("Arial", size=12)
+
+    # 문서 제목 추가
+    pdf.cell(200, 10, text=title, new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.ln(10)
+    
+    # 본문 내용 추가 (줄바꿈 자동 처리)
+    # 멀티라인 텍스트 입력
+    pdf.multi_cell(0, 10, text=content)
+    
+    # PDF를 바이트로 반환
+    return pdf.output()
+
+# --- Base64 이미지 변환 함수 ---
+def get_base64_image(image_path):
+    try:
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except Exception:
+        return ""
+
+img_base64 = get_base64_image("puru_guru.png")
+
+# --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
 st.markdown("""
     <style>
-        /* 전체 배경을 Wix와 같은 다크 톤으로 고정 */
-        .stApp {
-            background-color: #0F1117;
-            color: #FFFFFF;
-        }
-        /* 섹션 컨테이너 스타일 */
-        .wix-section {
-            padding: 60px 20px;
-            border-bottom: 1px solid #1E293B;
-        }
-        .wix-title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #FFFFFF;
-            margin-bottom: 20px;
-        }
-        .wix-subtitle {
-            color: #3B82F6;
-            font-size: 0.9rem;
-            font-weight: 700;
-            letter-spacing: 2px;
-            margin-bottom: 10px;
-        }
-        .wix-desc {
-            color: #94A3B8;
-            font-size: 1.1rem;
-            line-height: 1.6;
-        }
+    html, body, [data-testid="stAppViewContainer"] {
+        color: #1E293B !important;
+    }
+    .stMarkdown, p, div, span, label {
+        word-break: keep-all !important;
+        white-space: normal !important;
+    }
+    .stTable, div[data-testid="stTable"] {
+        overflow-x: auto !important;
+    }
+    label, div[data-baseweb="select"] span, .stSelectbox label, .stTextInput label, .stTextArea label, .stFileUploader label {
+        color: #1E293B !important;
+        font-weight: 600 !important;
+    }
+    div[role="listbox"] div {
+        color: #1E293B !important;
+    }
+    .stApp {
+        background-color: #F8FBF9;
+    }
+    .keco-header {
+        background: linear-gradient(135deg, #007A33 0%, #10B981 100%);
+        padding: 22px 18px;
+        border-radius: 16px;
+        color: white;
+        text-align: center;
+        margin-bottom: 15px;
+        box-shadow: 0 4px 15px rgba(0, 122, 51, 0.15);
+    }
+    .keco-header h2 {
+        color: white !important;
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+    }
+    .keco-header p {
+        color: #E6F4EA !important;
+        font-size: 0.9rem !important;
+        margin-top: 6px !important;
+        margin-bottom: 0 !important;
+    }
+    .top-status-bar {
+        background-color: #E6F4EA;
+        border: 1.5px solid #10B981;
+        border-radius: 12px;
+        padding: 10px 18px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.92rem;
+        color: #005F27;
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(0, 122, 51, 0.05);
+    }
+    .mascot-banner {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        text-align: center;
+        border: 2px solid #E2E8F0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+    }
+    .mascot-card {
+        background-color: #FFFFFF;
+        border: 1.5px solid #E2E8F0;
+        border-radius: 14px;
+        padding: 14px 18px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        color: #1E293B !important;
+    }
+    .select-card {
+        background-color: #E6F4EA;
+        border: 1.5px solid #10B981;
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 18px;
+        color: #005F27 !important;
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(0, 122, 51, 0.05);
+    }
+    .analysis-box {
+        background-color: #FEF2F2;
+        border: 1.5px solid #FCA5A5;
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-top: 10px;
+        margin-bottom: 15px;
+        font-size: 0.93rem;
+        color: #991B1B !important;
+    }
+    .item-card {
+        background-color: #FFFFFF;
+        border: 1.5px solid #CBD5E1;
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        color: #1E293B !important;
+    }
+    div.stButton > button {
+        background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 10px !important;
+        font-weight: bold !important;
+        height: 48px !important;
+        font-size: 1rem !important;
+        box-shadow: 0 3px 8px rgba(0, 122, 51, 0.2) !important;
+    }
+    div.stTabs [data-baseweb="tab-list"] {
+        background-color: #F1F5F9;
+        padding: 6px;
+        border-radius: 12px;
+    }
+    div.stTabs [data-baseweb="tab"] {
+        background-color: transparent;
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-weight: bold;
+        color: #475569;
+    }
+    div.stTabs [aria-selected="true"] {
+        background-color: #1E293B !important;
+        color: #FFFFFF !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 🚀 [섹션 1] 메인 히어로 화면 (캡처 1, 2번 참고)
-# ==========================================
-st.markdown("""
-    <div class="wix-section" style="display: flex; align-items: center; justify-content: space-between;">
-        <div style="flex: 1; padding-right: 40px;">
-            <p class="wix-subtitle">SAFETY MISSION</p>
-            <h1 class="wix-title">한국환경공단 수도권서부환경본부 환경시설관리처 스마트 안전관리 시스템</h1>
-            <p class="wix-desc">한국환경공단 수도권서부환경본부 환경시설관리처는 현장 근로자의 안전을 최우선으로 합니다.</p>
-        </div>
-    </div>
-""", unsafe_allow_html=True)
-
-# ==========================================
-# 📊 [섹션 2] 건설현장 안전관리 시스템
-# ==========================================
-st.markdown("""
-    <div class="wix-section">
-        <h2 class="wix-title" style="text-align: center; margin-bottom: 50px;">건설현장 안전관리 시스템</h2>
-    </div>
-""", unsafe_allow_html=True)
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown("""
-        <div style="background: #161B22; padding: 30px; border-radius: 12px; border: 1px solid #30363D; height: 220px;">
-            <h3 style="color: #3B82F6; margin-bottom: 15px;">01</h3>
-            <h4 style="color: #FFFFFF; margin-bottom: 10px;">사고 발생 보고</h4>
-            <p style="color: #8B949E; font-size: 0.9rem;">현장에서 발생한 모든 안전사고를 즉시 보고 및 전파합니다.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-with col2:
-    st.markdown("""
-        <div style="background: #161B22; padding: 30px; border-radius: 12px; border: 1px solid #30363D; height: 220px;">
-            <h3 style="color: #3B82F6; margin-bottom: 15px;">02</h3>
-            <h4 style="color: #FFFFFF; margin-bottom: 10px;">안전 점검 리스트</h4>
-            <p style="color: #8B949E; font-size: 0.9rem;">작업 시작 전 장비 및 보호구 상태를 실시간 기록합니다.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-with col3:
-    st.markdown("""
-        <div style="background: #161B22; padding: 30px; border-radius: 12px; border: 1px solid #30363D; height: 220px;">
-            <h3 style="color: #3B82F6; margin-bottom: 15px;">03</h3>
-            <h4 style="color: #FFFFFF; margin-bottom: 10px;">비상 연락망</h4>
-            <p style="color: #8B949E; font-size: 0.9rem;">관할 소방서 및 의료 기관의 연락처를 즉시 호출합니다.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-# ==========================================
-# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (완전 통합 카드 박스 버전)
+# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (GitHub 이미지 연동)
 # ==========================================
 def check_password():
     if st.session_state.get("password_correct", False):
@@ -120,51 +209,48 @@ def check_password():
 
     st.markdown("<br>", unsafe_allow_html=True)
     
-    col_left, col_center, col_right = st.columns([1, 2.5, 1])
+    _, col_center, _ = st.columns([1, 2.5, 1])
     
-    with col_center:
-        # 💡 [핵심] 카드 박스를 여기서 열고, 입력창과 버튼까지 전부 이 안에서 처리합니다.
-        st.markdown("""
-            <div style="
-                background-color: #FFFFFF; 
-                padding: 35px 25px; 
-                border-radius: 16px; 
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); 
-                border: 1px solid #E2E8F0;
-                margin-bottom: 20px;
-                text-align: center;
-            ">
-        """, unsafe_allow_html=True)
-
-        # 1. 로고 이미지 (카드 안쪽 중앙 정렬)
+with col_center:
+        # 💡 1. 3분할 컬럼을 만들어 '가운데(lc2)' 칸에 이미지를 넣으면 완벽하게 중앙 정렬됩니다!
         try:
-            img = Image.open("Keco_logo.png")
-            # HTML 내부에 이미지를 깔끔하게 띄우기 위해 중앙 정렬 스타일 적용
-            st.image(img, width=130)
+            lc1, lc2, lc3 = st.columns([1, 2, 1])
+            with lc2:
+                # 같은 폴더에 있는 이미지 파일명 (또는 아이콘)
+                st.image("Keco_logo.png", width=140)
         except Exception:
+            # 이미지 파일이 없을 경우 예쁜 뱃지형 텍스트로 중앙 대체
             st.markdown("""
-                <div style="margin-bottom: 15px;">
+                <div style="text-align: center; margin-bottom: 10px;">
                     <span style="background-color: #E6F4EA; color: #007A33; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">
                         🌱 KECO
                     </span>
                 </div>
             """, unsafe_allow_html=True)
 
-        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-
-        # 2. 타이틀 영역
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        # 2. 💡 입력창과 타이틀을 감싸는 모던 카드 박스 시작
         st.markdown("""
-                <h2 style="color: #0F172A; font-weight: 800; font-size: 1.8rem; margin-bottom: 5px;">한국환경공단</h2>
-                <h3 style="color: #007A33; font-weight: 700; font-size: 1.6rem; margin-bottom: 10px;">수도권서부환경본부</h3>
-                <p style="color: #64748B; font-size: 0.95rem; font-weight: 500; margin-bottom: 25px;">인증된 사내 감독관 전용 시스템</p>
-            </div>
+            <div style="
+                background-color: #FFFFFF; 
+                padding: 25px 20px; 
+                border-radius: 16px; 
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); 
+                border: 1px solid #E2E8F0;
+                margin-bottom: 20px;
+            ">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h2 style="color: #0F172A; font-weight: 800; font-size: 2rem; margin-bottom: 5px;">한국환경공단</h2>
+                    <h3 style="color: #007A33; font-weight: 700; font-size: 2rem; margin-bottom: 8px;">수도권서부환경본부</h3>
+                    <p style="color: #64748B; font-size: 1rem; font-weight: 500;">인증된 사내 감독관 전용 시스템</p>
+                </div>
         """, unsafe_allow_html=True)
 
-        # 3. 입력 필드 및 버튼 (이제 박스 바깥 아래로 삐져나가지 않고 자연스럽게 연결됩니다)
-        user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="사번을 입력하세요")
+        # 입력 필드
+        user_id = st.text_input("👤 감독관 ID ", key="username_input", placeholder="사번을 입력하세요")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input", placeholder="비밀번호를 입력하세요")
         
-        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
         
         login_btn = st.button("로그인", use_container_width=True, type="primary")
 
@@ -179,6 +265,9 @@ def check_password():
                 st.rerun()
             else:
                 st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
+
+        # 카드 박스 닫기
+        st.markdown("</div>", unsafe_allow_html=True)
 
     return False
 
