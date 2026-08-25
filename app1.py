@@ -212,7 +212,7 @@ def check_password():
     
     _, col_center, _ = st.columns([1, 2.5, 1])
     
-        with col_center:
+    with col_center:
         # 💡 HTML 태그를 사용해 GitHub 이미지를 직접 띄우기 (가장 확실한 방법)
         logo_url =  "https://github.com/rememberjd0913/safety-app/blob/main/Keco_logo.png"
         
