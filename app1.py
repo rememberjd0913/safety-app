@@ -125,7 +125,7 @@ if not st.session_state.get("password_correct", False):
             }
             /* 입력창에 타이핑하는 글자색 변경 */
             .stTextInput input {
-                color: #8B949E !important;
+                color: #0F172A !important;
             }
             /* 입력창 내부 안내 문구(placeholder) 색상 */
             .stTextInput input::placeholder {
