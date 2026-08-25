@@ -198,7 +198,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-
 # ==========================================
 # 🔒 [보안] 감독관 로그인 제어 게이트웨이 (GitHub 이미지 연동)
 # ==========================================
@@ -214,7 +213,7 @@ def check_password():
     
     with col_center:
         # 💡 HTML 태그를 사용해 GitHub 이미지를 직접 띄우기 (가장 확실한 방법)
-        logo_url =  "https://github.com/rememberjd0913/safety-app/blob/main/Keco_logo.png"
+        logo_url = "https://github.com/rememberjd0913/safety-app/blob/main/Keco_logo.png"
         
         st.markdown(f"""
             <div style="text-align: center; margin-bottom: 10px;">
