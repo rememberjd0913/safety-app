@@ -117,7 +117,7 @@ if not st.session_state.get("password_correct", False):
     with login_col:
         st.markdown("""
             <div style="
-                background-color: #161B22; 
+                background-color: #FFFFFF; 
                 padding: 25px 20px; 
                 border-radius: 16px; 
                 border: 1px solid #30363D; 
