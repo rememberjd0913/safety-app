@@ -212,28 +212,22 @@ def check_password():
     col_left, col_center, col_right = st.columns([1, 2.5, 1])
     
 with col_center:
-    # 1. 중앙 정렬용 컨테이너 생성
-    with st.container():
+    try:
+        lc1, lc2, lc3 = st.columns([1, 2, 1])
+        with lc2:
+            img = Image.open("Keco_logo.png")
+            st.image(img, width=140)
+    except Exception:
+        # 이미지 파일이 없을 경우 예쁜 뱃지형 텍스트로 중앙 대체
         st.markdown("""
-            <style>
-                /* col_center 내부의 이미지들을 강제로 가운데 정렬 */
-                div[data-testid="stImage"] {
-                    display: flex;
-                    justify-content: center;
-                }
-            </style>
+            <div style="text-align: center; margin-bottom: 10px;">
+                <span style="background-color: #E6F4EA; color: #007A33; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">
+                    🌱 KECO
+                </span>
+            </div>
         """, unsafe_allow_html=True)
-        
-        try:
-            st.image("Keco_logo.png", width=140)
-        except Exception:
-            st.markdown("""
-                <div style="text-align: center; margin-bottom: 10px;">
-                    <span style="background-color: #E6F4EA; color: #007A33; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">
-                        🌱 KECO
-                    </span>
-                </div>
-            """, unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
 
         # 2. 💡 입력창과 타이틀을 감싸는 모던 카드 박스 시작
         st.markdown("""
