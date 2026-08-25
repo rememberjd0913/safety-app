@@ -211,10 +211,24 @@ def check_password():
     
     _, col_center, _ = st.columns([1, 2.5, 1])
     
-    with col_center:
-        # 💡 HTML 태그를 사용해 GitHub 이미지를 직접 띄우기 (가장 확실한 방법)
-        st.image("Keco_logo.png", width=150)
+with col_center:
+        # 💡 1. 3분할 컬럼을 만들어 '가운데(lc2)' 칸에 이미지를 넣으면 완벽하게 중앙 정렬됩니다!
+        try:
+            lc1, lc2, lc3 = st.columns([1, 2, 1])
+            with lc2:
+                # 같은 폴더에 있는 이미지 파일명 (또는 아이콘)
+                st.image("Keco_logo.png", width=140)
+        except Exception:
+            # 이미지 파일이 없을 경우 예쁜 뱃지형 텍스트로 중앙 대체
+            st.markdown("""
+                <div style="text-align: center; margin-bottom: 10px;">
+                    <span style="background-color: #E6F4EA; color: #007A33; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">
+                        🌱 KECO
+                    </span>
+                </div>
+            """, unsafe_allow_html=True)
 
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
         # 2. 💡 입력창과 타이틀을 감싸는 모던 카드 박스 시작
         st.markdown("""
             <div style="
