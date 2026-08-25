@@ -21,12 +21,123 @@ import plotly.graph_objects as go
 from fpdf import FPDF
 
 # --- 페이지 기본 설정 ---
-st.set_page_config(
-    page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 점검 시스템",
-    page_icon="puru_guru.png",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# 페이지 설정 (와이드 모드)
+st.set_page_config(page_title="한국환경공단 스마트 안전관리 시스템", layout="wide")
+
+# 🎨 Wix 스타일을 Streamlit에 입히는 CSS 커스텀
+st.markdown("""
+    <style>
+        /* 전체 배경을 Wix와 같은 다크 톤으로 고정 */
+        .stApp {
+            background-color: #0F1117;
+            color: #FFFFFF;
+        }
+        /* 섹션 컨테이너 스타일 */
+        .wix-section {
+            padding: 60px 20px;
+            border-bottom: 1px solid #1E293B;
+        }
+        .wix-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            margin-bottom: 20px;
+        }
+        .wix-subtitle {
+            color: #3B82F6;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+        .wix-desc {
+            color: #94A3B8;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# ==========================================
+# 🚀 [섹션 1] 메인 히어로 화면 (캡처 1, 2번 참고)
+# ==========================================
+st.markdown("""
+    <div class="wix-section" style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="flex: 1; padding-right: 40px;">
+            <p class="wix-subtitle">SAFETY MISSION</p>
+            <h1 class="wix-title">수도권 서부 환경시설의 안전과 무재해 건설 현장 실현</h1>
+            <p class="wix-desc">한국환경공단 수도권서부환경본부는 현장 근로자의 안전을 최우선으로 합니다.</p>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+
+# ==========================================
+# 📊 [섹션 2] 건설현장 안전관리 시스템 (캡처 3번 참고 - 3열 카드 그리드)
+# ==========================================
+st.markdown("""
+    <div class="wix-section">
+        <h2 class="wix-title" style="text-align: center; margin-bottom: 50px;">건설현장 안전관리 시스템</h2>
+    </div>
+""", unsafe_allow_html=True)
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.markdown("""
+        <div style="background: #161B22; padding: 30px; border-radius: 12px; border: 1px solid #30363D; height: 220px;">
+            <h3 style="color: #3B82F6; margin-bottom: 15px;">01</h3>
+            <h4 style="color: #FFFFFF; margin-bottom: 10px;">사고 발생 보고</h4>
+            <p style="color: #8B949E; font-size: 0.9rem;">현장에서 발생한 모든 안전사고를 즉시 보고 및 전파합니다.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+with col2:
+    st.markdown("""
+        <div style="background: #161B22; padding: 30px; border-radius: 12px; border: 1px solid #30363D; height: 220px;">
+            <h3 style="color: #3B82F6; margin-bottom: 15px;">02</h3>
+            <h4 style="color: #FFFFFF; margin-bottom: 10px;">안전 점검 리스트</h4>
+            <p style="color: #8B949E; font-size: 0.9rem;">작업 시작 전 장비 및 보호구 상태를 실시간 기록합니다.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+with col3:
+    st.markdown("""
+        <div style="background: #161B22; padding: 30px; border-radius: 12px; border: 1px solid #30363D; height: 220px;">
+            <h3 style="color: #3B82F6; margin-bottom: 15px;">03</h3>
+            <h4 style="color: #FFFFFF; margin-bottom: 10px;">비상 연락망</h4>
+            <p style="color: #8B949E; font-size: 0.9rem;">관할 소방서 및 의료 기관의 연락처를 즉시 호출합니다.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+# ==========================================
+# 🚨 [섹션 3] 비상 대응 가이드 (캡처 4번 참고)
+# ==========================================
+st.markdown("""
+    <div class="wix-section">
+        <h2 class="wix-title">비상 대응 가이드</h2>
+        <p style="color: #94A3B8; margin-bottom: 30px;">위기 상황 발생 시 단계별 행동 요령입니다.</p>
+        
+        <div style="background: #161B22; padding: 20px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #3B82F6;">
+            <span style="color: #3B82F6; font-weight: bold; margin-right: 15px;">01</span> 사고 발생 즉시 현장 통제 및 상부 보고 체계 가동
+        </div>
+        <div style="background: #161B22; padding: 20px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #3B82F6;">
+            <span style="color: #3B82F6; font-weight: bold; margin-right: 15px;">02</span> 부상자 상태 확인 및 최우선 응급 구호 조치 실시
+        </div>
+        <div style="background: #161B22; padding: 20px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #3B82F6;">
+            <span style="color: #3B82F6; font-weight: bold; margin-right: 15px;">03</span> 상황별 비상 연락망 가동 및 유관기관 협조 요청
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+
+# ==========================================
+# 🔑 시스템 진입 버튼 (로그인으로 연결)
+# ==========================================
+st.markdown("<br><br>", unsafe_allow_html=True)
+col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+with col_btn2:
+    if st.button("🚀 시스템 안전 점검 및 로그인하기", use_container_width=True, type="primary"):
+        st.session_state["show_login"] = True
+        st.rerun()
 
 # ---------------- PDF 생성 함수 정의 ----------------
 def generate_pdf(title, content):
