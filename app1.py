@@ -46,14 +46,14 @@ st.markdown("""
             margin-bottom: 20px;
         }
         .wix-subtitle {
-            color: #3B82F6;
+            color: #FFFFFF;
             font-size: 0.9rem;
             font-weight: 700;
             letter-spacing: 2px;
             margin-bottom: 10px;
         }
         .wix-desc {
-            color: #94A3B8;
+            color: #FFFFFF;
             font-size: 1.1rem;
             line-height: 1.6;
         }
@@ -107,7 +107,7 @@ if not st.session_state.get("password_correct", False):
     st.markdown("""
         <div style="text-align: center; margin-bottom: 25px;">
             <h3 style="color: #FFFFFF; font-size: 1.5rem; font-weight: 700; margin-bottom: 8px;">🌱 감독관 인증 및 시스템 접속</h3>
-            <p style="color: #94A3B8; font-size: 0.9rem;">인증된 사내 감독관 계정으로 로그인하여 점검 시스템을 시작하세요.</p>
+            <p style="color: #FFFFFF; font-size: 0.9rem;">인증된 사내 감독관 계정으로 로그인하여 점검 시스템을 시작하세요.</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -118,7 +118,7 @@ if not st.session_state.get("password_correct", False):
         
         allowed_users = st.secrets.get("passwords", {})
 
-        user_id = st.text_input("👤 감독관 ID (사번)", key="username_input", placeholder="사번을 입력하세요")
+        user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="사번을 입력하세요")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input", placeholder="비밀번호를 입력하세요")
         
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
