@@ -137,7 +137,7 @@ if not st.session_state.get("password_correct", False):
         
         allowed_users = st.secrets.get("passwords", {})
         
-        user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="사번을 입력하세요")
+        user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="아이디를 입력하세요")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input", placeholder="비밀번호를 입력하세요")
         
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
@@ -394,7 +394,7 @@ def check_password():
         """, unsafe_allow_html=True)
 
         # 입력 필드
-        user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="사번을 입력하세요")
+        user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="아이디를 입력하세요")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input", placeholder="비밀번호를 입력하세요")
         
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
