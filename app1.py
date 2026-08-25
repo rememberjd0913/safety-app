@@ -79,24 +79,24 @@ if not st.session_state.get("password_correct", False):
         st.markdown("""
             <div style="background: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; height: 180px; margin-bottom: 20px;">
                 <h3 style="color: #3B82F6; margin-bottom: 1px; font-size: 1.5rem;">01</h3>
-                <h4 style="color: #FFFFFF; margin-bottom: 6px; font-size: 2rem;">사고 발생 보고</h4>
-                <p style="color: #8B949E; font-size: 0.82rem;">현장 내 안전사고 즉시 보고 및 전파 체계 가동</p>
+                <h4 style="color: #FFFFFF; margin-bottom: 1px; font-size: 2rem;">사고 발생 보고</h4>
+                <p style="color: #8B949E; font-size: 1rem;">현장 내 안전사고 즉시 보고 및 전파 체계 가동</p>
             </div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown("""
             <div style="background: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; height: 180px; margin-bottom: 20px;">
-                <h3 style="color: #3B82F6; margin-bottom: 8px; font-size: 1.5rem;">02</h3>
-                <h4 style="color: #FFFFFF; margin-bottom: 6px; font-size: 2rem;">안전 점검 리스트</h4>
-                <p style="color: #8B949E; font-size: 0.82rem;">작업 전 장비 및 근로자 보호구 상태 실시간 승인</p>
+                <h3 style="color: #3B82F6; margin-bottom: 1px; font-size: 1.5rem;">02</h3>
+                <h4 style="color: #FFFFFF; margin-bottom: 1px; font-size: 2rem;">안전 점검 리스트</h4>
+                <p style="color: #8B949E; font-size: 1rem;">작업 전 장비 및 근로자 보호구 상태 실시간 승인</p>
             </div>
         """, unsafe_allow_html=True)
     with col3:
         st.markdown("""
             <div style="background: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; height: 180px; margin-bottom: 20px;">
-                <h3 style="color: #3B82F6; margin-bottom: 8px; font-size: 1.2rem;">03</h3>
-                <h4 style="color: #FFFFFF; margin-bottom: 6px; font-size: 2rem;">비상 연락망</h4>
-                <p style="color: #8B949E; font-size: 0.82rem;">관할 소방서, 의료기관 및 대책 조직 즉시 호출</p>
+                <h3 style="color: #3B82F6; margin-bottom: 1px; font-size: 1.2rem;">03</h3>
+                <h4 style="color: #FFFFFF; margin-bottom: 1px; font-size: 2rem;">비상 연락망</h4>
+                <p style="color: #8B949E; font-size: 1rem;">관할 소방서, 의료기관 및 대책 조직 즉시 호출</p>
             </div>
         """, unsafe_allow_html=True)
 
