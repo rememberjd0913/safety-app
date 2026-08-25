@@ -27,6 +27,38 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+st.markdown("""
+    <style>
+        /* 전체 배경을 Wix와 같은 다크 톤으로 고정 */
+        .stApp {
+            background-color: #0F1117;
+            color: #FFFFFF;
+        }
+        /* 섹션 컨테이너 스타일 */
+        .wix-section {
+            padding: 60px 20px;
+            border-bottom: 1px solid #1E293B;
+        }
+        .wix-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            margin-bottom: 20px;
+        }
+        .wix-subtitle {
+            color: #3B82F6;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+        .wix-desc {
+            color: #94A3B8;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # 🚀 [통합] Wix 스타일 랜딩 + 보안 로그인 콜라보레이션 페이지
