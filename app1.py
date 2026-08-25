@@ -29,7 +29,6 @@ st.set_page_config(
 )
 st.markdown("""
     <style>
-        /* 전체 배경을 Wix와 같은 다크 톤으로 고정 */
         .stApp {
             background-color: #0F1117;
             color: #FFFFFF;
@@ -126,7 +125,7 @@ if not st.session_state.get("password_correct", False):
             }
             /* 입력창에 타이핑하는 글자색 변경 */
             .stTextInput input {
-                color: #FFFFFF !important;
+                color: #8B949E !important;
             }
             /* 입력창 내부 안내 문구(placeholder) 색상 */
             .stTextInput input::placeholder {
