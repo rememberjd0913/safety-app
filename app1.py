@@ -338,6 +338,10 @@ st.markdown("""
         background-color: #1E293B !important;
         color: #FFFFFF !important;
     }
+    .stTextInput input {
+        color: #1E293B !important;
+        background-color: #FFFFFF !important;
+        -webkit-text-fill-color: #1E293B !important;
     </style>
 """, unsafe_allow_html=True)
 
