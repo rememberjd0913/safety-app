@@ -199,7 +199,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (완벽 정돈 버전)
+# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (로고 카드 내장 중앙 정렬 버전)
 # ==========================================
 def check_password():
     if st.session_state.get("password_correct", False):
@@ -212,45 +212,49 @@ def check_password():
     col_left, col_center, col_right = st.columns([1, 2.5, 1])
     
     with col_center:
+        # 💡 로고와 타이틀, 입력창을 하나의 통일된 '모던 카드 박스' 안으로 통합합니다.
+        st.markdown("""
+            <div style="
+                background-color: #FFFFFF; 
+                padding: 35px 25px; 
+                border-radius: 16px; 
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); 
+                border: 1px solid #E2E8F0;
+                margin-bottom: 20px;
+                text-align: center;
+            ">
+        """, unsafe_allow_html=True)
+
+        # 1. 카드 박스 안에서 완벽하게 중앙 정렬되는 로고 영역
         try:
             lc1, lc2, lc3 = st.columns([1, 2, 1])
             with lc2:
                 img = Image.open("Keco_logo.png")
-                st.image(img, width=140)
+                st.image(img, width=130)
         except Exception:
-            # 이미지 파일이 없을 경우 예쁜 뱃지형 텍스트로 중앙 대체
             st.markdown("""
-                <div style="text-align: center; margin-bottom: 10px;">
+                <div style="text-align: center; margin-bottom: 15px;">
                     <span style="background-color: #E6F4EA; color: #007A33; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">
                         🌱 KECO
                     </span>
                 </div>
             """, unsafe_allow_html=True)
 
-        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-        
-        # 2. 💡 입력창과 타이틀을 감싸는 모던 카드 박스 시작
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+
+        # 2. 타이틀 영역
         st.markdown("""
-            <div style="
-                background-color: #FFFFFF; 
-                padding: 25px 20px; 
-                border-radius: 16px; 
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); 
-                border: 1px solid #E2E8F0;
-                margin-bottom: 20px;
-            ">
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <h2 style="color: #0F172A; font-weight: 800; font-size: 2rem; margin-bottom: 5px;">한국환경공단</h2>
-                    <h3 style="color: #007A33; font-weight: 700; font-size: 2rem; margin-bottom: 8px;">수도권서부환경본부</h3>
-                    <p style="color: #64748B; font-size: 1rem; font-weight: 500;">인증된 사내 감독관 전용 시스템</p>
-                </div>
+                <h2 style="color: #0F172A; font-weight: 800; font-size: 1.8rem; margin-bottom: 5px;">한국환경공단</h2>
+                <h3 style="color: #007A33; font-weight: 700; font-size: 1.6rem; margin-bottom: 12px;">수도권서부환경본부</h3>
+                <p style="color: #64748B; font-size: 0.95rem; font-weight: 500; margin-bottom: 25px;">인증된 사내 감독관 전용 시스템</p>
+            </div>
         """, unsafe_allow_html=True)
 
-        # 입력 필드
+        # 3. 입력 필드 및 버튼 영역
         user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="사번을 입력하세요")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input", placeholder="비밀번호를 입력하세요")
         
-        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
         
         login_btn = st.button("로그인", use_container_width=True, type="primary")
 
@@ -265,9 +269,6 @@ def check_password():
                 st.rerun()
             else:
                 st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
-
-        # 카드 박스 닫기
-        st.markdown("</div>", unsafe_allow_html=True)
 
     return False
 
