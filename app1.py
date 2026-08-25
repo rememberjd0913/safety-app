@@ -60,10 +60,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# 🚀 [통합] Wix 스타일 랜딩 + 보안 로그인 콜라보레이션 페이지
-# ==========================================
-
 # 1. 로그인 성공 상태가 아니라면 전체 통합 페이지를 보여줍니다.
 if not st.session_state.get("password_correct", False):
 
@@ -78,14 +74,6 @@ if not st.session_state.get("password_correct", False):
     </div>
 """, unsafe_allow_html=True)
     
-    st.markdown("""
-        <div style="padding: 40px 10px 20px 10px; text-align: center;">
-            <p style="color: #10B981; font-size: 0.85rem; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">SAFETY MISSION</p>
-            <h1 style="color: #FFFFFF; font-size: 2.2rem; font-weight: 800; margin-bottom: 15px;">수도권 서부 환경시설의 안전과 무재해 건설 현장 실현</h1>
-            <p style="color: #94A3B8; font-size: 1rem; line-height: 1.5;">한국환경공단 수도권서부환경본부 스마트 안전관리 시스템에 오신 것을 환영합니다.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
     # --- [섹션 2] 핵심 안전관리 시스템 소개 3열 카드 ---
     col1, col2, col3 = st.columns(3)
     with col1:
