@@ -115,17 +115,7 @@ if not st.session_state.get("password_correct", False):
     _, login_col, _ = st.columns([1, 2.2, 1])
     
     with login_col:
-        st.markdown("""
-            <div style="
-                background-color: #FFFFFF; 
-                padding: 25px 20px; 
-                border-radius: 16px; 
-                border: 1px solid #30363D; 
-                box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-                margin-bottom: 40px;
-            ">
-        """, unsafe_allow_html=True)
-
+        
         allowed_users = st.secrets.get("passwords", {})
 
         user_id = st.text_input("👤 감독관 ID (사번)", key="username_input", placeholder="사번을 입력하세요")
