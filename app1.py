@@ -229,7 +229,7 @@ def check_password():
                     <div style="font-size: 2.5rem; margin-bottom: 10px;">🌱</div>
                     <h2 style="color: #0F172A; font-weight: 800; font-size: 2rem; margin-bottom: 5px;">한국환경공단</h2>
                     <h3 style="color: #007A33; font-weight: 700; font-size: 2rem; margin-bottom: 10px;">수도권서부환경본부</h3>
-                    <p style="color: #64748B; font-size: 1rem; font-weight: 500;">인증된 사내 감독관 전용 시스템</p>
+                    <p style="color: #64748B; font-size: 1rem; font-weight: 500;">인증된 사내 안전담당자 전용 시스템</p>
                 </div>
         """, unsafe_allow_html=True)
 
