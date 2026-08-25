@@ -216,7 +216,14 @@ def check_password():
         try:
             lc1, lc2, lc3 = st.columns([1, 2, 1])
             with lc2:
-                st.image("Keco_logo.png", width=140)
+                st.markdown(
+                    """
+                    <div style="text-align: center;">
+                        <img src="Keco_logo.png" width="140" style="display: block; margin: 0 auto;">
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
         except Exception:
             # 이미지 파일이 없을 경우 예쁜 뱃지형 텍스트로 중앙 대체
             st.markdown("""
