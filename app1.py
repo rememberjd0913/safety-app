@@ -199,519 +199,85 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 🔒 KECO AI 안전점검 시스템
-#    감독관 로그인 완성형 UI
+# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (완전 통합 카드 박스 버전)
 # ==========================================
-
 def check_password():
-
-    # 이미 로그인되어 있으면 로그인 화면 생략
     if st.session_state.get("password_correct", False):
         return True
 
     allowed_users = st.secrets.get("passwords", {})
 
-    # ==========================================
-    # 로그인 화면 전용 CSS
-    # ==========================================
-    st.markdown("""
-    <style>
-
-    /* ------------------------------------------
-       전체 배경
-    ------------------------------------------ */
-    .stApp {
-        background: linear-gradient(
-            135deg,
-            #F8FAFC 0%,
-            #F1F5F9 100%
-        );
-    }
-
-    /* ------------------------------------------
-       상단 기본 여백
-    ------------------------------------------ */
-    .block-container {
-        padding-top: 3rem !important;
-        padding-bottom: 3rem !important;
-    }
-
-    /* ------------------------------------------
-       로그인 카드
-    ------------------------------------------ */
-    div[data-testid="stVerticalBlockBorderWrapper"] {
-        background: #FFFFFF !important;
-
-        border: 1px solid #E2E8F0 !important;
-
-        border-radius: 22px !important;
-
-        box-shadow:
-            0 10px 30px rgba(15, 23, 42, 0.07),
-            0 2px 8px rgba(15, 23, 42, 0.03) !important;
-
-        padding: 10px 10px 18px 10px !important;
-    }
-
-    /* ------------------------------------------
-       로고
-    ------------------------------------------ */
-    .login-logo {
-        text-align: center;
-        margin-top: 5px;
-        margin-bottom: 18px;
-    }
-
-    .login-logo img {
-        width: 125px;
-    }
-
-    /* ------------------------------------------
-       기관명
-    ------------------------------------------ */
-    .login-title {
-        text-align: center;
-        margin-bottom: 4px;
-    }
-
-    .login-title-main {
-        color: #0F172A;
-        font-size: 1.75rem;
-        font-weight: 800;
-        letter-spacing: -0.8px;
-        line-height: 1.35;
-    }
-
-    .login-title-sub {
-        color: #007A33;
-        font-size: 1.45rem;
-        font-weight: 750;
-        letter-spacing: -0.6px;
-        line-height: 1.45;
-    }
-
-    .login-description {
-        text-align: center;
-        color: #64748B;
-        font-size: 0.88rem;
-        font-weight: 500;
-        margin-top: 7px;
-        margin-bottom: 27px;
-    }
-
-    /* ------------------------------------------
-       시스템 배지
-    ------------------------------------------ */
-    .system-badge {
-        display: table;
-        margin: 0 auto 15px auto;
-
-        padding: 5px 13px;
-
-        background: #ECFDF3;
-        color: #007A33;
-
-        border: 1px solid #BBF7D0;
-
-        border-radius: 30px;
-
-        font-size: 0.73rem;
-        font-weight: 700;
-
-        letter-spacing: 0.2px;
-    }
-
-    /* ------------------------------------------
-       입력창 라벨
-    ------------------------------------------ */
-    div[data-testid="stTextInput"] label {
-        color: #334155 !important;
-        font-size: 0.84rem !important;
-        font-weight: 700 !important;
-    }
-
-    /* ------------------------------------------
-       입력창
-    ------------------------------------------ */
-    div[data-testid="stTextInput"] input {
-
-        height: 46px !important;
-
-        background-color: #F8FAFC !important;
-
-        border: 1px solid #CBD5E1 !important;
-
-        border-radius: 10px !important;
-
-        color: #0F172A !important;
-
-        font-size: 0.92rem !important;
-
-        padding-left: 14px !important;
-
-        transition:
-            border-color 0.2s ease,
-            box-shadow 0.2s ease,
-            background-color 0.2s ease;
-    }
-
-    div[data-testid="stTextInput"] input:focus {
-
-        border-color: #007A33 !important;
-
-        background-color: #FFFFFF !important;
-
-        box-shadow:
-            0 0 0 3px rgba(0, 122, 51, 0.10) !important;
-    }
-
-    /* ------------------------------------------
-       로그인 버튼
-    ------------------------------------------ */
-    div.stButton > button {
-
-        height: 48px !important;
-
-        border-radius: 10px !important;
-
-        background: #007A33 !important;
-
-        border: 1px solid #007A33 !important;
-
-        color: #FFFFFF !important;
-
-        font-size: 0.95rem !important;
-
-        font-weight: 750 !important;
-
-        letter-spacing: 0.2px;
-
-        box-shadow:
-            0 4px 10px rgba(0, 122, 51, 0.16);
-
-        transition:
-            transform 0.15s ease,
-            box-shadow 0.15s ease,
-            background 0.15s ease;
-    }
-
-    div.stButton > button:hover {
-
-        background: #006B2D !important;
-
-        border-color: #006B2D !important;
-
-        transform: translateY(-1px);
-
-        box-shadow:
-            0 6px 15px rgba(0, 122, 51, 0.22);
-    }
-
-    div.stButton > button:active {
-        transform: translateY(0);
-    }
-
-    /* ------------------------------------------
-       오류 메시지
-    ------------------------------------------ */
-    div[data-testid="stAlert"] {
-        border-radius: 10px !important;
-        margin-top: 12px !important;
-    }
-
-    /* ------------------------------------------
-       하단 보안 문구
-    ------------------------------------------ */
-    .security-info {
-        text-align: center;
-
-        color: #94A3B8;
-
-        font-size: 0.72rem;
-
-        line-height: 1.6;
-
-        margin-top: 22px;
-    }
-
-    .security-icon {
-        color: #64748B;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-
-    /* ------------------------------------------
-       하단 기관 표시
-    ------------------------------------------ */
-    .login-footer {
-        text-align: center;
-
-        color: #94A3B8;
-
-        font-size: 0.68rem;
-
-        margin-top: 8px;
-    }
-
-    </style>
-    """, unsafe_allow_html=True)
-
-
-    # ==========================================
-    # 화면 중앙 배치
-    # ==========================================
-
-    st.markdown("<div style='height:25px;'></div>", unsafe_allow_html=True)
-
-    col_left, col_center, col_right = st.columns(
-        [1, 2.2, 1]
-    )
-
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    col_left, col_center, col_right = st.columns([1, 2.5, 1])
+    
     with col_center:
+        # 💡 [핵심] 카드 박스를 여기서 열고, 입력창과 버튼까지 전부 이 안에서 처리합니다.
+        st.markdown("""
+            <div style="
+                background-color: #FFFFFF; 
+                padding: 35px 25px; 
+                border-radius: 16px; 
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); 
+                border: 1px solid #E2E8F0;
+                margin-bottom: 20px;
+                text-align: center;
+            ">
+        """, unsafe_allow_html=True)
 
-        # ======================================
-        # 실제 Streamlit 카드
-        # ======================================
-
-        with st.container(border=True):
-
-            # ----------------------------------
-            # 상단 여백
-            # ----------------------------------
-
-            st.markdown(
-                "<div style='height:10px;'></div>",
-                unsafe_allow_html=True
-            )
-
-            # ----------------------------------
-            # 시스템 배지
-            # ----------------------------------
-
+        # 1. 로고 이미지 (카드 안쪽 중앙 정렬)
+        try:
+            img = Image.open("Keco_logo.png")
+            # HTML 내부에 이미지를 깔끔하게 띄우기 위해 중앙 정렬 스타일 적용
+            st.image(img, width=130)
+        except Exception:
             st.markdown("""
-                <div class="system-badge">
-                    ●  INTERNAL SAFETY SYSTEM
+                <div style="margin-bottom: 15px;">
+                    <span style="background-color: #E6F4EA; color: #007A33; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">
+                        🌱 KECO
+                    </span>
                 </div>
             """, unsafe_allow_html=True)
 
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
-            # ----------------------------------
-            # KECO 로고
-            # ----------------------------------
+        # 2. 타이틀 영역
+        st.markdown("""
+                <h2 style="color: #0F172A; font-weight: 800; font-size: 1.8rem; margin-bottom: 5px;">한국환경공단</h2>
+                <h3 style="color: #007A33; font-weight: 700; font-size: 1.6rem; margin-bottom: 10px;">수도권서부환경본부</h3>
+                <p style="color: #64748B; font-size: 0.95rem; font-weight: 500; margin-bottom: 25px;">인증된 사내 감독관 전용 시스템</p>
+            </div>
+        """, unsafe_allow_html=True)
 
-            try:
+        # 3. 입력 필드 및 버튼 (이제 박스 바깥 아래로 삐져나가지 않고 자연스럽게 연결됩니다)
+        user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="사번을 입력하세요")
+        user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input", placeholder="비밀번호를 입력하세요")
+        
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        
+        login_btn = st.button("로그인", use_container_width=True, type="primary")
 
-                img = Image.open("Keco_logo.png")
-
-                logo_col1, logo_col2, logo_col3 = st.columns(
-                    [1, 2, 1]
-                )
-
-                with logo_col2:
-
-                    st.image(
-                        img,
-                        width=125
-                    )
-
-            except Exception:
-
-                st.markdown("""
-                    <div class="login-logo">
-                        <span style="
-                            display:inline-block;
-                            background:#ECFDF3;
-                            color:#007A33;
-                            padding:8px 18px;
-                            border-radius:30px;
-                            font-weight:800;
-                        ">
-                            KECO
-                        </span>
-                    </div>
-                """, unsafe_allow_html=True)
-
-
-            # ----------------------------------
-            # 기관명
-            # ----------------------------------
-
-            st.markdown("""
-                <div class="login-title">
-
-                    <div class="login-title-main">
-                        한국환경공단
-                    </div>
-
-                    <div class="login-title-sub">
-                        수도권서부환경본부
-                    </div>
-
-                </div>
-
-                <div class="login-description">
-                    AI 안전점검 시스템
-                    <br>
-                    인증된 사내 감독관 전용 시스템
-                </div>
-            """, unsafe_allow_html=True)
-
-
-            # ----------------------------------
-            # ID 입력
-            # ----------------------------------
-
-            user_id = st.text_input(
-                "👤 감독관 ID",
-                key="username_input",
-                placeholder="사번을 입력하세요"
-            )
-
-
-            # ----------------------------------
-            # 비밀번호 입력
-            # ----------------------------------
-
-            user_pw = st.text_input(
-                "🔑 비밀번호",
-                type="password",
-                key="password_input",
-                placeholder="비밀번호를 입력하세요"
-            )
-
-
-            # ----------------------------------
-            # 입력창과 버튼 사이 여백
-            # ----------------------------------
-
-            st.markdown(
-                "<div style='height:8px;'></div>",
-                unsafe_allow_html=True
-            )
-
-
-            # ----------------------------------
-            # 로그인 버튼
-            # ----------------------------------
-
-            login_btn = st.button(
-                "로그인",
-                use_container_width=True,
-                type="primary"
-            )
-
-
-            # ----------------------------------
-            # 로그인 처리
-            # ----------------------------------
-
-            if login_btn:
-
-                user_id_clean = str(user_id).strip()
-
-                user_pw_clean = str(user_pw).strip()
-
-                allowed_users_str = {
-                    str(k): str(v)
-                    for k, v in allowed_users.items()
-                }
-
-                # ------------------------------
-                # 인증 성공
-                # ------------------------------
-
-                if (
-                    user_id_clean in allowed_users_str
-                    and
-                    allowed_users_str[user_id_clean]
-                    == user_pw_clean
-                ):
-
-                    st.session_state[
-                        "password_correct"
-                    ] = True
-
-                    st.session_state[
-                        "logged_user"
-                    ] = user_id_clean
-
-                    st.rerun()
-
-
-                # ------------------------------
-                # 인증 실패
-                # ------------------------------
-
-                else:
-
-                    st.error(
-                        "아이디 또는 비밀번호가 올바르지 않습니다."
-                    )
-
-
-            # ----------------------------------
-            # 보안 안내
-            # ----------------------------------
-
-            st.markdown("""
-                <div class="security-info">
-
-                    <div class="security-icon">
-                        🔒 사내 인증 사용자 전용
-                    </div>
-
-                    본 시스템은 허가된 감독관만 이용할 수 있습니다.
-
-                </div>
-
-                <div class="login-footer">
-                    한국환경공단 수도권서부환경본부
-                </div>
-
-                <div style='height:5px;'></div>
-
-            """, unsafe_allow_html=True)
-
+        if login_btn:
+            user_id_clean = str(user_id).strip()
+            user_pw_clean = str(user_pw).strip()
+            allowed_users_str = {str(k): str(v) for k, v in allowed_users.items()}
+            
+            if user_id_clean in allowed_users_str and allowed_users_str[user_id_clean] == user_pw_clean:
+                st.session_state["password_correct"] = True
+                st.session_state["logged_user"] = user_id_clean
+                st.rerun()
+            else:
+                st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
 
     return False
-
-
-# ==========================================
-# 🔐 로그인 게이트
-# ==========================================
 
 if not check_password():
     st.stop()
 
+logged_user_id = st.session_state.get('logged_user')
+user_emails_map = st.secrets.get("user_emails", {})
+mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
 
-# ==========================================
-# 👤 로그인 사용자 정보
-# ==========================================
-
-logged_user_id = st.session_state.get(
-    "logged_user"
-)
-
-
-# ==========================================
-# 📧 사용자별 이메일 매핑
-# ==========================================
-
-user_emails_map = st.secrets.get(
-    "user_emails",
-    {}
-)
-
-mapped_email = user_emails_map.get(
-    str(logged_user_id),
-    st.secrets.get(
-        "smtp",
-        {}
-    ).get(
-        "receiver_email",
-        ""
-    )
-)
 # --- 사이드바 영역 ---
 st.sidebar.markdown("### 🔒 감독관 인증 정보")
 st.sidebar.write(f"접속 사번: **{logged_user_id}**")
