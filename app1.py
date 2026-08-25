@@ -199,7 +199,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (원래 구조 + 로고만 중앙 정렬)
+# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (카드 박스 내부에 로고 포함 버전)
 # ==========================================
 def check_password():
     if st.session_state.get("password_correct", False):
@@ -212,12 +212,24 @@ def check_password():
     col_left, col_center, col_right = st.columns([1, 2.5, 1])
     
     with col_center:
-        # 1. 💡 3분할 컬럼을 만들어 '가운데(lc2)' 칸에 이미지를 넣어 완벽하게 중앙 정렬
+        # 1. 💡 타이틀과 로고를 모두 감싸는 모던 카드 박스 시작
+        st.markdown("""
+            <div style="
+                background-color: #FFFFFF; 
+                padding: 30px 20px; 
+                border-radius: 16px; 
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); 
+                border: 1px solid #E2E8F0;
+                margin-bottom: 20px;
+            ">
+        """, unsafe_allow_html=True)
+
+        # 2. 💡 카드 박스 안에서 3분할 컬럼을 만들어 로고를 완벽하게 중앙 정렬
         try:
             lc1, lc2, lc3 = st.columns([1, 2, 1])
             with lc2:
                 img = Image.open("Keco_logo.png")
-                st.image(img, width=140)
+                st.image(img, width=130)
         except Exception:
             # 이미지 파일이 없을 경우 예쁜 뱃지형 텍스트로 중앙 대체
             st.markdown("""
@@ -228,22 +240,14 @@ def check_password():
                 </div>
             """, unsafe_allow_html=True)
 
-        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-        
-        # 2. 💡 타이틀과 입력창을 감싸는 모던 카드 박스 시작 (원래 구조)
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+
+        # 3. 💡 타이틀 영역
         st.markdown("""
-            <div style="
-                background-color: #FFFFFF; 
-                padding: 25px 20px; 
-                border-radius: 16px; 
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); 
-                border: 1px solid #E2E8F0;
-                margin-bottom: 20px;
-            ">
                 <div style="text-align: center; margin-bottom: 20px;">
-                    <h2 style="color: #0F172A; font-weight: 800; font-size: 2rem; margin-bottom: 5px;">한국환경공단</h2>
-                    <h3 style="color: #007A33; font-weight: 700; font-size: 2rem; margin-bottom: 8px;">수도권서부환경본부</h3>
-                    <p style="color: #64748B; font-size: 1rem; font-weight: 500;">인증된 사내 감독관 전용 시스템</p>
+                    <h2 style="color: #0F172A; font-weight: 800; font-size: 1.8rem; margin-bottom: 5px;">한국환경공단</h2>
+                    <h3 style="color: #007A33; font-weight: 700; font-size: 1.6rem; margin-bottom: 8px;">수도권서부환경본부</h3>
+                    <p style="color: #64748B; font-size: 0.95rem; font-weight: 500;">인증된 사내 감독관 전용 시스템</p>
                 </div>
         """, unsafe_allow_html=True)
 
@@ -278,7 +282,6 @@ if not check_password():
 logged_user_id = st.session_state.get('logged_user')
 user_emails_map = st.secrets.get("user_emails", {})
 mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
-
 # --- 사이드바 영역 ---
 st.sidebar.markdown("### 🔒 감독관 인증 정보")
 st.sidebar.write(f"접속 사번: **{logged_user_id}**")
