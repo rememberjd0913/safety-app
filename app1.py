@@ -116,8 +116,27 @@ if not st.session_state.get("password_correct", False):
     
     with login_col:
         
+        # 1. 라벨과 입력창 글자색을 하얗게 만들어주는 CSS 코드
+        st.markdown("""
+            <style>
+            /* 감독관 ID, 비밀번호 등 입력창의 라벨 글자색 변경 */
+            .stTextInput label {
+                color: #FFFFFF !important;
+                font-weight: 600;
+            }
+            /* 입력창에 타이핑하는 글자색 변경 */
+            .stTextInput input {
+                color: #FFFFFF !important;
+            }
+            /* 입력창 내부 안내 문구(placeholder) 색상 */
+            .stTextInput input::placeholder {
+                color: #94A3B8 !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+        
         allowed_users = st.secrets.get("passwords", {})
-
+        
         user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="사번을 입력하세요")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input", placeholder="비밀번호를 입력하세요")
         
