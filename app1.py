@@ -28,6 +28,110 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ==========================================
+# 🚀 [통합] Wix 스타일 랜딩 + 보안 로그인 콜라보레이션 페이지
+# ==========================================
+
+# 1. 로그인 성공 상태가 아니라면 전체 통합 페이지를 보여줍니다.
+if not st.session_state.get("password_correct", False):
+
+    # --- [섹션 1] 메인 히어로 영역 (Wix 감성) ---
+    st.markdown("""
+        <div style="padding: 40px 10px 20px 10px; text-align: center;">
+            <p style="color: #10B981; font-size: 0.85rem; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px;">SAFETY MISSION</p>
+            <h1 style="color: #FFFFFF; font-size: 2.2rem; font-weight: 800; margin-bottom: 15px;">수도권 서부 환경시설의 안전과 무재해 건설 현장 실현</h1>
+            <p style="color: #94A3B8; font-size: 1rem; line-height: 1.5;">한국환경공단 수도권서부환경본부 스마트 안전관리 시스템에 오신 것을 환영합니다.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # --- [섹션 2] 핵심 안전관리 시스템 소개 3열 카드 ---
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""
+            <div style="background: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; height: 180px; margin-bottom: 15px;">
+                <h3 style="color: #3B82F6; margin-bottom: 10px; font-size: 1.2rem;">01</h3>
+                <h4 style="color: #FFFFFF; margin-bottom: 8px; font-size: 0.95rem;">사고 발생 보고</h4>
+                <p style="color: #8B949E; font-size: 0.82rem;">현장 내 안전사고 즉시 보고 및 전파 체계 가동</p>
+            </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+            <div style="background: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; height: 180px; margin-bottom: 15px;">
+                <h3 style="color: #3B82F6; margin-bottom: 10px; font-size: 1.2rem;">02</h3>
+                <h4 style="color: #FFFFFF; margin-bottom: 8px; font-size: 0.95rem;">안전 점검 리스트</h4>
+                <p style="color: #8B949E; font-size: 0.82rem;">작업 전 장비 및 근로자 보호구 상태 실시간 승인</p>
+            </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown("""
+            <div style="background: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; height: 180px; margin-bottom: 15px;">
+                <h3 style="color: #3B82F6; margin-bottom: 10px; font-size: 1.2rem;">03</h3>
+                <h4 style="color: #FFFFFF; margin-bottom: 8px; font-size: 0.95rem;">비상 연락망</h4>
+                <p style="color: #8B949E; font-size: 0.82rem;">관할 소방서, 의료기관 및 대책 조직 즉시 호출</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<hr style='border: 0; border-top: 1px solid #30363D; margin: 30px 0;'>", unsafe_allow_html=True)
+
+    # --- [섹션 3] 랜딩 흐름 자연스럽게 녹아든 '보안 로그인 게이트웨이' ---
+    st.markdown("""
+        <div style="text-align: center; margin-bottom: 25px;">
+            <h3 style="color: #FFFFFF; font-size: 1.5rem; font-weight: 700; margin-bottom: 8px;">🌱 감독관 인증 및 시스템 접속</h3>
+            <p style="color: #94A3B8; font-size: 0.9rem;">인증된 사내 감독관 계정으로 로그인하여 점검 시스템을 시작하세요.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # 중앙 정렬된 로그인 폼 박스 배치
+    _, login_col, _ = st.columns([1, 2.2, 1])
+    
+    with login_col:
+        st.markdown("""
+            <div style="
+                background-color: #161B22; 
+                padding: 25px 20px; 
+                border-radius: 16px; 
+                border: 1px solid #30363D; 
+                box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+                margin-bottom: 40px;
+            ">
+        """, unsafe_allow_html=True)
+
+        allowed_users = st.secrets.get("passwords", {})
+
+        user_id = st.text_input("👤 감독관 ID (사번)", key="username_input", placeholder="사번을 입력하세요")
+        user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input", placeholder="비밀번호를 입력하세요")
+        
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+        
+        login_btn = st.button("안전 점검 시스템 로그인", use_container_width=True, type="primary")
+
+        if login_btn:
+            user_id_clean = str(user_id).strip()
+            user_pw_clean = str(user_pw).strip()
+            allowed_users_str = {str(k): str(v) for k, v in allowed_users.items()}
+            
+            if user_id_clean in allowed_users_str and allowed_users_str[user_id_clean] == user_pw_clean:
+                st.session_state["password_correct"] = True
+                st.session_state["logged_user"] = user_id_clean
+                st.rerun()
+            else:
+                st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    st.stop()  # 로그인이 안 되어 있다면 랜딩+로그인 통합 화면까지만 보여주고 멈춤!
+
+# ==========================================
+# 🎉 로그인이 완료된 후 실행되는 진짜 메인 시스템 영역
+# ==========================================
+logged_user_id = st.session_state.get('logged_user')
+user_emails_map = st.secrets.get("user_emails", {})
+mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
+
+st.success(f"환영합니다, {logged_user_id} 감독관님! 안전 점검 시스템이 활성화되었습니다.")
+# 이후 기존에 작성하셨던 체크리스트 및 점검 시스템 코드가 이어지면 됩니다!
+
+
 # ---------------- PDF 생성 함수 정의 ----------------
 def generate_pdf(title, content):
     pdf = FPDF()
