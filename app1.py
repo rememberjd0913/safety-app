@@ -213,13 +213,7 @@ def check_password():
     
     with col_center:
         # 💡 HTML 태그를 사용해 GitHub 이미지를 직접 띄우기 (가장 확실한 방법)
-        logo_url = "https://github.com/rememberjd0913/safety-app/blob/main/Keco_logo.png"
-        
-        st.markdown(f"""
-            <div style="text-align: center; margin-bottom: 10px;">
-                <img src="{logo_url}" width="150" style="max-width: 100%; height: auto;">
-            </div>
-        """, unsafe_allow_html=True)
+        st.image("Keco_logo.png", width=150)
 
         # 2. 💡 입력창과 타이틀을 감싸는 모던 카드 박스 시작
         st.markdown("""
