@@ -211,24 +211,24 @@ def check_password():
     
     col_left, col_center, col_right = st.columns([1, 2.5, 1])
     
-with col_center:
-    try:
-        lc1, lc2, lc3 = st.columns([1, 2, 1])
-        with lc2:
-            img = Image.open("Keco_logo.png")
-            st.image(img, width=140)
-    except Exception:
-        # 이미지 파일이 없을 경우 예쁜 뱃지형 텍스트로 중앙 대체
-        st.markdown("""
-            <div style="text-align: center; margin-bottom: 10px;">
-                <span style="background-color: #E6F4EA; color: #007A33; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">
-                    🌱 KECO
-                </span>
-            </div>
-        """, unsafe_allow_html=True)
+    with col_center:
+        try:
+            lc1, lc2, lc3 = st.columns([1, 2, 1])
+            with lc2:
+                img = Image.open("Keco_logo.png")
+                st.image(img, width=140)
+        except Exception:
+            # 이미지 파일이 없을 경우 예쁜 뱃지형 텍스트로 중앙 대체
+            st.markdown("""
+                <div style="text-align: center; margin-bottom: 10px;">
+                    <span style="background-color: #E6F4EA; color: #007A33; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">
+                        🌱 KECO
+                    </span>
+                </div>
+            """, unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        
         # 2. 💡 입력창과 타이틀을 감싸는 모던 카드 박스 시작
         st.markdown("""
             <div style="
