@@ -200,7 +200,7 @@ st.markdown("""
 
 
 # ==========================================
-# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (로고 출력 안정화 버전)
+# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (GitHub 이미지 연동)
 # ==========================================
 def check_password():
     if st.session_state.get("password_correct", False):
@@ -213,13 +213,18 @@ def check_password():
     _, col_center, _ = st.columns([1, 2.5, 1])
     
     with col_center:
-        # 1. 💡 로고 이미지를 카드 박스 '바깥 위쪽'에 깔끔하게 중앙 정렬로 배치합니다.
+        # 1. 💡 GitHub에 올라간 이미지의 Raw URL을 여기에 넣습니다.
+        logo_url = "https://raw.githubusercontent.com/본인계정아이디/저장소이름/main/Keco_logo.png"
+
         try:
-            logo_img = Image.open(r"C:/Users/P/Desktop/safety-file/Keco_logo.png")
+            response = requests.get(logo_url)
+            logo_img = Image.open(BytesIO(response.content))
+            
             lc1, lc2, lc3 = st.columns([1, 2, 1])
             with lc2:
                 st.image(logo_img, width=150)
         except Exception:
+            # 불러오기 실패 시 대체 이모지
             st.markdown('<div style="text-align: center; font-size: 2.5rem; margin-bottom: 10px;">🌱</div>', unsafe_allow_html=True)
 
         st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
@@ -242,7 +247,7 @@ def check_password():
         """, unsafe_allow_html=True)
 
         # 입력 필드
-        user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="사번을 입력하세요")
+        user_id = st.text_input("👤 감독관 ID (사번)", key="username_input", placeholder="사번을 입력하세요")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input", placeholder="비밀번호를 입력하세요")
         
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
@@ -272,6 +277,7 @@ if not check_password():
 logged_user_id = st.session_state.get('logged_user')
 user_emails_map = st.secrets.get("user_emails", {})
 mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
+
 # --- 사이드바 영역 ---
 st.sidebar.markdown("### 🔒 감독관 인증 정보")
 st.sidebar.write(f"접속 사번: **{logged_user_id}**")
