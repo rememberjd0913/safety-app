@@ -214,7 +214,7 @@ def check_password():
     
     with col_center:
         # 1. 💡 GitHub에 올라간 이미지의 Raw URL을 여기에 넣습니다.
-        logo_url = "https://raw.githubusercontent.com/본인계정아이디/저장소이름/main/Keco_logo.png"
+        logo_url = "https://github.com/rememberjd0913/safety-app/blob/main/Keco_logo.png"
 
         try:
             response = requests.get(logo_url)
