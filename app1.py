@@ -19,6 +19,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from fpdf import FPDF
+import requests
+from io import BytesIO
 
 # --- 페이지 기본 설정 ---
 st.set_page_config(
