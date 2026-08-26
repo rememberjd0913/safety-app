@@ -127,6 +127,14 @@ st.markdown("""
         border-color: #3B82F6; /* 테두리 색상 강조 */
         box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2); /* 입체적인 그림자 */
         }
+        /* 현장 사진 박스 스타일 */
+        .site-img-box {
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid #30363D;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        margin: 30px 0;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -213,6 +221,23 @@ if st.session_state["selected_card"] == "main":
             if st.form_submit_button("🔍 환경안전 진단 바로가기", use_container_width=True):
                 st.session_state["selected_card"] = "card_4"
                 st.rerun()
+
+# 3. 중간에 건설현장(또는 환경시설) 사진 배치 영역
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("""
+        <h3 style="color: #FFFFFF; font-size: 1.3rem; font-weight: 700; margin-bottom: 10px;">🏗️ 수도권서부환경본부 현장 안전 및 시설 관리 현황</h3>
+    """, unsafe_allow_html=True)
+    
+    # 세련된 테두리가 적용된 현장 사진 출력 (나노바나나2 등으로 만든 이미지를 나중에 파일명으로 바꿔서 넣으셔도 됩니다!)
+    st.markdown("""
+        <div class="site-img-box">
+            <img src="https://images.unsplash.com/photo-1541888946425-d0fbb18f844b?q=80&w=1200&auto=format&fit=crop" 
+                 style="width: 100%; height: 350px; object-fit: cover; display: block;" alt="현장 사진">
+            <div style="background-color: #161B22; padding: 14px 20px; color: #94A3B8; font-size: 0.9rem; text-align: center; border-top: 1px solid #30363D;">
+                📷 스마트 현장 모니터링 및 안전관리 현장 (수도권서부환경본부 관할)
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
 # ==========================================
 # 🚨 [상세 화면들] 각 카드를 클릭했을 때 연결될 페이지
