@@ -229,15 +229,11 @@ if st.session_state["selected_card"] == "main":
     """, unsafe_allow_html=True)
     
     # 세련된 테두리가 적용된 현장 사진 출력 (나노바나나2 등으로 만든 이미지를 나중에 파일명으로 바꿔서 넣으셔도 됩니다!)
-    st.markdown("""
-        <div class="site-img-box">
-            <img src="https://images.unsplash.com/photo-1541888946425-d0fbb18f844b?q=80&w=1200&auto=format&fit=crop" 
-                 style="width: 100%; height: 350px; object-fit: cover; display: block;" alt="현장 사진">
-            <div style="background-color: #161B22; padding: 14px 20px; color: #94A3B8; font-size: 0.9rem; text-align: center; border-top: 1px solid #30363D;">
-                📷 스마트 현장 모니터링 및 안전관리 현장 (수도권서부환경본부 관할)
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.image(
+        "111.png", 
+        caption="📷 수도권서부환경본부 실제 현장 사진", 
+        use_container_width=True
+    )
 
 # ==========================================
 # 🚨 [상세 화면들] 각 카드를 클릭했을 때 연결될 페이지
