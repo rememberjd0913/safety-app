@@ -178,7 +178,7 @@ if st.session_state["selected_card"] == "main":
 
     # [카드 3] 환경시설 설치지원
     with col3:
-        with st.form(key="form_c3",, border=False):
+        with st.form(key="form_c3", border=False):
             st.markdown("""
                 <div class="env-card-3">
                     <div>
