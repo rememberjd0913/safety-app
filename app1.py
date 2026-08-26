@@ -27,6 +27,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+st.set_page_config(page_title="한국환경공단 수도권서부환경본부", layout="wide")
+
 st.markdown("""
     <style>
         .stApp {
