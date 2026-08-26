@@ -211,6 +211,9 @@ if st.session_state["selected_card"] == "main":
 # ==========================================
 # 🚨 [상세 화면들] 각 카드를 클릭했을 때 연결될 페이지
 # ==========================================
+if "selected_card" not in st.session_state:
+    st.session_state["selected_card"] = "main"
+
 elif st.session_state["selected_card"] in ["card_1", "card_2", "card_3", "card_4"]:
     
     if st.button("⬅️ 메인 홈으로 돌아가기", type="secondary"):
