@@ -102,47 +102,88 @@ if not st.session_state.get("password_correct", False):
 
     st.markdown("<hr style='border: 0; border-top: 1px solid #30363D; margin: 30px 0;'>", unsafe_allow_html=True)
 
-# ==========================================
-# 🚨 클릭형 사고 발생 보고 인포그래픽 카드
-# ==========================================
+# 1. 화면 전환을 기억하는 세션 상태 초기화 (처음엔 'main' 화면)
+if "current_view" not in st.session_state:
+    st.session_state["current_view"] = "main"
 
-# st.expander를 사용하면 카드를 클릭했을 때 내용이 아래로 펼쳐집니다!
-with st.expander("🚨 01. 사고 발생 보고 및 대응 체계 (클릭하여 열기/닫기)", expanded=False):
+# ==========================================
+# 🏠 [화면 A] 메인 대시보드 (3열 카드 화면)
+# ==========================================
+if st.session_state["current_view"] == "main":
     
     st.markdown("""
-        <div style="background-color: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; margin-top: 5px;">
-            <p style="color: #94A3B8; font-size: 0.9rem; margin-bottom: 20px; text-align: center;">
-                현장 내 안전사고 발생 시 신속한 수습과 2차 피해 방지를 위한 단계별 비상 대응 절차입니다.
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h2 style="color: #FFFFFF; font-weight: 800;">건설현장 안전관리 시스템</h2>
+            <p style="color: #94A3B8;">점검할 항목의 카드를 클릭하세요.</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # 💡 [01 사고 발생 보고] 카드 전체를 대신하는 인터랙티브 버튼 박스
+        st.markdown("""
+            <div style="background: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; height: 200px; margin-bottom: 10px;">
+                <h3 style="color: #3B82F6; margin-bottom: 10px; font-size: 1.2rem;">01</h3>
+                <h4 style="color: #FFFFFF; margin-bottom: 8px; font-size: 0.95rem;">사고 발생 보고</h4>
+                <p style="color: #8B949E; font-size: 0.82rem;">현장 내 안전사고 즉시 보고 및 전파 체계 가동</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # 이 버튼을 누르면 'accident_view' 화면으로 전환됩니다!
+        if st.button("👉 [01 사고 발생 보고] 상세보기", key="btn_go_accident", use_container_width=True, type="primary"):
+            st.session_state["current_view"] = "accident_view"
+            st.rerun()
+
+    with col2:
+        st.markdown("""
+            <div style="background: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; height: 200px; margin-bottom: 10px;">
+                <h3 style="color: #3B82F6; margin-bottom: 10px; font-size: 1.2rem;">02</h3>
+                <h4 style="color: #FFFFFF; margin-bottom: 8px; font-size: 0.95rem;">안전 점검 리스트</h4>
+                <p style="color: #8B949E; font-size: 0.82rem;">작업 전 장비 및 근로자 보호구 상태 실시간 승인</p>
+            </div>
+        """, unsafe_allow_html=True)
+        st.button("👉 [02 점검 리스트] 이동", key="btn_go_check", use_container_width=True)
+
+    with col3:
+        st.markdown("""
+            <div style="background: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; height: 200px; margin-bottom: 10px;">
+                <h3 style="color: #3B82F6; margin-bottom: 10px; font-size: 1.2rem;">03</h3>
+                <h4 style="color: #FFFFFF; margin-bottom: 8px; font-size: 0.95rem;">비상 연락망</h4>
+                <p style="color: #8B949E; font-size: 0.82rem;">관할 소방서, 의료기관 및 대책 조직 즉시 호출</p>
+            </div>
+        """, unsafe_allow_html=True)
+        st.button("👉 [03 비상 연락망] 이동", key="btn_go_contact", use_container_width=True)
+
+# ==========================================
+# 🚨 [화면 B] '01 사고 발생 보고' 카드를 눌렀을 때 나오는 인포그래픽 화면
+# ==========================================
+elif st.session_state["current_view"] == "accident_view":
+    
+    # 상단에 이전(메인으로) 돌아가기 버튼 배치
+    if st.button("⬅️ 메인 대시보드로 돌아가기", type="secondary"):
+        st.session_state["current_view"] = "main"
+        st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 인포그래픽 본문 박스
+    st.markdown("""
+        <div style="background-color: #161B22; padding: 30px; border-radius: 16px; border: 1px solid #30363D; margin-bottom: 20px;">
+            <h2 style="color: #FFFFFF; font-size: 1.5rem; font-weight: 800; margin-bottom: 8px; text-align: center;">
+                🚨 [01] 사고 발생 시 현장 대응체계 인포그래픽
+            </h2>
+            <p style="color: #94A3B8; font-size: 0.9rem; text-align: center; margin-bottom: 30px;">
+                안전사고 발생 시 신속한 수습과 2차 피해 방지를 위한 단계별 비상 대응 절차입니다.
             </p>
     """, unsafe_allow_html=True)
 
-    # 5단계 인포그래픽 스텝 카드
     steps = [
-        {
-            "num": "01",
-            "title": "사고 발생 즉시 현장 통제 및 상부 보고",
-            "desc": "추가 피해 확산을 막기 위해 즉시 현장을 차단하고, 관리감독자 및 본부 상황실에 유선 전파합니다."
-        },
-        {
-            "num": "02",
-            "title": "부상자 상태 확인 및 응급 구호 조치",
-            "desc": "부상자의 의식 및 부상 부위를 확인하고, 안전보호구 탈거 및 응급 구호(AED 사용 등)를 최우선 실시합니다."
-        },
-        {
-            "num": "03",
-            "title": "상황별 비상 연락망 가동 및 유관기관 요청",
-            "desc": "관할 소방서(119), 경찰서 및 인근 의료기관에 즉시 연락하여 구급차 출동 및 협조를 요청합니다."
-        },
-        {
-            "num": "04",
-            "title": "유해 물질 차단 및 2차 피해 방지 봉쇄",
-            "desc": "위험물 누출이나 설비 붕괴 위험 요소가 있는 경우 즉시 밸브 차단 및 구역 임시 봉쇄 조치를 취합니다."
-        },
-        {
-            "num": "05",
-            "title": "현장 기록 보존 및 기술 복구 계획 수립",
-            "desc": "사고 현장의 사진 및 영상 증거를 보존하고, 원인 규명 및 재발 방지를 위한 기술 복구 보고서를 작성합니다."
-        }
+        {"num": "01", "title": "사고 발생 즉시 현장 통제 및 상부 보고", "desc": "추가 피해 확산을 막기 위해 즉시 현장을 차단하고, 관리감독자 및 본부 상황실에 유선 전파합니다."},
+        {"num": "02", "title": "부상자 상태 확인 및 응급 구호 조치", "desc": "부상자의 의식 및 부상 부위를 확인하고, 안전보호구 탈거 및 응급 구호(AED 사용 등)를 최우선 실시합니다."},
+        {"num": "03", "title": "상황별 비상 연락망 가동 및 유관기관 요청", "desc": "관할 소방서(119), 경찰서 및 인근 의료기관에 즉시 연락하여 구급차 출동 및 협조를 요청합니다."},
+        {"num": "04", "title": "유해 물질 차단 및 2차 피해 방지 봉쇄", "desc": "위험물 누출이나 설비 붕괴 위험 요소가 있는 경우 즉시 밸브 차단 및 구역 임시 봉쇄 조치를 취합니다."},
+        {"num": "05", "title": "현장 기록 보존 및 기술 복구 계획 수립", "desc": "사고 현장의 사진 및 영상 증거를 보존하고, 원인 규명 및 재발 방지를 위한 기술 복구 보고서를 작성합니다."}
     ]
 
     for s in steps:
@@ -153,24 +194,18 @@ with st.expander("🚨 01. 사고 발생 보고 및 대응 체계 (클릭하여 
                 background-color: #0F1117; 
                 border: 1px solid #30363D; 
                 border-left: 5px solid #10B981; 
-                padding: 14px 18px; 
-                border-radius: 8px; 
-                margin-bottom: 10px;
+                padding: 16px 20px; 
+                border-radius: 10px; 
+                margin-bottom: 12px;
             ">
-                <div style="
-                    font-size: 1.1rem; 
-                    font-weight: 800; 
-                    color: #10B981; 
-                    margin-right: 15px; 
-                    min-width: 30px;
-                ">
+                <div style="font-size: 1.2rem; font-weight: 800; color: #10B981; margin-right: 18px; min-width: 35px;">
                     {s['num']}
                 </div>
                 <div>
-                    <div style="color: #FFFFFF; font-size: 1rem; font-weight: 700; margin-bottom: 3px;">
+                    <div style="color: #FFFFFF; font-size: 1.05rem; font-weight: 700; margin-bottom: 4px;">
                         {s['title']}
                     </div>
-                    <div style="color: #94A3B8; font-size: 0.85rem; line-height: 1.4;">
+                    <div style="color: #94A3B8; font-size: 0.9rem; line-height: 1.4;">
                         {s['desc']}
                     </div>
                 </div>
@@ -179,13 +214,13 @@ with st.expander("🚨 01. 사고 발생 보고 및 대응 체계 (클릭하여 
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 내부 액션 버튼
+    # 하단 액션 버튼
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("📞 본부 상황실 긴급 연락", key="btn_call_emergency", use_container_width=True):
+        if st.button("📞 본부 상황실 긴급 연락", use_container_width=True):
             st.warning("⚠️ 수도권서부환경본부 비상상황실로 연결을 시도합니다.")
     with col2:
-        if st.button("📋 사고 보고서 양식 다운로드", key="btn_download_report", use_container_width=True, type="primary"):
+        if st.button("📋 사고 보고서 양식 다운로드", use_container_width=True, type="primary"):
             st.info("📥 사고 발생 보고서 서식 다운로드가 시작됩니다.")
     
     # --- [섹션 3] 랜딩 흐름 자연스럽게 녹아든 '보안 로그인 게이트웨이' ---
