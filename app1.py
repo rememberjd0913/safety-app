@@ -20,6 +20,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 from fpdf import FPDF
 
+# ==========================================
+# 1. 무조건 파일의 가장 맨 위에 와야 하는 세션 초기화 코드
+# ==========================================
+if "selected_card" not in st.session_state:
+    st.session_state["selected_card"] = "main"
+
 # --- 페이지 기본 설정 ---
 st.set_page_config(
     page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 점검 시스템",
@@ -211,8 +217,6 @@ if st.session_state["selected_card"] == "main":
 # ==========================================
 # 🚨 [상세 화면들] 각 카드를 클릭했을 때 연결될 페이지
 # ==========================================
-if "selected_card" not in st.session_state:
-    st.session_state["selected_card"] = "main"
 
 elif st.session_state["selected_card"] in ["card_1", "card_2", "card_3", "card_4"]:
     
