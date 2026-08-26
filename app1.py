@@ -56,6 +56,20 @@ st.markdown("""
             font-size: 1.1rem;
             line-height: 1.6;
         }
+        .wix-card {
+        background: #161B22;
+        padding: 24px;
+        border-radius: 14px;
+        border: 1px solid #30363D;
+        height: 190px;
+        transition: all 0.3s ease; /* 부드럽게 움직이는 효과 */
+        cursor: pointer;
+        }
+        .wix-card:hover {
+        transform: translateY(-6px); /* 위로 살짝 튀어오름 */
+        border-color: #3B82F6; /* 테두리 색상 강조 */
+        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2); /* 입체적인 그림자 */
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -73,45 +87,57 @@ if not st.session_state.get("password_correct", False):
     </div>
 """, unsafe_allow_html=True)
     
-# --- [섹션 2] 핵심 안전관리 시스템 소개 3열 카드 (클릭 가능 버전) ---
+# --- [섹션 2] 마우스 호버 입체 효과 + 카드 전체 클릭형 3열 그리드 ---
     col1, col2, col3 = st.columns(3)
     
+    # [카드 1] 사고 발생 보고
     with col1:
-        st.markdown("""
-            <div style="background: #161B22; padding: 20px; border-radius: 12px 12px 0 0; border: 1px solid #30363D; border-bottom: none; height: 160px;">
-                <h3 style="color: #3B82F6; margin-bottom: 1px; font-size: 1.5rem;">01</h3>
-                <h4 style="color: #FFFFFF; margin-bottom: 6px; font-size: 1.3rem;">사고 발생 보고</h4>
-                <p style="color: #8B949E; font-size: 0.85rem; line-height: 1.3;">현장 내 안전사고 즉시 보고 및 전파 체계 가동</p>
-            </div>
-        """, unsafe_allow_html=True)
-        # 카드 바로 아래에 연결되는 클릭 버튼
-        if st.button("👉 [01] 사고 발생 보고 열기", key="btn_card_1", use_container_width=True, type="primary"):
-            st.session_state["selected_card"] = "card_1"
-            st.rerun()
+        with st.form(key="form_card_1", border=False):
+            st.markdown("""
+                <div class="wix-card">
+                    <h3 style="color: #3B82F6; margin-bottom: 2px; font-size: 1.5rem;">01</h3>
+                    <h4 style="color: #FFFFFF; margin-bottom: 8px; font-size: 1.25rem;">사고 발생 보고</h4>
+                    <p style="color: #8B949E; font-size: 0.85rem; line-height: 1.4;">현장 내 안전사고 즉시 보고 및 전파 체계 가동</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # 카드 영역 전체를 덮는 투명하거나 깔끔한 제출 버튼
+            submitted_1 = st.form_submit_button("📁 사고 발생 보고 확인하기", use_container_width=True)
+            if submitted_1:
+                st.session_state["selected_card"] = "card_1"
+                st.rerun()
 
+    # [카드 2] 안전 점검 리스트
     with col2:
-        st.markdown("""
-            <div style="background: #161B22; padding: 20px; border-radius: 12px 12px 0 0; border: 1px solid #30363D; border-bottom: none; height: 160px;">
-                <h3 style="color: #3B82F6; margin-bottom: 1px; font-size: 1.5rem;">02</h3>
-                <h4 style="color: #FFFFFF; margin-bottom: 6px; font-size: 1.3rem;">안전 점검 리스트</h4>
-                <p style="color: #8B949E; font-size: 0.85rem; line-height: 1.3;">작업 전 장비 및 근로자 보호구 상태 실시간 승인</p>
-            </div>
-        """, unsafe_allow_html=True)
-        if st.button("👉 [02] 안전 점검 리스트 열기", key="btn_card_2", use_container_width=True, type="primary"):
-            st.session_state["selected_card"] = "card_2"
-            st.rerun()
+        with st.form(key="form_card_2", border=False):
+            st.markdown("""
+                <div class="wix-card">
+                    <h3 style="color: #3B82F6; margin-bottom: 2px; font-size: 1.5rem;">02</h3>
+                    <h4 style="color: #FFFFFF; margin-bottom: 8px; font-size: 1.25rem;">안전 점검 리스트</h4>
+                    <p style="color: #8B949E; font-size: 0.85rem; line-height: 1.4;">작업 전 장비 및 근로자 보호구 상태 실시간 승인</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            submitted_2 = st.form_submit_button("📋 안전 점검 리스트 열기", use_container_width=True)
+            if submitted_2:
+                st.session_state["selected_card"] = "card_2"
+                st.rerun()
 
+    # [카드 3] 비상 연락망
     with col3:
-        st.markdown("""
-            <div style="background: #161B22; padding: 20px; border-radius: 12px 12px 0 0; border: 1px solid #30363D; border-bottom: none; height: 160px;">
-                <h3 style="color: #3B82F6; margin-bottom: 1px; font-size: 1.5rem;">03</h3>
-                <h4 style="color: #FFFFFF; margin-bottom: 6px; font-size: 1.3rem;">비상 연락망</h4>
-                <p style="color: #8B949E; font-size: 0.85rem; line-height: 1.3;">관할 소방서, 의료기관 및 대책 조직 즉시 호출</p>
-            </div>
-        """, unsafe_allow_html=True)
-        if st.button("👉 [03] 비상 연락망 열기", key="btn_card_3", use_container_width=True, type="primary"):
-            st.session_state["selected_card"] = "card_3"
-            st.rerun()
+        with st.form(key="form_card_3", border=False):
+            st.markdown("""
+                <div class="wix-card">
+                    <h3 style="color: #3B82F6; margin-bottom: 1px; font-size: 1.5rem;">03</h3>
+                    <h4 style="color: #FFFFFF; margin-bottom: 8px; font-size: 1.25rem;">비상 연락망</h4>
+                    <p style="color: #8B949E; font-size: 0.85rem; line-height: 1.4;">관할 소방서, 의료기관 및 대책 조직 즉시 호출</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            submitted_3 = st.form_submit_button("📞 비상 연락망 확인하기", use_container_width=True)
+            if submitted_3:
+                st.session_state["selected_card"] = "card_3"
+                st.rerun()
 
     st.markdown("<hr style='border: 0; border-top: 1px solid #30363D; margin: 30px 0;'>", unsafe_allow_html=True)
     
