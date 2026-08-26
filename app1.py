@@ -208,6 +208,35 @@ if st.session_state["selected_card"] == "main":
                 st.session_state["selected_card"] = "card_4"
                 st.rerun()
 
+# ==========================================
+# 🚨 [상세 화면들] 각 카드를 클릭했을 때 연결될 페이지
+# ==========================================
+elif st.session_state["selected_card"] in ["card_1", "card_2", "card_3", "card_4"]:
+    
+    if st.button("⬅️ 메인 홈으로 돌아가기", type="secondary"):
+        st.session_state["selected_card"] = "main"
+        st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # 카드 종류에 따라 다른 상세 내용 출력
+    card_titles = {
+        "card_1": "🌱 환경관리 세부 시스템 및 업무 안내",
+        "card_2": "♻️ 순환형 자원관리 세부 시스템 및 업무 안내",
+        "card_3": "🏗️ 환경시설 설치지원 세부 시스템 및 업무 안내",
+        "card_4": "🛡️ 환경안전 진단 세부 시스템 및 업무 안내"
+    }
+    
+    current_title = card_titles[st.session_state["selected_card"]]
+    
+    st.markdown(f"""
+        <div style="background-color: #161B22; padding: 30px; border-radius: 16px; border: 1px solid #30363D;">
+            <h2 style="color: #FFFFFF; font-weight: 800; margin-bottom: 15px;">{current_title}</h2>
+            <p style="color: #94A3B8; font-size: 1rem; line-height: 1.6;">
+                선택하신 분야의 실시간 데이터 조회, 담당 업무 관리 및 관련 인포그래픽을 이 공간에서 확인할 수 있습니다.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
 # 1. 로그인 성공 상태가 아니라면 전체 통합 페이지를 보여줍니다.
 if not st.session_state.get("password_correct", False):
