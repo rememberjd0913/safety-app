@@ -28,7 +28,55 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.set_page_config(page_title="한국환경공단 수도권서부환경본부", layout="wide")
+# ==========================================
+# 🎨 [CSS 스타일 정의] 호버 효과 및 카드 디자인
+# ==========================================
+st.markdown("""
+<style>
+    /* 메인 히어로 배너 박스 */
+    .hero-banner {
+        background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), 
+                    url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1920&auto=format&fit=crop');
+        background-size: cover;
+        background-position: center;
+        height: 380px;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: white;
+        margin-bottom: 30px;
+        padding: 20px;
+    }
+    
+    /* 4가지 컬러 카드 기본 스타일 (마우스 호버 입체 효과) */
+    .env-card-1, .env-card-2, .env-card-3, .env-card-4 {
+        padding: 25px;
+        border-radius: 14px;
+        height: 220px;
+        color: white;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .env-card-1 { background: linear-gradient(135deg, #0284c7, #0369a1); }
+    .env-card-2 { background: linear-gradient(135deg, #0d9488, #0f766e); }
+    .env-card-3 { background: linear-gradient(135deg, #475569, #334155); }
+    .env-card-4 { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+
+    /* 마우스를 올렸을 때 위로 툭 튀어오르는 효과 */
+    .env-card-1:hover, .env-card-2:hover, .env-card-3:hover, .env-card-4:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+    }
+</style>
+""", unsafe_allow_html=True)
 
 st.markdown("""
     <style>
