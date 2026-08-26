@@ -124,6 +124,91 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# ==========================================
+# 🏠 [메인 화면]
+# ==========================================
+if st.session_state["selected_card"] == "main":
+    
+    # 1. 상단 히어로 배너 섹션 (공단 사이트 느낌 구현)
+    st.markdown("""
+        <div class="hero-banner">
+            <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+                수도권서부환경본부
+            </h1>
+            <p style="font-size: 1.1rem; font-weight: 400; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+                국민과 환경을 위한 건강하고 행복한 환경 조성을 위해 앞장서겠습니다.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # 2. 4개의 핵심 서비스 카드 섹션 (4열 배치)
+    col1, col2, col3, col4 = st.columns(4)
+
+    # [카드 1] 환경관리
+    with col1:
+        with st.form(key="form_c1", border=False):
+            st.markdown("""
+                <div class="env-card-1">
+                    <div>
+                        <h3 style="margin: 0 0 8px 0; font-size: 1.3rem; font-weight: 700;">환경관리</h3>
+                        <p style="margin: 0; font-size: 0.85rem; opacity: 0.9; line-height: 1.4;">대기질·수질 등 환경 전반적인 관리 업무</p>
+                    </div>
+                    <div style="font-size: 0.85rem; font-weight: 600; text-align: right;">상세보기 &rarr;</div>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.form_submit_button("🔍 환경관리 바로가기", use_container_width=True):
+                st.session_state["selected_card"] = "card_1"
+                st.rerun()
+
+    # [카드 2] 순환형 자원관리
+    with col2:
+        with st.form(key="form_c2", border=False):
+            st.markdown("""
+                <div class="env-card-2">
+                    <div>
+                        <h3 style="margin: 0 0 8px 0; font-size: 1.3rem; font-weight: 700;">순환형 자원관리</h3>
+                        <p style="margin: 0; font-size: 0.85rem; opacity: 0.9; line-height: 1.4;">폐기물, 재활용, 환경제도 등 순환자원 관리 업무</p>
+                    </div>
+                    <div style="font-size: 0.85rem; font-weight: 600; text-align: right;">상세보기 &rarr;</div>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.form_submit_button("🔍 순환형 자원관리 바로가기", use_container_width=True):
+                st.session_state["selected_card"] = "card_2"
+                st.rerun()
+
+    # [카드 3] 환경시설 설치지원
+    with col3:
+        with st.form(key="form_c3",, border=False):
+            st.markdown("""
+                <div class="env-card-3">
+                    <div>
+                        <h3 style="margin: 0 0 8px 0; font-size: 1.3rem; font-weight: 700;">환경시설 설치지원</h3>
+                        <p style="margin: 0; font-size: 0.85rem; opacity: 0.9; line-height: 1.4;">환경시설 설치지원 국가, 지방자치단체 상하수도시설 설치지원 업무</p>
+                    </div>
+                    <div style="font-size: 0.85rem; font-weight: 600; text-align: right;">상세보기 &rarr;</div>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.form_submit_button("🔍 환경시설 설치지원 바로가기", use_container_width=True):
+                st.session_state["selected_card"] = "card_3"
+                st.rerun()
+
+    # [카드 4] 환경안전 진단
+    with col4:
+        with st.form(key="form_c4", border=False):
+            st.markdown("""
+                <div class="env-card-4">
+                    <div>
+                        <h3 style="margin: 0 0 8px 0; font-size: 1.3rem; font-weight: 700;">환경안전 진단</h3>
+                        <p style="margin: 0; font-size: 0.85rem; opacity: 0.9; line-height: 1.4;">유해화학물질 검사진단 및 환경 기초시설 진단·진행 업무</p>
+                    </div>
+                    <div style="font-size: 0.85rem; font-weight: 600; text-align: right;">상세보기 &rarr;</div>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.form_submit_button("🔍 환경안전 진단 바로가기", use_container_width=True):
+                st.session_state["selected_card"] = "card_4"
+                st.rerun()
+
+
 # 1. 로그인 성공 상태가 아니라면 전체 통합 페이지를 보여줍니다.
 if not st.session_state.get("password_correct", False):
 
