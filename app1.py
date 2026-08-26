@@ -73,163 +73,47 @@ if not st.session_state.get("password_correct", False):
     </div>
 """, unsafe_allow_html=True)
     
-    # --- [섹션 2] 핵심 안전관리 시스템 소개 3열 카드 ---
+# --- [섹션 2] 핵심 안전관리 시스템 소개 3열 카드 (클릭 가능 버전) ---
     col1, col2, col3 = st.columns(3)
+    
     with col1:
         st.markdown("""
-            <div style="background: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; height: 180px; margin-bottom: 20px;">
+            <div style="background: #161B22; padding: 20px; border-radius: 12px 12px 0 0; border: 1px solid #30363D; border-bottom: none; height: 160px;">
                 <h3 style="color: #3B82F6; margin-bottom: 1px; font-size: 1.5rem;">01</h3>
-                <h4 style="color: #FFFFFF; margin-bottom: 1px; font-size: 2rem;">사고 발생 보고</h4>
-                <p style="color: #8B949E; font-size: 1rem;">현장 내 안전사고 즉시 보고 및 전파 체계 가동</p>
+                <h4 style="color: #FFFFFF; margin-bottom: 6px; font-size: 1.3rem;">사고 발생 보고</h4>
+                <p style="color: #8B949E; font-size: 0.85rem; line-height: 1.3;">현장 내 안전사고 즉시 보고 및 전파 체계 가동</p>
             </div>
         """, unsafe_allow_html=True)
-    with col2:
-        st.markdown("""
-            <div style="background: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; height: 180px; margin-bottom: 20px;">
-                <h3 style="color: #3B82F6; margin-bottom: 1px; font-size: 1.5rem;">02</h3>
-                <h4 style="color: #FFFFFF; margin-bottom: 1px; font-size: 2rem;">안전 점검 리스트</h4>
-                <p style="color: #8B949E; font-size: 1rem;">작업 전 장비 및 근로자 보호구 상태 실시간 승인</p>
-            </div>
-        """, unsafe_allow_html=True)
-    with col3:
-        st.markdown("""
-            <div style="background: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; height: 180px; margin-bottom: 20px;">
-                <h3 style="color: #3B82F6; margin-bottom: 1px; font-size: 1.2rem;">03</h3>
-                <h4 style="color: #FFFFFF; margin-bottom: 1px; font-size: 2rem;">비상 연락망</h4>
-                <p style="color: #8B949E; font-size: 1rem;">관할 소방서, 의료기관 및 대책 조직 즉시 호출</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("<hr style='border: 0; border-top: 1px solid #30363D; margin: 30px 0;'>", unsafe_allow_html=True)
-
-# 1. 현재 어떤 화면을 보고 있는지 기억하는 세션 상태 초기화
-if "selected_card" not in st.session_state:
-    st.session_state["selected_card"] = "main"
-
-# ==========================================
-# 🏠 [메인 화면] 3개의 대시보드 카드 나열
-# ==========================================
-if st.session_state["selected_card"] == "main":
-    
-    st.markdown("""
-        <div style="text-align: center; margin-bottom: 30px;">
-            <h2 style="color: #FFFFFF; font-weight: 800;">건설현장 안전관리 시스템</h2>
-            <p style="color: #94A3B8;">확인하고자 하는 항목의 카드를 클릭하세요.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns(3)
-    
-    # --- [카드 1] 사고 발생 보고 ---
-    with col1:
-        # Streamlit 버튼을 카드 모양처럼 스타일링하여 배치합니다.
-        # 이 버튼을 누르면 'card_1' 화면으로 바뀝니다!
-        if st.button("📁 [01] 사고 발생 보고\n\n현장 내 안전사고 즉시 보고 및 전파 체계 가동", use_container_width=True, key="card_1_btn"):
+        # 카드 바로 아래에 연결되는 클릭 버튼
+        if st.button("👉 [01] 사고 발생 보고 열기", key="btn_card_1", use_container_width=True, type="primary"):
             st.session_state["selected_card"] = "card_1"
             st.rerun()
 
-    # --- [카드 2] 안전 점검 리스트 ---
     with col2:
-        if st.button("📋 [02] 안전 점검 리스트\n\n작업 전 장비 및 근로자 보호구 상태 실시간 승인", use_container_width=True, key="card_2_btn"):
+        st.markdown("""
+            <div style="background: #161B22; padding: 20px; border-radius: 12px 12px 0 0; border: 1px solid #30363D; border-bottom: none; height: 160px;">
+                <h3 style="color: #3B82F6; margin-bottom: 1px; font-size: 1.5rem;">02</h3>
+                <h4 style="color: #FFFFFF; margin-bottom: 6px; font-size: 1.3rem;">안전 점검 리스트</h4>
+                <p style="color: #8B949E; font-size: 0.85rem; line-height: 1.3;">작업 전 장비 및 근로자 보호구 상태 실시간 승인</p>
+            </div>
+        """, unsafe_allow_html=True)
+        if st.button("👉 [02] 안전 점검 리스트 열기", key="btn_card_2", use_container_width=True, type="primary"):
             st.session_state["selected_card"] = "card_2"
             st.rerun()
 
-    # --- [카드 3] 비상 연락망 ---
     with col3:
-        if st.button("📞 [03] 비상 연락망\n\n관할 소방서, 의료기관 및 대책 조직 즉시 호출", use_container_width=True, key="card_3_btn"):
+        st.markdown("""
+            <div style="background: #161B22; padding: 20px; border-radius: 12px 12px 0 0; border: 1px solid #30363D; border-bottom: none; height: 160px;">
+                <h3 style="color: #3B82F6; margin-bottom: 1px; font-size: 1.5rem;">03</h3>
+                <h4 style="color: #FFFFFF; margin-bottom: 6px; font-size: 1.3rem;">비상 연락망</h4>
+                <p style="color: #8B949E; font-size: 0.85rem; line-height: 1.3;">관할 소방서, 의료기관 및 대책 조직 즉시 호출</p>
+            </div>
+        """, unsafe_allow_html=True)
+        if st.button("👉 [03] 비상 연락망 열기", key="btn_card_3", use_container_width=True, type="primary"):
             st.session_state["selected_card"] = "card_3"
             st.rerun()
 
-# ==========================================
-# 🚨 [상세 화면 1] '01 사고 발생 보고' 카드를 눌렀을 때
-# ==========================================
-elif st.session_state["selected_card"] == "card_1":
-    
-    if st.button("⬅️ 메인 대시보드로 돌아가기", type="secondary"):
-        st.session_state["selected_card"] = "main"
-        st.rerun()
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    st.markdown("""
-        <div style="background-color: #161B22; padding: 30px; border-radius: 16px; border: 1px solid #30363D; margin-bottom: 20px;">
-            <h2 style="color: #FFFFFF; font-size: 1.5rem; font-weight: 800; margin-bottom: 8px; text-align: center;">
-                🚨 [01] 사고 발생 시 현장 대응체계 인포그래픽
-            </h2>
-            <p style="color: #94A3B8; font-size: 0.9rem; text-align: center; margin-bottom: 30px;">
-                안전사고 발생 시 신속한 수습과 2차 피해 방지를 위한 단계별 비상 대응 절차입니다.
-            </p>
-    """, unsafe_allow_html=True)
-
-    steps = [
-        {"num": "01", "title": "사고 발생 즉시 현장 통제 및 상부 보고", "desc": "추가 피해 확산을 막기 위해 즉시 현장을 차단하고, 관리감독자 및 본부 상황실에 유선 전파합니다."},
-        {"num": "02", "title": "부상자 상태 확인 및 응급 구호 조치", "desc": "부상자의 의식 및 부상 부위를 확인하고, 안전보호구 탈거 및 응급 구호(AED 사용 등)를 최우선 실시합니다."},
-        {"num": "03", "title": "상황별 비상 연락망 가동 및 유관기관 요청", "desc": "관할 소방서(119), 경찰서 및 인근 의료기관에 즉시 연락하여 구급차 출동 및 협조를 요청합니다."},
-        {"num": "04", "title": "유해 물질 차단 및 2차 피해 방지 봉쇄", "desc": "위험물 누출이나 설비 붕괴 위험 요소가 있는 경우 즉시 밸브 차단 및 구역 임시 봉쇄 조치를 취합니다."},
-        {"num": "05", "title": "현장 기록 보존 및 기술 복구 계획 수립", "desc": "사고 현장의 사진 및 영상 증거를 보존하고, 원인 규명 및 재발 방지를 위한 기술 복구 보고서를 작성합니다."}
-    ]
-
-    for s in steps:
-        st.markdown(f"""
-            <div style="
-                display: flex; 
-                align-items: flex-start; 
-                background-color: #0F1117; 
-                border: 1px solid #30363D; 
-                border-left: 5px solid #10B981; 
-                padding: 16px 20px; 
-                border-radius: 10px; 
-                margin-bottom: 12px;
-            ">
-                <div style="font-size: 1.2rem; font-weight: 800; color: #10B981; margin-right: 18px; min-width: 35px;">
-                    {s['num']}
-                </div>
-                <div>
-                    <div style="color: #FFFFFF; font-size: 1.05rem; font-weight: 700; margin-bottom: 4px;">
-                        {s['title']}
-                    </div>
-                    <div style="color: #94A3B8; font-size: 0.9rem; line-height: 1.4;">
-                        {s['desc']}
-                    </div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# ==========================================
-# 📋 [상세 화면 2] '02 안전 점검 리스트' 카드를 눌렀을 때
-# ==========================================
-elif st.session_state["selected_card"] == "card_2":
-    
-    if st.button("⬅️ 메인 대시보드로 돌아가기", type="secondary"):
-        st.session_state["selected_card"] = "main"
-        st.rerun()
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("""
-        <div style="background-color: #161B22; padding: 30px; border-radius: 16px; border: 1px solid #30363D;">
-            <h2 style="color: #FFFFFF; font-weight: 800; margin-bottom: 15px;">📋 [02] 안전 점검 리스트 시스템</h2>
-            <p style="color: #94A3B8;">작업 시작 전 장비, 설비 및 근로자 보호구 상태를 점검하고 기록하는 공간입니다.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-# ==========================================
-# 📞 [상세 화면 3] '03 비상 연락망' 카드를 눌렀을 때
-# ==========================================
-elif st.session_state["selected_card"] == "card_3":
-    
-    if st.button("⬅️ 메인 대시보드로 돌아가기", type="secondary"):
-        st.session_state["selected_card"] = "main"
-        st.rerun()
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("""
-        <div style="background-color: #161B22; padding: 30px; border-radius: 16px; border: 1px solid #30363D;">
-            <h2 style="color: #FFFFFF; font-weight: 800; margin-bottom: 15px;">📞 [03] 비상 연락망 시스템</h2>
-            <p style="color: #94A3B8;">환경시설관리처 담당자, 관할 소방서, 의료 기관 및 비상 대책 조직 연락처입니다.</p>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<hr style='border: 0; border-top: 1px solid #30363D; margin: 30px 0;'>", unsafe_allow_html=True)
     
     # --- [섹션 3] 랜딩 흐름 자연스럽게 녹아든 '보안 로그인 게이트웨이' ---
     st.markdown("""
