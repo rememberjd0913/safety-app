@@ -155,6 +155,22 @@ if st.session_state["selected_card"] == "main":
         </div>
     """, unsafe_allow_html=True)
 
+    # 중간에 건설현장(또는 환경시설) 사진 배치 영역
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("""
+        <h3 style="color: #FFFFFF; font-size: 1.3rem; font-weight: 700; margin-bottom: 10px;">
+    """, unsafe_allow_html=True)
+    
+    # 세련된 테두리가 적용된 현장 사진 출력 (나노바나나2 등으로 만든 이미지를 나중에 파일명으로 바꿔서 넣으셔도 됩니다!)
+    st.image(
+        "111.png", 
+        caption="📷 수도권서부환경본부 실제 현장 사진", 
+        use_container_width=True
+    )
+
+
+
+    
     # 2. 4개의 핵심 서비스 카드 섹션 (4열 배치)
     col1, col2, col3, col4 = st.columns(4)
 
@@ -221,19 +237,6 @@ if st.session_state["selected_card"] == "main":
             if st.form_submit_button("🔍 환경안전 진단 바로가기", use_container_width=True):
                 st.session_state["selected_card"] = "card_4"
                 st.rerun()
-
-# 3. 중간에 건설현장(또는 환경시설) 사진 배치 영역
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("""
-        <h3 style="color: #FFFFFF; font-size: 1.3rem; font-weight: 700; margin-bottom: 10px;">🏗️ 수도권서부환경본부 현장 안전 및 시설 관리 현황</h3>
-    """, unsafe_allow_html=True)
-    
-    # 세련된 테두리가 적용된 현장 사진 출력 (나노바나나2 등으로 만든 이미지를 나중에 파일명으로 바꿔서 넣으셔도 됩니다!)
-    st.image(
-        "111.png", 
-        caption="📷 수도권서부환경본부 실제 현장 사진", 
-        use_container_width=True
-    )
 
 # ==========================================
 # 🚨 [상세 화면들] 각 카드를 클릭했을 때 연결될 페이지
