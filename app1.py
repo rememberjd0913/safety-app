@@ -103,89 +103,90 @@ if not st.session_state.get("password_correct", False):
     st.markdown("<hr style='border: 0; border-top: 1px solid #30363D; margin: 30px 0;'>", unsafe_allow_html=True)
 
 # ==========================================
-# 🚨 사고 발생 시 대응체계 인포그래픽
+# 🚨 클릭형 사고 발생 보고 인포그래픽 카드
 # ==========================================
-st.markdown("""
-    <div style="background-color: #161B22; padding: 25px; border-radius: 16px; border: 1px solid #30363D; margin-bottom: 20px;">
-        <h2 style="color: #FFFFFF; font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; text-align: center;">
-            🚨 사고 발생 시 현장 대응체계 인포그래픽
-        </h2>
-        <p style="color: #94A3B8; font-size: 0.9rem; text-align: center; margin-bottom: 25px;">
-            안전사고 발생 시 신속한 수습과 2차 피해 방지를 위한 단계별 비상 대응 절차입니다.
-        </p>
-""", unsafe_allow_html=True)
 
-# 5단계 인포그래픽 스텝 카드 생성
-steps = [
-    {
-        "num": "01",
-        "title": "사고 발생 즉시 현장 통제 및 상부 보고",
-        "desc": "추가 피해 확산을 막기 위해 즉시 현장을 차단하고, 관리감독자 및 본부 상황실에 유선 전파합니다."
-    },
-    {
-        "num": "02",
-        "title": "부상자 상태 확인 및 응급 구호 조치",
-        "desc": "부상자의 의식 및 부상 부위를 확인하고, 안전보호구 탈거 및 응급 구호(AED 사용 등)를 최우선 실시합니다."
-    },
-    {
-        "num": "03",
-        "title": "상황별 비상 연락망 가동 및 유관기관 요청",
-        "desc": "관할 소방서(119), 경찰서 및 인근 의료기관에 즉시 연락하여 구급차 출동 및 협조를 요청합니다."
-    },
-    {
-        "num": "04",
-        "title": "유해 물질 차단 및 2차 피해 방지 봉쇄",
-        "desc": "위험물 누출이나 설비 붕괴 위험 요소가 있는 경우 즉시 밸브 차단 및 구역 임시 봉쇄 조치를 취합니다."
-    },
-    {
-        "num": "05",
-        "title": "현장 기록 보존 및 기술 복구 계획 수립",
-        "desc": "사고 현장의 사진 및 영상 증거를 보존하고, 원인 규명 및 재발 방지를 위한 기술 복구 보고서를 작성합니다."
-    }
-]
-
-for s in steps:
-    st.markdown(f"""
-        <div style="
-            display: flex; 
-            align-items: flex-start; 
-            background-color: #0F1117; 
-            border: 1px solid #30363D; 
-            border-left: 5px solid #10B981; 
-            padding: 16px 20px; 
-            border-radius: 10px; 
-            margin-bottom: 12px;
-        ">
-            <div style="
-                font-size: 1.2rem; 
-                font-weight: 800; 
-                color: #10B981; 
-                margin-right: 18px; 
-                min-width: 35px;
-            ">
-                {s['num']}
-            </div>
-            <div>
-                <div style="color: #FFFFFF; font-size: 1.05rem; font-weight: 700; margin-bottom: 4px;">
-                    {s['title']}
-                </div>
-                <div style="color: #94A3B8; font-size: 0.9rem; line-height: 1.4;">
-                    {s['desc']}
-                </div>
-            </div>
-        </div>
+# st.expander를 사용하면 카드를 클릭했을 때 내용이 아래로 펼쳐집니다!
+with st.expander("🚨 01. 사고 발생 보고 및 대응 체계 (클릭하여 열기/닫기)", expanded=False):
+    
+    st.markdown("""
+        <div style="background-color: #161B22; padding: 20px; border-radius: 12px; border: 1px solid #30363D; margin-top: 5px;">
+            <p style="color: #94A3B8; font-size: 0.9rem; margin-bottom: 20px; text-align: center;">
+                현장 내 안전사고 발생 시 신속한 수습과 2차 피해 방지를 위한 단계별 비상 대응 절차입니다.
+            </p>
     """, unsafe_allow_html=True)
 
-st.markdown("</div>", unsafe_allow_html=True)
+    # 5단계 인포그래픽 스텝 카드
+    steps = [
+        {
+            "num": "01",
+            "title": "사고 발생 즉시 현장 통제 및 상부 보고",
+            "desc": "추가 피해 확산을 막기 위해 즉시 현장을 차단하고, 관리감독자 및 본부 상황실에 유선 전파합니다."
+        },
+        {
+            "num": "02",
+            "title": "부상자 상태 확인 및 응급 구호 조치",
+            "desc": "부상자의 의식 및 부상 부위를 확인하고, 안전보호구 탈거 및 응급 구호(AED 사용 등)를 최우선 실시합니다."
+        },
+        {
+            "num": "03",
+            "title": "상황별 비상 연락망 가동 및 유관기관 요청",
+            "desc": "관할 소방서(119), 경찰서 및 인근 의료기관에 즉시 연락하여 구급차 출동 및 협조를 요청합니다."
+        },
+        {
+            "num": "04",
+            "title": "유해 물질 차단 및 2차 피해 방지 봉쇄",
+            "desc": "위험물 누출이나 설비 붕괴 위험 요소가 있는 경우 즉시 밸브 차단 및 구역 임시 봉쇄 조치를 취합니다."
+        },
+        {
+            "num": "05",
+            "title": "현장 기록 보존 및 기술 복구 계획 수립",
+            "desc": "사고 현장의 사진 및 영상 증거를 보존하고, 원인 규명 및 재발 방지를 위한 기술 복구 보고서를 작성합니다."
+        }
+    ]
 
-# 실시간 비상 연락 바로가기 버튼 예시
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("📞 본부 상황실 긴급 연락", use_container_width=True):
-        st.warning("⚠️ 수도권서부환경본부 비상상황실로 연결을 시도합니다.")
-with col2:
-    if st.button("📋 사고 보고서 양식 다운로드", use_container_width=True, type="primary"):
-        st.info("📥 사고 발생 보고서 서식 다운로드가 시작됩니다.")
+    for s in steps:
+        st.markdown(f"""
+            <div style="
+                display: flex; 
+                align-items: flex-start; 
+                background-color: #0F1117; 
+                border: 1px solid #30363D; 
+                border-left: 5px solid #10B981; 
+                padding: 14px 18px; 
+                border-radius: 8px; 
+                margin-bottom: 10px;
+            ">
+                <div style="
+                    font-size: 1.1rem; 
+                    font-weight: 800; 
+                    color: #10B981; 
+                    margin-right: 15px; 
+                    min-width: 30px;
+                ">
+                    {s['num']}
+                </div>
+                <div>
+                    <div style="color: #FFFFFF; font-size: 1rem; font-weight: 700; margin-bottom: 3px;">
+                        {s['title']}
+                    </div>
+                    <div style="color: #94A3B8; font-size: 0.85rem; line-height: 1.4;">
+                        {s['desc']}
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # 내부 액션 버튼
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📞 본부 상황실 긴급 연락", key="btn_call_emergency", use_container_width=True):
+            st.warning("⚠️ 수도권서부환경본부 비상상황실로 연결을 시도합니다.")
+    with col2:
+        if st.button("📋 사고 보고서 양식 다운로드", key="btn_download_report", use_container_width=True, type="primary"):
+            st.info("📥 사고 발생 보고서 서식 다운로드가 시작됩니다.")
     
     # --- [섹션 3] 랜딩 흐름 자연스럽게 녹아든 '보안 로그인 게이트웨이' ---
     st.markdown("""
