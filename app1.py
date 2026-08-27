@@ -131,23 +131,23 @@ with nav_col1:
         """, unsafe_allow_html=True)
 
 with nav_col2:
-    if st.button("핵심사업", use_container_width=True, key="menu_1"):
+    if st.button("시설사업1부", use_container_width=True, key="menu_1"):
         st.session_state["selected_card"] = "main"
         st.rerun()
 with nav_col3:
-    if st.button("ESG경영", use_container_width=True, key="menu_2"):
+    if st.button("시설사업2부", use_container_width=True, key="menu_2"):
         st.session_state["selected_card"] = "main"
         st.rerun()
 with nav_col4:
-    if st.button("열린공간", use_container_width=True, key="menu_3"):
+    if st.button("시설사업3부", use_container_width=True, key="menu_3"):
         st.session_state["selected_card"] = "main"
         st.rerun()
 with nav_col5:
-    if st.button("국민참여", use_container_width=True, key="menu_4"):
+    if st.button("시설사업4부", use_container_width=True, key="menu_4"):
         st.session_state["selected_card"] = "main"
         st.rerun()
 with nav_col6:
-    if st.button("공단소개", use_container_width=True, key="menu_5"):
+    if st.button("시설사업5부", use_container_width=True, key="menu_5"):
         st.session_state["selected_card"] = "main"
         st.rerun()
 with nav_col7:
