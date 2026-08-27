@@ -33,6 +33,33 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+# ==========================================
+# 🎨 [이 위치에 그대로 복사해서 붙여넣으세요!]
+# ==========================================
+st.markdown("""
+<style>
+    /* Streamlit 기본 버튼 전체 디자인 재정의 */
+    .stButton > button {
+        height: 60px !important;                 
+        border-radius: 14px !important;          
+        border: 2px solid #E2E8F0 !important;    
+        background-color: #FFFFFF !important;    
+        font-size: 1.1rem !important;            
+        font-weight: 700 !important;             
+        color: #334155 !important;               
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); 
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; 
+    }
+
+    /* 마우스가 버튼 위에 올라갔을 때 (Hover 효과) */
+    .stButton > button:hover {
+        border-color: #3B82F6 !important;        
+        color: #2563EB !important;               
+        transform: translateY(-3px) !important;  
+        box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2); 
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # 🎨 [CSS 스타일] 배경 사진 + 겹쳐지는 카드 스타일
