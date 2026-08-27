@@ -35,139 +35,156 @@ st.set_page_config(
 )
 
 # ==========================================
-# 🎨 [CSS 스타일 정의] 호버 효과 및 카드 디자인
+# 🎨 [CSS 스타일] 배경 사진 + 겹쳐지는 카드 스타일
 # ==========================================
 st.markdown("""
 <style>
-    /* 메인 히어로 배너 박스 */
-    .hero-banner {
-        background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), 
-                    url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1920&auto=format&fit=crop');
+    /* 상단 대형 히어로 배경 (원하시는 사진 파일명이나 URL로 교체 가능) */
+    .keco-hero {
+        background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.4)), 
+                    url('my_site_photo.jpg'); /* 가지고 계신 사진 파일명으로 변경하세요 */
         background-size: cover;
         background-position: center;
-        height: 380px;
+        height: 480px;
         border-radius: 16px;
         display: flex;
         flex-direction: column;
-        align-items: center;
         justify-content: center;
+        align-items: center;
         text-align: center;
         color: white;
-        margin-bottom: 30px;
         padding: 20px;
+        margin-bottom: -50px; /* 카드가 아래쪽에서 살짝 겹쳐 올라오도록 설정 */
     }
-    
-    /* 4가지 컬러 카드 기본 스타일 (마우스 호버 입체 효과) */
-    .env-card-1, .env-card-2, .env-card-3, .env-card-4 {
-        padding: 25px;
-        border-radius: 14px;
-        height: 220px;
+
+    /* 반투명 유리 느낌의 5개 핵심 카드 스타일 (마우스 호버 입체 효과) */
+    .keco-card {
+        background: rgba(30, 35, 45, 0.85);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 16px;
+        padding: 25px 15px;
+        height: 200px;
         color: white;
+        text-align: center;
         transition: all 0.3s ease;
         cursor: pointer;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     }
-    
-    .env-card-1 { background: linear-gradient(135deg, #0284c7, #0369a1); }
-    .env-card-2 { background: linear-gradient(135deg, #0d9488, #0f766e); }
-    .env-card-3 { background: linear-gradient(135deg, #475569, #334155); }
-    .env-card-4 { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
 
-    /* 마우스를 올렸을 때 위로 툭 튀어오르는 효과 */
-    .env-card-1:hover, .env-card-2:hover, .env-card-3:hover, .env-card-4:hover {
+    .keco-card:hover {
         transform: translateY(-8px);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+        background: rgba(40, 50, 65, 0.95);
+        border-color: #3b82f6;
+        box-shadow: 0 15px 35px rgba(59, 130, 246, 0.3);
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-    <style>
-        .stApp {
-            background-color: #0F1117;
-            color: #FFFFFF;
-        }
-        /* 섹션 컨테이너 스타일 */
-        .wix-section {
-            padding: 60px 20px;
-            border-bottom: 1px solid #1E293B;
-        }
-        .wix-title {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #FFFFFF;
-            margin-bottom: 20px;
-        }
-        .wix-subtitle {
-            color: #FFFFFF;
-            font-size: 0.9rem;
-            font-weight: 700;
-            letter-spacing: 2px;
-            margin-bottom: 10px;
-        }
-        .wix-desc {
-            color: #FFFFFF;
-            font-size: 1.1rem;
-            line-height: 1.6;
-        }
-        .wix-card {
-        background: #161B22;
-        padding: 24px;
-        border-radius: 14px;
-        border: 1px solid #30363D;
-        height: 190px;
-        transition: all 0.3s ease; /* 부드럽게 움직이는 효과 */
-        cursor: pointer;
-        }
-        .wix-card:hover {
-        transform: translateY(-6px); /* 위로 살짝 튀어오름 */
-        border-color: #3B82F6; /* 테두리 색상 강조 */
-        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2); /* 입체적인 그림자 */
-        }
-        /* 현장 사진 박스 스타일 */
-        .site-img-box {
-        border-radius: 14px;
-        overflow: hidden;
-        border: 1px solid #30363D;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        margin: 30px 0;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
 # ==========================================
-# 🏠 [메인 화면]
+# 🏠 [메인 화면 구성]
 # ==========================================
 if st.session_state["selected_card"] == "main":
     
-    # 1. 상단 히어로 배너 섹션 (공단 사이트 느낌 구현)
+    # 1. 상단 타이틀 및 배경 영역
     st.markdown("""
-        <div class="hero-banner">
-            <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-                수도권서부환경본부
+        <div class="keco-hero">
+            <h2 style="font-size: 1.8rem; font-weight: 400; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.6);">
+                자연과 인간을 위한
+            </h2>
+            <h1 style="font-size: 2.8rem; font-weight: 800; text-shadow: 0 2px 6px rgba(0,0,0,0.6);">
+                건강하고 행복한 환경조성
             </h1>
-            <p style="font-size: 1.1rem; font-weight: 400; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
-                국민과 환경을 위한 건강하고 행복한 환경 조성을 위해 앞장서겠습니다.
-            </p>
         </div>
     """, unsafe_allow_html=True)
 
-    # 중간에 건설현장(또는 환경시설) 사진 배치 영역
+    st.markdown("<br><br>", unsafe_allow_html=True)
+
+    # 2. 5개의 핵심 카드 배치 (5열)
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    with col1:
+        with st.form(key="form_c1", border=False):
+            st.markdown("""
+                <div class="keco-card">
+                    <h3 style="color: #FFFFFF; font-size: 1.2rem; font-weight: 700; margin-bottom: 8px;">기후 / 대기</h3>
+                    <p style="color: #94A3B8; font-size: 0.8rem; margin: 0; line-height: 1.3;">깨끗한 대기환경</p>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.form_submit_button("🔍 기후/대기 바로가기", use_container_width=True):
+                st.session_state["selected_card"] = "card_1"
+                st.rerun()
+
+    with col2:
+        with st.form(key="form_c2", border=False):
+            st.markdown("""
+                <div class="keco-card">
+                    <h3 style="color: #FFFFFF; font-size: 1.2rem; font-weight: 700; margin-bottom: 8px;">물 / 토양</h3>
+                    <p style="color: #94A3B8; font-size: 0.8rem; margin: 0; line-height: 1.3;">건강한 물·토양 환경</p>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.form_submit_button("🔍 물/토양 바로가기", use_container_width=True):
+                st.session_state["selected_card"] = "card_2"
+                st.rerun()
+
+    with col3:
+        with st.form(key="form_c3", border=False):
+            st.markdown("""
+                <div class="keco-card">
+                    <h3 style="color: #FFFFFF; font-size: 1.2rem; font-weight: 700; margin-bottom: 8px;">자원순환</h3>
+                    <p style="color: #94A3B8; font-size: 0.8rem; margin: 0; line-height: 1.3;">지속가능한 자원 순환</p>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.form_submit_button("🔍 자원순환 바로가기", use_container_width=True):
+                st.session_state["selected_card"] = "card_3"
+                st.rerun()
+
+    with col4:
+        with st.form(key="form_c4", border=False):
+            st.markdown("""
+                <div class="keco-card">
+                    <h3 style="color: #FFFFFF; font-size: 1.2rem; font-weight: 700; margin-bottom: 8px;">환경시설</h3>
+                    <p style="color: #94A3B8; font-size: 0.8rem; margin: 0; line-height: 1.3;">미래대비 기반 역량강화</p>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.form_submit_button("🔍 환경시설 바로가기", use_container_width=True):
+                st.session_state["selected_card"] = "card_4"
+                st.rerun()
+
+    with col5:
+        with st.form(key="form_c5", border=False):
+            st.markdown("""
+                <div class="keco-card">
+                    <h3 style="color: #FFFFFF; font-size: 1.2rem; font-weight: 700; margin-bottom: 8px;">국민건강</h3>
+                    <p style="color: #94A3B8; font-size: 0.8rem; margin: 0; line-height: 1.3;">안전한 생활환경</p>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.form_submit_button("🔍 국민건강 바로가기", use_container_width=True):
+                st.session_state["selected_card"] = "card_5"
+                st.rerun()
+
+# ==========================================
+# 🚨 [상세 화면] 카드를 눌렀을 때 연결되는 페이지
+# ==========================================
+elif st.session_state["selected_card"].startswith("card_"):
+    
+    if st.button("⬅️ 메인 홈으로 돌아가기", type="secondary"):
+        st.session_state["selected_card"] = "main"
+        st.rerun()
+
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""
-        <h3 style="color: #FFFFFF; font-size: 1.3rem; font-weight: 700; margin-bottom: 10px;">
+        <div style="background-color: #161B22; padding: 30px; border-radius: 16px; border: 1px solid #30363D;">
+            <h2 style="color: #FFFFFF; font-weight: 800; margin-bottom: 15px;">📊 선택하신 환경 분야 상세 시스템</h2>
+            <p style="color: #94A3B8; font-size: 1rem; line-height: 1.6;">
+                해당 분야의 실시간 측정 데이터, 관리 지침 및 세부 점검 시스템을 이 공간에서 제공합니다.
+            </p>
+        </div>
     """, unsafe_allow_html=True)
-    
-    # 세련된 테두리가 적용된 현장 사진 출력 (나노바나나2 등으로 만든 이미지를 나중에 파일명으로 바꿔서 넣으셔도 됩니다!)
-    st.image(
-        "111.png", 
-        caption="📷 수도권서부환경본부 실제 현장 사진", 
-        use_container_width=True
-    )
-
 
 
     
