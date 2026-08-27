@@ -177,43 +177,7 @@ with nav_col6:
     if st.button("시설사업5부", use_container_width=True, key="menu_5"):
         st.session_state["selected_card"] = "main"
         st.rerun()
-with nav_col7:
-    # 📌 깔끔하고 세련된 선 모양 돋보기 SVG 코드 적용
-    st.markdown("""
-        <div style="display: flex; justify-content: center; align-items: center; height: 45px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #4B5563; cursor: pointer;">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-        </div>
     """, unsafe_allow_html=True)
-    # 돋보기 모양 버튼을 눌렀을 때 상태를 True로 변경
-    if st.button("🔍", key="open_search_btn", use_container_width=True):
-        st.session_state["search_open"] = True
-        st.rerun()
-# ==========================================
-# 🔍 [검색창 레이아웃 (돋보기를 누르면 나타남)]
-# ==========================================
-if st.session_state["search_open"]:
-    # 1. 검색창을 감싸는 박스 스타일 적용
-    st.markdown("""
-        <div style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 8px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-    """, unsafe_allow_html=True)
-    
-    # 2. 안에서 입력창과 닫기(X) 버튼을 가로로 배치
-    search_col1, search_col2 = st.columns([15, 1])
-    
-    with search_col1:
-        # Streamlit 기본 텍스트 입력창 (안에 안내 문구 삽입)
-        search_keyword = st.text_input("검색", placeholder="검색어를 입력해주세요", label_visibility="collapsed")
-        
-    with search_col2:
-        # X 닫기 버튼
-        if st.button("✕", key="close_search_btn", use_container_width=True):
-            st.session_state["search_open"] = False
-            st.rerun()
-            
-    st.markdown("</div>", unsafe_allow_html=True)
 st.markdown("<hr style='margin: 0 0 20px 0; border: 0; border-top: 1px solid #30363D;'>", unsafe_allow_html=True)
 
 # ==========================================
