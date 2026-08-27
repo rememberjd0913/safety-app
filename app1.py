@@ -169,14 +169,6 @@ with nav_col4:
     if st.button("시설사업3부", use_container_width=True, key="menu_3"):
         st.session_state["selected_card"] = "main"
         st.rerun()
-with nav_col5:
-    if st.button("시설사업4부", use_container_width=True, key="menu_4"):
-        st.session_state["selected_card"] = "main"
-        st.rerun()
-with nav_col6:
-    if st.button("시설사업5부", use_container_width=True, key="menu_5"):
-        st.session_state["selected_card"] = "main"
-        st.rerun()
 st.markdown("<hr style='margin: 0 0 20px 0; border: 0; border-top: 1px solid #30363D;'>", unsafe_allow_html=True)
 
 # ==========================================
