@@ -151,8 +151,6 @@ with nav_col6:
         st.session_state["selected_card"] = "main"
         st.rerun()
 with nav_col7:
-    st.markdown("<p style='text-align: center; font-size: 1.2rem; margin-top: 8px;'>🔍</p>", unsafe_allow_html=True)
-with nav_col7:
     # 📌 깔끔하고 세련된 선 모양 돋보기 SVG 코드 적용
     st.markdown("""
         <div style="display: flex; justify-content: center; align-items: center; height: 45px;">
