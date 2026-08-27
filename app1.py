@@ -115,12 +115,20 @@ st.markdown("""
 nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6, nav_col7, nav_col8 = st.columns([2.2, 1, 1, 1, 1, 1, 0.5, 0.5])
 
 with nav_col1:
-    # 📌 Streamlit 기본 st.image 함수를 사용하여 이미지가 안정적으로 나오도록 수정
-    # (logo.png 파일이 파이썬 실행 파일과 같은 경로에 있어야 합니다)
-    try:
-        st.image("Keco_logo.png", width=80)
-    except:
-        st.error("logo.png 파일을 찾을 수 없습니다.")
+    # 📌 col1 안에서 다시 작은 가로 칸을 2개로 쪼갭니다 (로고용, 글자용)
+    logo_col, text_col = st.columns([1, 2.5])
+    
+    with logo_col:
+        # st.image를 사용해 안전하게 로고 출력 (파일명만 맞으면 100% 뜹니다!)
+        st.image(" Keco_logo.png", width=80)
+        
+    with text_col:
+        # 글자를 세로 가운데 정렬 느낌으로 깔끔하게 출력
+        st.markdown("""
+            <div style="padding-top: 6px;">
+                <span style="font-size: 1.2rem; font-weight: 800; color: #1F2937; letter-spacing: -0.5px;">한국환경공단</span>
+            </div>
+        """, unsafe_allow_html=True)
 
 with nav_col2:
     if st.button("핵심사업", use_container_width=True, key="menu_1"):
