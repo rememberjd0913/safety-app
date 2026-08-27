@@ -112,7 +112,7 @@ st.markdown("""
 # ==========================================
 # 🌐 [상단 네비게이션바 영역] (공단 로고 + 메뉴 + 검색/메뉴 아이콘)
 # ==========================================
-nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6, nav_col7, nav_col8 = st.columns([1, 1, 1, 1, 1, 1, 1, 1])
+nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6, nav_col7, nav_col8 = st.columns([2, 1, 1, 1, 1, 1, 1, 1])
 
 with nav_col1:
     # 📌 col1 안에서 다시 작은 가로 칸을 2개로 쪼갭니다 (로고용, 글자용)
