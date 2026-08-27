@@ -120,7 +120,7 @@ with nav_col1:
     
     with logo_col:
         # st.image를 사용해 안전하게 로고 출력 (파일명만 맞으면 100% 뜹니다!)
-        st.image(" Keco_logo.png", width=80)
+        st.image("Keco_logo.png", width=80)
         
     with text_col:
         # 글자를 세로 가운데 정렬 느낌으로 깔끔하게 출력
