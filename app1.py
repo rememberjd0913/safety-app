@@ -116,7 +116,7 @@ nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6, nav_col7, nav_col8 =
 
 with nav_col1:
     # 📌 col1 안에서 다시 작은 가로 칸을 2개로 쪼갭니다 (로고용, 글자용)
-    logo_col, text_col = st.columns([1, 1])
+    logo_col, text_col = st.columns([2, 2])
     
     with logo_col:
         # st.image를 사용해 안전하게 로고 출력 (파일명만 맞으면 100% 뜹니다!)
@@ -126,7 +126,7 @@ with nav_col1:
         # 글자를 세로 가운데 정렬 느낌으로 깔끔하게 출력
         st.markdown("""
             <div style="padding-top: 6px;">
-                <span style="font-size: 2.5rem; font-weight: 800; color: #1F2937; letter-spacing: 1px;">한국환경공단</span>
+                <span style="font-size: 2rem; font-weight: 800; color: #1F2937; letter-spacing: 1px;">한국환경공단</span>
             </div>
         """, unsafe_allow_html=True)
 
