@@ -66,7 +66,7 @@ st.markdown("""
     /* 상단 대형 히어로 배경 (원하시는 사진 파일명이나 URL로 교체 가능) */
     .keco-hero {
         background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.4)), 
-                    url('my_site_photo.jpg'); /* 가지고 계신 사진 파일명으로 변경하세요 */
+                    url('111.png'); /* 가지고 계신 사진 파일명으로 변경하세요 */
         background-size: cover;
         background-position: center;
         height: 480px;
@@ -108,6 +108,45 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# ==========================================
+# 🌐 [상단 네비게이션바 영역] (공단 로고 + 메뉴 + 검색/메뉴 아이콘)
+# ==========================================
+nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6, nav_col7, nav_col8 = st.columns([2.2, 1, 1, 1, 1, 1, 0.5, 0.5])
+
+with nav_col1:
+    st.markdown("""
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.5rem; font-weight: 800; color: #0284c7;">🔵 한국환경공단</span>
+        </div>
+    """, unsafe_allow_html=True)
+
+with nav_col2:
+    if st.button("핵심사업", use_container_width=True, key="menu_1"):
+        st.session_state["selected_card"] = "main"
+        st.rerun()
+with nav_col3:
+    if st.button("ESG경영", use_container_width=True, key="menu_2"):
+        st.session_state["selected_card"] = "main"
+        st.rerun()
+with nav_col4:
+    if st.button("열린공간", use_container_width=True, key="menu_3"):
+        st.session_state["selected_card"] = "main"
+        st.rerun()
+with nav_col5:
+    if st.button("국민참여", use_container_width=True, key="menu_4"):
+        st.session_state["selected_card"] = "main"
+        st.rerun()
+with nav_col6:
+    if st.button("공단소개", use_container_width=True, key="menu_5"):
+        st.session_state["selected_card"] = "main"
+        st.rerun()
+with nav_col7:
+    st.markdown("<p style='text-align: center; font-size: 1.2rem; margin-top: 8px;'>🔍</p>", unsafe_allow_html=True)
+with nav_col8:
+    st.markdown("<p style='text-align: center; font-size: 1.2rem; margin-top: 8px;'>☰</p>", unsafe_allow_html=True)
+
+st.markdown("<hr style='margin: 0 0 20px 0; border: 0; border-top: 1px solid #30363D;'>", unsafe_allow_html=True)
 
 # ==========================================
 # 🏠 [메인 화면 구성]
