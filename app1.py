@@ -118,7 +118,7 @@ with nav_col1:
     # 📌 Streamlit 기본 st.image 함수를 사용하여 이미지가 안정적으로 나오도록 수정
     # (logo.png 파일이 파이썬 실행 파일과 같은 경로에 있어야 합니다)
     try:
-        st.image("Keco_logo.png", width=140)
+        st.image("Keco_logo.png", width=100)
     except:
         st.error("logo.png 파일을 찾을 수 없습니다.")
 
