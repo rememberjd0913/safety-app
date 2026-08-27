@@ -115,11 +115,8 @@ st.markdown("""
 nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6, nav_col7, nav_col8 = st.columns([2.2, 1, 1, 1, 1, 1, 0.5, 0.5])
 
 with nav_col1:
-    st.markdown("""
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 1.5rem; font-weight: 800; color: #0284c7;">🔵 한국환경공단</span>
-        </div>
-    """, unsafe_allow_html=True)
+    # 📌 로고 이미지 파일명(예: logo.png)을 넣어주세요! 크기 조절도 가능합니다.
+    st.image("Keco_logo.png", width=180)
 
 with nav_col2:
     if st.button("핵심사업", use_container_width=True, key="menu_1"):
