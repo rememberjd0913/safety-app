@@ -39,6 +39,30 @@ st.set_page_config(
 # ==========================================
 st.markdown("""
 <style>
+    /* 상단 네비게이션바 감성 스타일 */
+    .nav-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 20px;
+        background-color: #FFFFFF;
+        border-bottom: 1px solid #E5E7EB;
+        margin-bottom: 20px;
+        border-radius: 10px;
+    }
+    
+    /* 상단 메뉴 글자 스타일 */
+    .nav-menu {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1F2937;
+        text-align: center;
+        cursor: pointer;
+    }
+    .nav-menu:hover {
+        color: #2563EB;
+    }
+
     /* 상단 대형 히어로 배경 (원하시는 사진 파일명이나 URL로 교체 가능) */
     .keco-hero {
         background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.4)), 
