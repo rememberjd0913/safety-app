@@ -126,7 +126,7 @@ with nav_col1:
         # 글자를 세로 가운데 정렬 느낌으로 깔끔하게 출력
         st.markdown("""
             <div style="padding-top: 6px;">
-                <span style="font-size: 2rem; font-weight: 800; color: #1F2937; letter-spacing: -0.5px;">한국환경공단</span>
+                <span style="font-size: 2.5rem; font-weight: 800; color: #1F2937; letter-spacing: 1px;">한국환경공단</span>
             </div>
         """, unsafe_allow_html=True)
 
