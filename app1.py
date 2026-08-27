@@ -152,8 +152,16 @@ with nav_col6:
         st.rerun()
 with nav_col7:
     st.markdown("<p style='text-align: center; font-size: 1.2rem; margin-top: 8px;'>🔍</p>", unsafe_allow_html=True)
-with nav_col8:
-    st.markdown("<p style='text-align: center; font-size: 1.2rem; margin-top: 8px;'>☰</p>", unsafe_allow_html=True)
+with nav_col7:
+    # 📌 깔끔하고 세련된 선 모양 돋보기 SVG 코드 적용
+    st.markdown("""
+        <div style="display: flex; justify-content: center; align-items: center; height: 45px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #4B5563; cursor: pointer;">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        </div>
+    """, unsafe_allow_html=True)
 
 st.markdown("<hr style='margin: 0 0 20px 0; border: 0; border-top: 1px solid #30363D;'>", unsafe_allow_html=True)
 
