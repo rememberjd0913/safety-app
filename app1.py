@@ -115,14 +115,12 @@ st.markdown("""
 nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6, nav_col7, nav_col8 = st.columns([2.2, 1, 1, 1, 1, 1, 0.5, 0.5])
 
 with nav_col1:
-    # 📌 HTML 이미지 태그로 가로 폭을 150픽셀로 고정하여 크기 및 줄맞춤 문제 해결
-    st.markdown("""
-        <div style="display: flex; align-items: center; height: 45px;">
-            <img src="app/static/logo.png" style="width: 150px; object-fit: contain;" onerror="this.style.display='none'">
-        </div>
-    """, unsafe_allow_html=True)
-    # 만약 위 방식 대신 기존 이미지 로드가 필요하다면 아래 코드를 쓰셔도 됩니다 (width를 작게 조절)
-    # st.image("logo.png", width=140)
+    # 📌 Streamlit 기본 st.image 함수를 사용하여 이미지가 안정적으로 나오도록 수정
+    # (logo.png 파일이 파이썬 실행 파일과 같은 경로에 있어야 합니다)
+    try:
+        st.image("logo.png", width=140)
+    except:
+        st.error("logo.png 파일을 찾을 수 없습니다.")
 
 with nav_col2:
     if st.button("핵심사업", use_container_width=True, key="menu_1"):
