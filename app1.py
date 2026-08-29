@@ -31,47 +31,6 @@ st.set_page_config(
 # --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
 st.markdown("""
     <style>
-/* 전체 배경을 클로드 스타일의 은은한 미색(#FBFBF9)으로 설정 */
-    html, body, [data-testid="stAppViewContainer"] {
-        background-color: #FBFBF9 !important;
-        color: #191919 !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    
-    /* 입력창 디자인 */
-    .stTextInput input {
-        background-color: #FFFFFF !important;
-        border: 1px solid #E3E3DE !important;
-        border-radius: 12px !important;
-        color: #191919 !important;
-        padding: 14px 16px !important;
-        font-size: 0.95rem !important;
-    }
-    .stTextInput input:focus {
-        border-color: #D97706 !important;
-        box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.1) !important;
-    }
-    label {
-        color: #666663 !important;
-        font-weight: 600 !important;
-        font-size: 0.85rem !important;
-    }
-
-    /* 버튼 디자인 */
-    div.stButton > button {
-        background-color: #191919 !important;
-        color: #FFFFFF !important;
-        border: none !important;
-        border-radius: 12px !important;
-        font-weight: 600 !important;
-        height: 50px !important;
-        font-size: 1rem !important;
-        transition: background-color 0.2s ease;
-    }
-    div.stButton > button:hover {
-        background-color: #333333 !important;
-    }
-    
     .stMarkdown, p, div, span, label {
         word-break: keep-all !important;
         white-space: normal !important;
