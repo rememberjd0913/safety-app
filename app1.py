@@ -157,18 +157,6 @@ with nav_col1:
             </div>
         """, unsafe_allow_html=True)
 
-with nav_col2:
-    if st.button("시설사업1부", use_container_width=True, key="menu_1"):
-        st.session_state["selected_card"] = "main"
-        st.rerun()
-with nav_col3:
-    if st.button("시설사업2부", use_container_width=True, key="menu_2"):
-        st.session_state["selected_card"] = "main"
-        st.rerun()
-with nav_col4:
-    if st.button("시설사업3부", use_container_width=True, key="menu_3"):
-        st.session_state["selected_card"] = "main"
-        st.rerun()
 st.markdown("<hr style='margin: 0 0 20px 0; border: 0; border-top: 1px solid #30363D;'>", unsafe_allow_html=True)
 
 # ==========================================
