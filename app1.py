@@ -293,6 +293,10 @@ def check_password():
 if not check_password():
     st.stop()
 
+logged_user_id = st.session_state.get('logged_user', '알수없음')
+user_emails_map = st.secrets.get("user_emails", {})
+mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
+
 # --- 사이드바 영역 ---
 st.sidebar.markdown("### 🔒 감독관 인증 정보")
 st.sidebar.write(f"접속 사번: **{logged_user_id}**")
