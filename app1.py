@@ -61,79 +61,151 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# 🎨 [CSS 스타일] 배경 사진 + 겹쳐지는 카드 스타일
-# ==========================================
+# --- 클로드 스타일 및 미니멀 스플릿 레이아웃 커스텀 CSS ---
 st.markdown("""
-<style>
-    /* 상단 네비게이션바 감성 스타일 */
-    .nav-bar {
+    <style>
+    /* 전체 배경 및 폰트 */
+    html, body, [data-testid="stAppViewContainer"] {
+        background-color: #F9F9F8 !important;
+        color: #1A1A18 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .stMarkdown, p, div, span, label {
+        word-break: keep-all !important;
+        white-space: normal !important;
+    }
+
+    /* 좌우 분할 스플릿 랜딩 컨테이너 */
+    .split-container {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 20px;
+        flex-direction: row;
+        align-items: stretch;
+        min-height: 85vh;
         background-color: #FFFFFF;
-        border-bottom: 1px solid #E5E7EB;
-        margin-bottom: 5px;
-        border-radius: 10px;
+        border: 1px solid #E5E5DF;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+        margin-top: 20px;
     }
-    
-    /* 상단 메뉴 글자 스타일 */
-    .nav-menu {
+
+    /* 왼쪽 비주얼 배너 영역 (트렌디한 슬라이드 감성) */
+    .left-visual-pane {
+        flex: 1.1;
+        background: linear-gradient(135deg, #103720 0%, #1B4D3E 50%, #0F2A1D 100%);
+        padding: 50px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        color: #FFFFFF;
+        position: relative;
+    }
+    .left-visual-pane h1 {
+        font-size: 2.5rem !important;
+        font-weight: 800 !important;
+        line-height: 1.3;
+        margin-bottom: 20px;
+        letter-spacing: -0.5px;
+    }
+    .left-visual-pane p {
+        color: #A3C1AD;
         font-size: 1.1rem;
-        font-weight: 700;
-        color: #1F2937;
-        text-align: center;
-        cursor: pointer;
-    }
-    .nav-menu:hover {
-        color: #2563EB;
+        line-height: 1.6;
     }
 
-    /* 상단 대형 히어로 배경 (원하시는 사진 파일명이나 URL로 교체 가능) */
-    .keco-hero {
-        background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.4)), 
-                    url('111.png'); /* 가지고 계신 사진 파일명으로 변경하세요 */
-        background-size: cover;
-        background-position: center;
-        height: 480px;
-        border-radius: 16px;
+    /* 오른쪽 로그인 폼 영역 */
+    .right-login-pane {
+        flex: 1;
+        padding: 60px 50px;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        align-items: center;
-        text-align: center;
-        color: white;
+        background-color: #FFFFFF;
+    }
+
+    /* 입력창 및 버튼 디자인 */
+    .stTextInput input {
+        background-color: #F9F9F8 !important;
+        border: 1px solid #E5E5DF !important;
+        border-radius: 10px !important;
+        color: #1A1A18 !important;
+        padding: 12px 15px !important;
+    }
+    .stTextInput input:focus {
+        border-color: #1B4D3E !important;
+        box-shadow: 0 0 0 2px rgba(27, 77, 62, 0.1) !important;
+    }
+    label {
+        color: #555552 !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+    }
+    div.stButton > button {
+        background-color: #1A1A18 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        height: 50px !important;
+        font-size: 1rem !important;
+        transition: all 0.2s ease;
+    }
+    div.stButton > button:hover {
+        background-color: #1B4D3E !important;
+    }
+
+    /* 로그인 완료 후 대시보드 컴포넌트 */
+    .claude-welcome-box {
+        background: #FFFFFF;
+        border: 1px solid #E5E5DF;
+        border-radius: 16px;
+        padding: 35px 30px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    }
+    .action-card {
+        background-color: #FFFFFF;
+        border: 1px solid #E5E5DF;
+        border-radius: 12px;
         padding: 20px;
-        margin-bottom: -50px; /* 카드가 아래쪽에서 살짝 겹쳐 올라오도록 설정 */
-    }
-
-    /* 반투명 유리 느낌의 5개 핵심 카드 스타일 (마우스 호버 입체 효과) */
-    .keco-card {
-        background: rgba(30, 35, 45, 0.85);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 16px;
-        padding: 25px 15px;
-        height: 200px;
-        color: white;
         text-align: center;
-        transition: all 0.3s ease;
-        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-bottom: 15px;
+    }
+    .action-card:hover {
+        border-color: #1B4D3E;
+        box-shadow: 0 4px 12px rgba(27, 77, 62, 0.08);
+    }
+    .top-status-bar {
+        background-color: #F1F1EE;
+        border: 1px solid #E5E5DF;
+        border-radius: 10px;
+        padding: 10px 16px;
+        margin-bottom: 25px;
         display: flex;
-        flex-direction: column;
-        justify-content: center;
+        justify-content: space-between;
         align-items: center;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        font-size: 0.9rem;
+        color: #555552;
+        font-weight: 500;
     }
-
-    .keco-card:hover {
-        transform: translateY(-8px);
-        background: rgba(40, 50, 65, 0.95);
-        border-color: #3b82f6;
-        box-shadow: 0 15px 35px rgba(59, 130, 246, 0.3);
+    .item-card {
+        background-color: #FFFFFF;
+        border: 1px solid #E5E5DF;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
     }
-</style>
+    .analysis-box {
+        background-color: #FAF5F2;
+        border: 1px solid #EAD5CE;
+        border-radius: 10px;
+        padding: 12px 15px;
+        margin-top: 10px;
+        font-size: 0.9rem;
+        color: #8C3A1D !important;
+    }
+    </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
@@ -159,322 +231,50 @@ with nav_col1:
 
 st.markdown("<hr style='margin: 0 0 20px 0; border: 0; border-top: 1px solid #30363D;'>", unsafe_allow_html=True)
 
-# ==========================================
-# 🏠 [메인 화면 구성]
-# ==========================================
-if st.session_state["selected_card"] == "main":
-    
-    # 1. 상단 타이틀 및 배경 영역
-    st.markdown("""
-        <div class="keco-hero">
-            <h2 style="font-size: 1.8rem; font-weight: 400; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.6);">
-                자연과 인간을 위한
-            </h2>
-            <h1 style="font-size: 2.8rem; font-weight: 800; text-shadow: 0 2px 6px rgba(0,0,0,0.6);">
-                건강하고 행복한 환경조성
-            </h1>
-        </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    
-    # --- [섹션 3] 랜딩 흐름 자연스럽게 녹아든 '보안 로그인 게이트웨이' ---
-    st.markdown("""
-        <div style="text-align: center; margin-bottom: 25px;">
-            <h3 style="color: #FFFFFF; font-size: 1.5rem; font-weight: 700; margin-bottom: 8px;">🌱 감독관 인증 및 시스템 접속</h3>
-            <p style="color: #FFFFFF; font-size: 0.9rem;">인증된 사내 감독관 계정으로 로그인하여 점검 시스템을 시작하세요.</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # 중앙 정렬된 로그인 폼 박스 배치
-    _, login_col, _ = st.columns([1, 2.2, 1])
-    
-    with login_col:
-        
-        # 1. 라벨과 입력창 글자색을 하얗게 만들어주는 CSS 코드
-        st.markdown("""
-            <style>
-            /* 감독관 ID, 비밀번호 등 입력창의 라벨 글자색 변경 */
-            .stTextInput label {
-                color: #FFFFFF !important;
-                font-weight: 600;
-            }
-            /* 입력창에 타이핑하는 글자색 변경 */
-            .stTextInput input {
-                color: #0F172A !important;
-            }
-            /* 입력창 내부 안내 문구(placeholder) 색상 */
-            .stTextInput input::placeholder {
-                color: #94A3B8 !important;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-        
-        allowed_users = st.secrets.get("passwords", {})
-        
-        user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="아이디를 입력하세요")
-        user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input", placeholder="비밀번호를 입력하세요")
-        
-        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-        
-        login_btn = st.button("안전 점검 시스템 로그인", use_container_width=True, type="primary")
-
-        if login_btn:
-            user_id_clean = str(user_id).strip()
-            user_pw_clean = str(user_pw).strip()
-            allowed_users_str = {str(k): str(v) for k, v in allowed_users.items()}
-            
-            if user_id_clean in allowed_users_str and allowed_users_str[user_id_clean] == user_pw_clean:
-                st.session_state["password_correct"] = True
-                st.session_state["logged_user"] = user_id_clean
-                st.rerun()
-            else:
-                st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    st.stop()  # 로그인이 안 되어 있다면 랜딩+로그인 통합 화면까지만 보여주고 멈춤!
-
-# ==========================================
-# 🎉 로그인이 완료된 후 실행되는 진짜 메인 시스템 영역
-# ==========================================
-logged_user_id = st.session_state.get('logged_user')
-user_emails_map = st.secrets.get("user_emails", {})
-mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
-
-st.success(f"환영합니다, {logged_user_id} 감독관님! 안전 점검 시스템이 활성화되었습니다.")
-# 이후 기존에 작성하셨던 체크리스트 및 점검 시스템 코드가 이어지면 됩니다!
-
-
-# ---------------- PDF 생성 함수 정의 ----------------
-def generate_pdf(title, content):
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # 윈도우 환경 기본 한글 폰트 등록 (NanumGothic 이나 malgun 등 사용 가능)
-    # 리눅스 환경(Streamlit Cloud 등)인 경우 나눔고딕 폰트 파일을 경로에 포함해야 합니다.
-    font_path = "C:/Windows/Fonts/malgun.ttf"  # 윈도우 기준 경로
-    if os.path.exists(font_path):
-        pdf.add_font("Malgun", "", font_path, uni=True)
-        pdf.set_font("Malgun", size=12)
-    else:
-        # 폰트 파일이 없을 경우 기본 폰트 사용 (한글이 깨질 수 있으므로 위 폰트 경로 확인 필요)
-        pdf.set_font("Arial", size=12)
-
-    # 문서 제목 추가
-    pdf.cell(200, 10, text=title, new_x="LMARGIN", new_y="NEXT", align="C")
-    pdf.ln(10)
-    
-    # 본문 내용 추가 (줄바꿈 자동 처리)
-    # 멀티라인 텍스트 입력
-    pdf.multi_cell(0, 10, text=content)
-    
-    # PDF를 바이트로 반환
-    return pdf.output()
-
-# --- Base64 이미지 변환 함수 ---
-def get_base64_image(image_path):
-    try:
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
-    except Exception:
-        return ""
-
-img_base64 = get_base64_image("puru_guru.png")
-
-# --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
-st.markdown("""
-    <style>
-    html, body, [data-testid="stAppViewContainer"] {
-        color: #1E293B !important;
-    }
-    .stMarkdown, p, div, span, label {
-        word-break: keep-all !important;
-        white-space: normal !important;
-    }
-    .stTable, div[data-testid="stTable"] {
-        overflow-x: auto !important;
-    }
-    label, div[data-baseweb="select"] span, .stSelectbox label, .stTextInput label, .stTextArea label, .stFileUploader label {
-        color: #1E293B !important;
-        font-weight: 600 !important;
-    }
-    div[role="listbox"] div {
-        color: #1E293B !important;
-    }
-    .stApp {
-        background-color: #F8FBF9;
-    }
-    .keco-header {
-        background: linear-gradient(135deg, #007A33 0%, #10B981 100%);
-        padding: 22px 18px;
-        border-radius: 16px;
-        color: white;
-        text-align: center;
-        margin-bottom: 15px;
-        box-shadow: 0 4px 15px rgba(0, 122, 51, 0.15);
-    }
-    .keco-header h2 {
-        color: white !important;
-        font-size: 1.5rem !important;
-        font-weight: 700 !important;
-        margin: 0 !important;
-    }
-    .keco-header p {
-        color: #E6F4EA !important;
-        font-size: 0.9rem !important;
-        margin-top: 6px !important;
-        margin-bottom: 0 !important;
-    }
-    .top-status-bar {
-        background-color: #E6F4EA;
-        border: 1.5px solid #10B981;
-        border-radius: 12px;
-        padding: 10px 18px;
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.92rem;
-        color: #005F27;
-        font-weight: 600;
-        box-shadow: 0 2px 6px rgba(0, 122, 51, 0.05);
-    }
-    .mascot-banner {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
-        text-align: center;
-        border: 2px solid #E2E8F0;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        margin-bottom: 20px;
-    }
-    .mascot-card {
-        background-color: #FFFFFF;
-        border: 1.5px solid #E2E8F0;
-        border-radius: 14px;
-        padding: 14px 18px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        color: #1E293B !important;
-    }
-    .select-card {
-        background-color: #E6F4EA;
-        border: 1.5px solid #10B981;
-        border-radius: 12px;
-        padding: 12px 16px;
-        margin-bottom: 18px;
-        color: #005F27 !important;
-        font-weight: 600;
-        box-shadow: 0 2px 6px rgba(0, 122, 51, 0.05);
-    }
-    .analysis-box {
-        background-color: #FEF2F2;
-        border: 1.5px solid #FCA5A5;
-        border-radius: 12px;
-        padding: 14px 16px;
-        margin-top: 10px;
-        margin-bottom: 15px;
-        font-size: 0.93rem;
-        color: #991B1B !important;
-    }
-    .item-card {
-        background-color: #FFFFFF;
-        border: 1.5px solid #CBD5E1;
-        border-radius: 12px;
-        padding: 18px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-        color: #1E293B !important;
-    }
-    div.stButton > button {
-        background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 10px !important;
-        font-weight: bold !important;
-        height: 48px !important;
-        font-size: 1rem !important;
-        box-shadow: 0 3px 8px rgba(0, 122, 51, 0.2) !important;
-    }
-    div.stTabs [data-baseweb="tab-list"] {
-        background-color: #F1F5F9;
-        padding: 6px;
-        border-radius: 12px;
-    }
-    div.stTabs [data-baseweb="tab"] {
-        background-color: transparent;
-        border-radius: 8px;
-        padding: 8px 16px;
-        font-weight: bold;
-        color: #475569;
-    }
-    div.stTabs [aria-selected="true"] {
-        background-color: #1E293B !important;
-        color: #FFFFFF !important;
-    }
-    .stTextInput input {
-        color: #1E293B !important;
-        background-color: #FFFFFF !important;
-        -webkit-text-fill-color: #1E293B !important;
-    </style>
-""", unsafe_allow_html=True)
-
-# ==========================================
-# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (완벽 정돈 버전)
-# ==========================================
+# --- 🔒 단일화된 보안 로그인 및 클로드 스타일 랜딩 게이트웨이 ---
 def check_password():
     if st.session_state.get("password_correct", False):
         return True
 
     allowed_users = st.secrets.get("passwords", {})
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    col_left, col_center, col_right = st.columns([1, 2.5, 1])
-    
-    with col_center:
-        # 1. 💡 3분할 컬럼을 만들어 '가운데(lc2)' 칸에 이미지를 넣으면 완벽하게 중앙 정렬됩니다!
-        try:
-            lc1, lc2, lc3 = st.columns([1, 2, 1])
-            with lc2:
-                st.image("Keco_logo.png", width=140)
-        except Exception:
-            # 이미지 파일이 없을 경우 예쁜 뱃지형 텍스트로 중앙 대체
-            st.markdown("""
-                <div style="text-align: center; margin-bottom: 10px;">
-                    <span style="background-color: #E6F4EA; color: #007A33; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">
-                        🌱 KECO
-                    </span>
-                </div>
-            """, unsafe_allow_html=True)
+    # 좌우 스플릿 레이아웃 구현 (왼쪽: 트렌디한 비주얼 소개 / 오른쪽: 로그인 폼)
+    col_left, col_right = st.columns([1.1, 1], gap="large")
 
-        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-
-        # 2. 💡 입력창과 타이틀을 감싸는 모던 카드 박스 시작
+    with col_left:
         st.markdown("""
-            <div style="
-                background-color: #FFFFFF; 
-                padding: 25px 20px; 
-                border-radius: 16px; 
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); 
-                border: 1px solid #E2E8F0;
-                margin-bottom: 20px;
-            ">
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <h2 style="color: #0F172A; font-weight: 800; font-size: 2rem; margin-bottom: 5px;">한국환경공단</h2>
-                    <h3 style="color: #007A33; font-weight: 700; font-size: 2rem; margin-bottom: 8px;">수도권서부환경본부</h3>
-                    <p style="color: #64748B; font-size: 1rem; font-weight: 500;">인증된 사내 감독관 전용 시스템</p>
+            <div style="background: linear-gradient(135deg, #103720 0%, #1B4D3E 100%); padding: 60px 40px; border-radius: 20px; color: white; height: 100%; min-height: 520px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 10px 25px rgba(16, 55, 32, 0.15);">
+                <div>
+                    <span style="background-color: rgba(255,255,255,0.15); padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; letter-spacing: 0.5px;">
+                        🌱 KECO SMART SAFETY SYSTEM
+                    </span>
+                    <h1 style="font-size: 2.4rem; font-weight: 800; margin-top: 25px; line-height: 1.3;">
+                        자연과 인간을 위한<br>건강하고 행복한 환경조성
+                    </h1>
+                    <p style="color: #C8E6C9; font-size: 1.05rem; margin-top: 15px; line-height: 1.6;">
+                        한국환경공단 수도권서부환경본부의 스마트 안전 점검 및 AI 위험성 분석 시스템입니다. 인증된 사내 감독관 계정으로 안전하고 신속하게 현장을 관리하세요.
+                    </p>
                 </div>
+                <div style="font-size: 0.85rem; color: #A5D6A7; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 20px;">
+                    🔒 Secure Enterprise Authentication Gateway
+                </div>
+            </div>
         """, unsafe_allow_html=True)
 
-        # 입력 필드
-        user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="아이디를 입력하세요")
+    with col_right:
+        st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+        st.markdown("""
+            <div style="margin-bottom: 25px;">
+                <h2 style="color: #1A1A18; font-weight: 700; font-size: 1.8rem; margin-bottom: 8px;">감독관 로그인</h2>
+                <p style="color: #666663; font-size: 0.95rem;">사번과 비밀번호를 입력하여 시스템에 접속하세요.</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        user_id = st.text_input("👤 감독관 ID", key="username_input", placeholder="사번을 입력하세요")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input", placeholder="비밀번호를 입력하세요")
         
-        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-        
-        login_btn = st.button("로그인", use_container_width=True, type="primary")
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+        login_btn = st.button("시스템 안전 접속", use_container_width=True, type="primary")
 
         if login_btn:
             user_id_clean = str(user_id).strip()
@@ -488,17 +288,10 @@ def check_password():
             else:
                 st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
 
-        # 카드 박스 닫기
-        st.markdown("</div>", unsafe_allow_html=True)
-
     return False
 
 if not check_password():
     st.stop()
-
-logged_user_id = st.session_state.get('logged_user')
-user_emails_map = st.secrets.get("user_emails", {})
-mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
 
 # --- 사이드바 영역 ---
 st.sidebar.markdown("### 🔒 감독관 인증 정보")
