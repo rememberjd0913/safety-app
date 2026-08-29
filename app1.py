@@ -28,48 +28,50 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ---------------- PDF 생성 함수 정의 ----------------
-def generate_pdf(title, content):
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # 윈도우 환경 기본 한글 폰트 등록 (NanumGothic 이나 malgun 등 사용 가능)
-    # 리눅스 환경(Streamlit Cloud 등)인 경우 나눔고딕 폰트 파일을 경로에 포함해야 합니다.
-    font_path = "C:/Windows/Fonts/malgun.ttf"  # 윈도우 기준 경로
-    if os.path.exists(font_path):
-        pdf.add_font("Malgun", "", font_path, uni=True)
-        pdf.set_font("Malgun", size=12)
-    else:
-        # 폰트 파일이 없을 경우 기본 폰트 사용 (한글이 깨질 수 있으므로 위 폰트 경로 확인 필요)
-        pdf.set_font("Arial", size=12)
-
-    # 문서 제목 추가
-    pdf.cell(200, 10, text=title, new_x="LMARGIN", new_y="NEXT", align="C")
-    pdf.ln(10)
-    
-    # 본문 내용 추가 (줄바꿈 자동 처리)
-    # 멀티라인 텍스트 입력
-    pdf.multi_cell(0, 10, text=content)
-    
-    # PDF를 바이트로 반환
-    return pdf.output()
-
-# --- Base64 이미지 변환 함수 ---
-def get_base64_image(image_path):
-    try:
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
-    except Exception:
-        return ""
-
-img_base64 = get_base64_image("puru_guru.png")
-
 # --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
 st.markdown("""
     <style>
+/* 전체 배경을 클로드 스타일의 은은한 미색(#FBFBF9)으로 설정 */
     html, body, [data-testid="stAppViewContainer"] {
-        color: #1E293B !important;
+        background-color: #FBFBF9 !important;
+        color: #191919 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
+    
+    /* 입력창 디자인 */
+    .stTextInput input {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E3E3DE !important;
+        border-radius: 12px !important;
+        color: #191919 !important;
+        padding: 14px 16px !important;
+        font-size: 0.95rem !important;
+    }
+    .stTextInput input:focus {
+        border-color: #D97706 !important;
+        box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.1) !important;
+    }
+    label {
+        color: #666663 !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* 버튼 디자인 */
+    div.stButton > button {
+        background-color: #191919 !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-weight: 600 !important;
+        height: 50px !important;
+        font-size: 1rem !important;
+        transition: background-color 0.2s ease;
+    }
+    div.stButton > button:hover {
+        background-color: #333333 !important;
+    }
+    
     .stMarkdown, p, div, span, label {
         word-break: keep-all !important;
         white-space: normal !important;
