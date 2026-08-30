@@ -1699,7 +1699,7 @@ with main_tab1:
                 f"#{idx} 조치 전 사진 첨부",
                 type=["jpg", "jpeg", "png"],
                 accept_multiple_files=True,
-                key=f"before_imgs_{idx}"
+                key=f"safety_action_before_imgs_{idx}"
             )
             
             if before_img_files:
