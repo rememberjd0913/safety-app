@@ -31,8 +31,9 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        .main .block-container {
-            max-width: 800px;
+        [data-testid="block-container"] {
+            max-width: 1200px !important;  /* 원하는 중간 크기 (1100px ~ 1300px 조절 가능) */
+            margin: auto !important;       /* 양옆 여백을 균등하게 중앙 정렬 */
             padding-top: 2rem;
             padding-bottom: 2rem;
             padding-left: 3rem;
