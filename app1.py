@@ -300,9 +300,6 @@ def check_password():
                 <div style="overflow: hidden; border-radius: 12px; height: 500px; background-color: #f1f5f9;">
                     <img src="{current_img_url}" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.5s ease-in-out;">
                 </div>
-                <div style="margin-top: 20px; font-weight: 700; color: #007A33; font-size: 1.15rem;">
-                    ✨ {current_caption}
-                </div>
             </div>
         """, unsafe_allow_html=True)
 
