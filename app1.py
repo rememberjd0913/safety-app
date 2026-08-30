@@ -62,7 +62,7 @@ def get_base64_image(image_path):
     except Exception:
         return ""
 
-img_base64 = get_base64_image("puru_guru.png")
+img_base64 = get_base64_image("Keco_logo.png")
 
 # --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
 st.markdown("""
