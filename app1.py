@@ -200,25 +200,42 @@ st.markdown("""
 
 
 # ==========================================
-# 🔒 [보안] 감독관 로그인 제어 게이트웨이
+# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (2열 레이아웃 & 이미지 슬라이드 적용)
 # ==========================================
 def check_password():
     if st.session_state.get("password_correct", False):
         return True
 
-    allowed_users = st.secrets.get("passwords", {})
+    # 1. 자동 새로고침 설정 (우측 슬라이드쇼가 4초마다 부드럽게 넘어가도록 설정)
+    # interval(ms): 4000 = 4초
+    from streamlit_autorefresh import st_autorefresh
+    st_autorefresh(interval=4000, key="login_slide_refresh")
 
+    # 2. 상단 기관 로고 및 헤더 영역
     st.markdown("""
-        <div style="text-align:center; padding: 30px 10px 10px 10px;">
-            <h2 style="color:#007A33;">🌱 한국환경공단 감독관 인증</h2>
-            <p style="color:#64748B;">인증된 사내 감독관만 접근 가능한 스마트 점검 시스템입니다.</p>
+        <div style="background: linear-gradient(135deg, #007A33 0%, #10B981 100%); padding: 25px; border-radius: 16px; color: white; text-align: center; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0, 122, 51, 0.2);">
+            <h1 style="color: white !important; font-size: 1.8rem !important; font-weight: 800 !important; margin: 0 !important;">🌱 한국환경공단 수도권서부환경본부</h1>
+            <p style="color: #E6F4EA !important; font-size: 1.05rem !important; margin-top: 8px !important; margin-bottom: 0 !important;">스마트 AI 안전 점검 및 환경시설 관리 시스템</p>
         </div>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
+    # 3. 메인 2열 레이아웃 (좌측: 로그인 / 우측: 환경 시설 슬라이드쇼)
+    col_login, col_slide = st.columns([1, 1.2], gap="large")
+
+    # --- [좌측 열]: 로그인 입력 카드 ---
+    with col_login:
+        st.markdown("""
+            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); height: 100%;">
+                <h3 style="color: #007A33; margin-top: 0; font-size: 1.3rem; font-weight: 700;">🔐 감독관 인증 로그인</h3>
+                <p style="color: #64748B; font-size: 0.9rem; margin-bottom: 20px;">인증된 사내 감독관만 접근 가능합니다.</p>
+        """, unsafe_allow_html=True)
+
+        allowed_users = st.secrets.get("passwords", {})
+        
         user_id = st.text_input("👤 감독관 ID (사번)", key="username_input")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input")
+        
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         
         if st.button("로그인", use_container_width=True):
             user_id_clean = str(user_id).strip()
@@ -231,6 +248,42 @@ def check_password():
                 st.rerun()
             else:
                 st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
+                
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # --- [우측 열]: 환경 관련 이미지 슬라이드쇼 ---
+    with col_slide:
+        # 슬라이드에 보여줄 환경/안전 관련 고화질 이미지 URL 리스트 (Unsplash 공공 환경 테마)
+        slide_images = [
+            ("https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80", "지속 가능한 친환경 녹색 인프라 관리"),
+            ("https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80", "현장 중심 스마트 안전 점검 및 예방"),
+            ("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80", "깨끗하고 안전한 수도권 환경 생태계 조성"),
+            ("https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?auto=format&fit=crop&w=800&q=80", "첨단 기술을 활용한 환경시설 관리 효율화")
+        ]
+
+        # 세션 상태에 현재 슬라이드 인덱스 저장 및 자동 증가
+        if "slide_index" not in st.session_state:
+            st.session_state["slide_index"] = 0
+        else:
+            # 4초마다 갱신될 때마다 인덱스를 다음으로 순환
+            st.session_state["slide_index"] = (st.session_state["slide_index"] + 1) % len(slide_images)
+
+        current_img_url, current_caption = slide_images[st.session_state["slide_index"]]
+
+        # HTML / CSS 카드로 이쁘게 감싸기
+        st.markdown(f"""
+            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center; height: 100%;">
+                <div style="overflow: hidden; border-radius: 12px; height: 250px; background-color: #f1f5f9;">
+                    <img src="{current_img_url}" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.5s ease-in-out;">
+                </div>
+                <div style="margin-top: 12px; font-weight: 600; color: #007A33; font-size: 0.95rem;">
+                    ✨ {current_caption}
+                </div>
+                <div style="color: #94A3B8; font-size: 0.8rem; margin-top: 4px;">
+                    한국환경공단 수도권서부환경본부 환경시설관리처
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
     return False
 
