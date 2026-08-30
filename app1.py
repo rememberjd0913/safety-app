@@ -210,11 +210,8 @@ def check_password():
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=4000, key="login_slide_refresh")
 
-    # 상단 여백 추가
-    st.markdown("<div style='height: 1px;'></div>", unsafe_allow_html=True)
-
     # 2. 한국환경공단 공식 스타일 상단 헤더 바 (여백 확대)
-    logo_html = f'<img src="data:image/png;base64,{img_base64}" style="height: 1px; vertical-align: middle; margin-right: 12px;">' if img_base64 else '🌱'
+    logo_html = f'<img src="data:image/png;base64,{img_base64}" style="height: 42px; vertical-align: middle; margin-right: 12px;">' if img_base64 else '🌱'
     
     st.markdown(f"""
         <div style="background-color: #FFFFFF; border: 1.5px solid #E2E8F0; padding: 18px 30px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
