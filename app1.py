@@ -226,9 +226,6 @@ def check_password():
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=4000, key="login_slide_refresh")
 
-    # 상단 여백
-    st.markdown("<div style='height: 1px;'></div>", unsafe_allow_html=True)
-
     # 2. 한국환경공단 공식 스타일 상단 헤더 바
     logo_html = f'<img src="data:image/png;base64,{img_base64}" style="height: 42px; vertical-align: middle; margin-right: 12px;">' if img_base64 else '🌱'
     
