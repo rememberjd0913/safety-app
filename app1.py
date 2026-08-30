@@ -303,9 +303,6 @@ def check_password():
                 <div style="margin-top: 20px; font-weight: 700; color: #007A33; font-size: 1.15rem;">
                     ✨ {current_caption}
                 </div>
-                <div style="color: #94A3B8; font-size: 0.9rem; margin-top: 6px;">
-                    한국환경공단 수도권서부환경본부 환경시설관리처
-                </div>
             </div>
         """, unsafe_allow_html=True)
 
