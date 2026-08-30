@@ -281,11 +281,11 @@ def check_password():
     # --- [우측 열]: 환경 관련 이미지 슬라이드쇼 (세로 크기 확대) ---
     with col_slide:
         slide_images = [
-            ("https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1000&q=80", "지속 가능한 친환경 녹색 인프라 관리"),
-            ("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80", "깨끗하고 안전한 수도권 환경 생태계 조성"),
-            ("https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1000&q=80", "자연과 공존하는 생태환경 복원 및 보전"),
-            ("https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1000&q=80", "신재생에너지 및 탄소중립 실천 인프라"),
-            ("https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1000&q=80", "맑고 깨끗한 수자원 및 대기환경 관리")
+            ("https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1000&q=80"), 
+            ("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80"),
+            ("https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1000&q=80"),
+            ("https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1000&q=80"),
+            ("https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1000&q=80"),
         ]
 
         if "slide_index" not in st.session_state:
@@ -297,7 +297,7 @@ def check_password():
 
         st.markdown(f"""
             <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 30px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); text-align: center; min-height: 460px; display: flex; flex-direction: column; justify-content: center;">
-                <div style="overflow: hidden; border-radius: 12px; height: 430px; background-color: #f1f5f9;">
+                <div style="overflow: hidden; border-radius: 12px; height: 500px; background-color: #f1f5f9;">
                     <img src="{current_img_url}" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.5s ease-in-out;">
                 </div>
                 <div style="margin-top: 20px; font-weight: 700; color: #007A33; font-size: 1.15rem;">
