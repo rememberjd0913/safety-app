@@ -1401,7 +1401,7 @@ st.sidebar.markdown(
 )
 
 st.sidebar.markdown("---")
-if st.sidebar.button("🔓 로그아웃", use_container_width=True):
+if st.sidebar.button("🔓 로그아웃", use_container_width=True, key='sidebar_logout.but"):
     st.session_state["password_correct"] = False
     st.rerun()
 
