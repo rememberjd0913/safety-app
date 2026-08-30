@@ -551,7 +551,7 @@ if "item_coords" not in st.session_state:
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 수도권서부환경본부</h2>
-        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템 (도면 실시간 검측 연동형)</p>
+        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -597,7 +597,6 @@ departments = list(department_sites_map.keys())
 # --- 메인 탭 확장 ---
 main_tab1, main_tab2, main_tab3, main_tab4 = st.tabs([
     "안전 점검 등록", 
-    "🗺️ 실시간 도면 검측 뷰어", 
     "부서별 점검 이력 및 대시보드", 
     "📖 AI 안전 가이드 Q&A (RAG)"
 ])
@@ -786,85 +785,6 @@ with main_tab1:
                     st.warning(f"⚠️ 저장 및 구글 시트는 완료되었으나 이메일 전송에 실패했습니다. (사유: {email_msg})")
                 else:
                     st.error("❌ 저장 및 전송 과정에서 오류가 발생했습니다.")
-
-# ---------------- Tab 2: 실시간 도면 검측 뷰어 (Plotly 기반 안정 버전) ----------------
-with main_tab2:
-    st.subheader("🗺️ 현장 도면 실시간 핀 찍기 및 검측 뷰어")
-    st.markdown("도면 이미지를 올린 후 아래 입력창에 **도면 상에서 클릭할 X, Y 좌표**를 입력하거나, 하단에 표시되는 팁을 참고하여 위치를 매칭하세요.")
-
-    col_map_setting1, col_map_setting2 = st.columns([2, 1])
-    with col_map_setting1:
-        map_file = st.file_uploader("📂 현장 도면 이미지 업로드 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="blueprint_upload")
-    
-    with col_map_setting2:
-        target_item_to_pin = st.selectbox(
-            "📌 매칭할 점검 항목 선택", 
-            options=list(range(1, st.session_state.item_count + 1)),
-            format_func=lambda x: f"점검 항목 #{x}",
-            key="pin_target_item"
-        )
-
-    if map_file is not None:
-        try:
-            image = Image.open(map_file)
-            img_width, img_height = image.size
-
-            st.markdown(f"**🎯 [점검 항목 #{target_item_to_pin}] 위치 설정** (도면 해상도: 가로 {img_width}px × 세로 {img_height}px)")
-            
-            fig = px.imshow(image)
-            
-            if st.session_state.item_coords:
-                pin_x = [pos['x'] for pos in st.session_state.item_coords.values()]
-                pin_y = [pos['y'] for pos in st.session_state.item_coords.values()]
-                pin_text = [f"항목 #{k}" for k in st.session_state.item_coords.keys()]
-                
-                fig.add_trace(go.Scatter(
-                    x=pin_x, y=pin_y,
-                    mode="markers+text",
-                    text=pin_text,
-                    textposition="top center",
-                    marker=dict(size=14, color="red", symbol="cross")
-                ))
-
-            fig.update_layout(
-                xaxis=dict(showgrid=False, zeroline=False),
-                yaxis=dict(showgrid=False, zeroline=False),
-                margin=dict(l=0, r=0, t=0, b=0),
-                height=500
-            )
-
-            selected_point = st.plotly_chart(fig, use_container_width=True, on_select="rerun", selection_mode="points")
-
-            clicked_x, clicked_y = None, None
-            if selected_point and "selection" in selected_point and "points" in selected_point["selection"]:
-                points = selected_point["selection"]["points"]
-                if points:
-                    clicked_x = int(points[0].get("x", 0))
-                    clicked_y = int(points[0].get("y", 0))
-
-            st.markdown("##### 📍 좌표 직접 입력 또는 확인")
-            col_px, col_py, col_pbtn = st.columns([1, 1, 1])
-            with col_px:
-                input_x = st.number_input("X 좌표", min_value=0, max_value=img_width, value=clicked_x if clicked_x is not None else 100, key=f"input_x_{target_item_to_pin}")
-            with col_py:
-                input_y = st.number_input("Y 좌표", min_value=0, max_value=img_height, value=clicked_y if clicked_y is not None else 100, key=f"input_y_{target_item_to_pin}")
-            with col_pbtn:
-                st.write("")
-                st.write("")
-                if st.button(f"📌 [항목 #{target_item_to_pin}] 위치 저장", key=f"save_coord_btn_{target_item_to_pin}", use_container_width=True):
-                    st.session_state.item_coords[target_item_to_pin] = {"x": input_x, "y": input_y}
-                    st.success(f"항목 #{target_item_to_pin} 위치(X:{input_x}, Y:{input_y}) 저장 완료!")
-
-        except Exception as e:
-            st.error(f"도면을 불러오는 중 오류가 발생했습니다: {e}")
-    else:
-        st.info("💡 검측을 시작하려면 먼저 상단에서 현장 도면 이미지(JPG 또는 PNG)를 업로드해 주세요.")
-        
-        if st.session_state.item_coords:
-            st.markdown("---")
-            st.markdown("##### 📌 현재까지 지정된 도면 핀 현황")
-            for item_idx, pos in st.session_state.item_coords.items():
-                st.write(f"- **점검 항목 #{item_idx}**: X = {pos['x']}, Y = {pos['y']}")
 
 # ---------------- Tab 3: 이력 조회 및 인터랙티브 대시보드 ----------------
 with main_tab3:
