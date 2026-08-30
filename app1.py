@@ -211,11 +211,23 @@ def check_password():
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=4000, key="login_slide_refresh")
 
-    # 2. 상단 기관 로고 및 헤더 영역
-    st.markdown("""
-        <div style="background: linear-gradient(135deg, #007A33 0%, #10B981 100%); padding: 25px; border-radius: 16px; color: white; text-align: center; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0, 122, 51, 0.2);">
-            <h1 style="color: white !important; font-size: 1.8rem !important; font-weight: 800 !important; margin: 0 !important;">🌱 한국환경공단 수도권서부환경본부</h1>
-            <p style="color: #E6F4EA !important; font-size: 1.05rem !important; margin-top: 8px !important; margin-bottom: 0 !important;">스마트 AI 안전 점검 및 환경시설 관리 시스템</p>
+    # 2. 한국환경공단 공식 스타일 상단 헤더 바
+    logo_html = f'<img src="data:image/png;base64,{img_base64}" style="height: 38px; vertical-align: middle; margin-right: 10px;">' if img_base64 else '🌱'
+    
+    st.markdown(f"""
+        <div style="background-color: #FFFFFF; border-bottom: 2px solid #E2E8F0; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+            <div style="display: flex; align-items: center;">
+                {logo_html}
+                <span style="font-size: 1.25rem; font-weight: 800; color: #1E293B; letter-spacing: -0.5px;">한국환경공단</span>
+                <span style="font-size: 0.85rem; color: #64748B; margin-left: 12px; border-left: 1.5px solid #CBD5E1; padding-left: 12px; font-weight: 600;">수도권서부환경본부 환경시설관리처</span>
+            </div>
+            <div style="display: flex; gap: 24px; font-size: 0.95rem; font-weight: 600; color: #334155;">
+                <span style="cursor: pointer; color: #007A33;">핵심사업</span>
+                <span style="cursor: pointer;">ESG경영</span>
+                <span style="cursor: pointer;">열린공간</span>
+                <span style="cursor: pointer;">국민참여</span>
+                <span style="cursor: pointer;">공단소개</span>
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
