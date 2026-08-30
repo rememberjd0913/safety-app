@@ -257,7 +257,7 @@ def check_password():
         """, unsafe_allow_html=True)
 
         st.markdown(
-            "<div style='height: 15px;'></div>", unsafe_allow_html=True
+            "<div style='height: 50px;'></div>", unsafe_allow_html=True
         )
         
         allowed_users = st.secrets.get("passwords", {})
