@@ -1664,7 +1664,7 @@ with main_tab1:
     
     col_dept, col_site = st.columns(2)
     with col_dept:
-        selected_dept = st.selectbox("📌 담당 부서 선택", departments, key="selected_dept_box")
+        selected_dept = st.selectbox("📌 담당 부서 선택", departments, key="selected_dept_box_{i}")
     
     available_sites = department_sites_map.get(selected_dept, ["현장 없음"])
     
