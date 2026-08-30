@@ -32,7 +32,7 @@ st.markdown(
     """
     <style>
         [data-testid="block-container"] {
-            max-width: 1200px !important;  /* 원하는 중간 크기 (1100px ~ 1300px 조절 가능) */
+            max-width: 800px !important;  /* 원하는 중간 크기 (1100px ~ 1300px 조절 가능) */
             margin: auto !important;       /* 양옆 여백을 균등하게 중앙 정렬 */
             padding-top: 2rem;
             padding-bottom: 2rem;
