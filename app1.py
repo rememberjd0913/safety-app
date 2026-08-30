@@ -227,7 +227,7 @@ def check_password():
     st_autorefresh(interval=4000, key="login_slide_refresh")
 
     # 2. 한국환경공단 공식 스타일 상단 헤더 바
-    logo_html = f'<img src="data:image/png;base64,{img_base64}" style="height: 42px; vertical-align: middle; margin-right: 12px;">' if img_base64 else '🌱'
+    logo_html = f'<img src="data:image/png;base64,{img_base64}" style="height: 60px; vertical-align: middle; margin-right: 12px;">' if img_base64 else '🌱'
     
     st.markdown(f"""
         <div style="background-color: #FFFFFF; border: 1.5px solid #E2E8F0; padding: 18px 30px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 45px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
