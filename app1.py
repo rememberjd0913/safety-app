@@ -296,7 +296,7 @@ def check_password():
         """, unsafe_allow_html=True)
 
     # 하단 여백 추가
-    st.markdown("<div style='height: 40px;'>0</div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
 
     return False
 
