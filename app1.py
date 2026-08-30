@@ -239,7 +239,7 @@ def check_password():
     # --- [좌측 열]: 로그인 입력 카드 (세로 크기 확대) ---
     with col_login:
         st.markdown("""
-            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 45px 35px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); min-height: 460px; display: flex; flex-direction: column; justify-content: center;">
+            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 45px 35px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); min-height: 300px; display: flex; flex-direction: column; justify-content: center;">
                 <h3 style="color: #007A33; margin-top: 0; margin-bottom: 10px; font-size: 1.5rem; font-weight: 700;">🔐 AI 안전 점검 시스템 인증</h3>
                 <p style="color: #64748B; font-size: 1rem; margin-bottom: 30px;">인증된 사내 감독관만 접근 가능합니다.</p>
         """, unsafe_allow_html=True)
