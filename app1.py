@@ -239,13 +239,6 @@ def check_password():
                 <span style="font-size: 1.5rem; font-weight: 800; color: #1E293B; letter-spacing: -0.5px;">한국환경공단</span>
                 <span style="font-size: 1rem; color: #64748B; margin-left: 14px; border-left: 2px solid #CBD5E1; padding-left: 14px; font-weight: 600;">수도권서부환경본부 환경시설관리처</span>
             </div>
-            <div style="display: flex; gap: 30px; font-size: 1rem; font-weight: 600; color: #334155;">
-                <span style="cursor: pointer; color: #007A33;">핵심사업</span>
-                <span style="cursor: pointer;">ESG경영</span>
-                <span style="cursor: pointer;">열린공간</span>
-                <span style="cursor: pointer;">국민참여</span>
-                <span style="cursor: pointer;">공단소개</span>
-            </div>
         </div>
     """, unsafe_allow_html=True)
 
