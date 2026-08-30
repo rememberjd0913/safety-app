@@ -200,28 +200,30 @@ st.markdown("""
 
 
 # ==========================================
-# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (2열 레이아웃 & 이미지 슬라이드 적용)
+# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (여백 개선 버전)
 # ==========================================
 def check_password():
     if st.session_state.get("password_correct", False):
         return True
 
-    # 1. 자동 새로고침 설정 (우측 슬라이드쇼가 4초마다 부드럽게 넘어가도록 설정)
-    # interval(ms): 4000 = 4초
+    # 1. 자동 새로고침 설정 (우측 슬라이드쇼 4초 간격 전환)
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=4000, key="login_slide_refresh")
 
-    # 2. 한국환경공단 공식 스타일 상단 헤더 바
-    logo_html = f'<img src="data:image/png;base64,{img_base64}" style="height: 38px; vertical-align: middle; margin-right: 10px;">' if img_base64 else '🌱'
+    # 상단 여백 추가
+    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+
+    # 2. 한국환경공단 공식 스타일 상단 헤더 바 (여백 확대)
+    logo_html = f'<img src="data:image/png;base64,{img_base64}" style="height: 42px; vertical-align: middle; margin-right: 12px;">' if img_base64 else '🌱'
     
     st.markdown(f"""
-        <div style="background-color: #FFFFFF; border-bottom: 2px solid #E2E8F0; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+        <div style="background-color: #FFFFFF; border: 1.5px solid #E2E8F0; padding: 18px 30px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
             <div style="display: flex; align-items: center;">
                 {logo_html}
-                <span style="font-size: 1.25rem; font-weight: 800; color: #1E293B; letter-spacing: -0.5px;">한국환경공단</span>
-                <span style="font-size: 0.85rem; color: #64748B; margin-left: 12px; border-left: 1.5px solid #CBD5E1; padding-left: 12px; font-weight: 600;">수도권서부환경본부 환경시설관리처</span>
+                <span style="font-size: 1.35rem; font-weight: 800; color: #1E293B; letter-spacing: -0.5px;">한국환경공단</span>
+                <span style="font-size: 0.9rem; color: #64748B; margin-left: 14px; border-left: 2px solid #CBD5E1; padding-left: 14px; font-weight: 600;">수도권서부환경본부 환경시설관리처</span>
             </div>
-            <div style="display: flex; gap: 24px; font-size: 0.95rem; font-weight: 600; color: #334155;">
+            <div style="display: flex; gap: 30px; font-size: 1rem; font-weight: 600; color: #334155;">
                 <span style="cursor: pointer; color: #007A33;">핵심사업</span>
                 <span style="cursor: pointer;">ESG경영</span>
                 <span style="cursor: pointer;">열린공간</span>
@@ -231,15 +233,15 @@ def check_password():
         </div>
     """, unsafe_allow_html=True)
 
-    # 3. 메인 2열 레이아웃 (좌측: 로그인 / 우측: 환경 시설 슬라이드쇼)
-    col_login, col_slide = st.columns([1, 1.2], gap="large")
+    # 3. 메인 2열 레이아웃 (좌측: 로그인 폼 / 우측: 환경 시설 슬라이드쇼)
+    col_login, col_slide = st.columns([1, 1.1], gap="large")
 
     # --- [좌측 열]: 로그인 입력 카드 ---
     with col_login:
         st.markdown("""
-            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); height: 100%;">
-                <h3 style="color: #007A33; margin-top: 0; font-size: 1.3rem; font-weight: 700;">🔐 감독관 인증 로그인</h3>
-                <p style="color: #64748B; font-size: 0.9rem; margin-bottom: 20px;">인증된 사내 감독관만 접근 가능합니다.</p>
+            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 35px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); height: 100%;">
+                <h3 style="color: #007A33; margin-top: 0; margin-bottom: 8px; font-size: 1.4rem; font-weight: 700;">🔐 AI 안전 점검 시스템 인증</h3>
+                <p style="color: #64748B; font-size: 0.95rem; margin-bottom: 25px;">인증된 사내 감독관만 접근 가능합니다.</p>
         """, unsafe_allow_html=True)
 
         allowed_users = st.secrets.get("passwords", {})
@@ -247,7 +249,7 @@ def check_password():
         user_id = st.text_input("👤 감독관 ID (사번)", key="username_input")
         user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input")
         
-        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
         
         if st.button("로그인", use_container_width=True):
             user_id_clean = str(user_id).strip()
@@ -265,7 +267,6 @@ def check_password():
 
     # --- [우측 열]: 환경 관련 이미지 슬라이드쇼 ---
     with col_slide:
-        # 슬라이드에 보여줄 환경/안전 관련 고화질 이미지 URL 리스트 (Unsplash 공공 환경 테마)
         slide_images = [
             ("https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80", "지속 가능한 친환경 녹색 인프라 관리"),
             ("https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80", "현장 중심 스마트 안전 점검 및 예방"),
@@ -273,35 +274,35 @@ def check_password():
             ("https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?auto=format&fit=crop&w=800&q=80", "첨단 기술을 활용한 환경시설 관리 효율화")
         ]
 
-        # 세션 상태에 현재 슬라이드 인덱스 저장 및 자동 증가
         if "slide_index" not in st.session_state:
             st.session_state["slide_index"] = 0
         else:
-            # 4초마다 갱신될 때마다 인덱스를 다음으로 순환
             st.session_state["slide_index"] = (st.session_state["slide_index"] + 1) % len(slide_images)
 
         current_img_url, current_caption = slide_images[st.session_state["slide_index"]]
 
-        # HTML / CSS 카드로 이쁘게 감싸기
         st.markdown(f"""
-            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center; height: 100%;">
-                <div style="overflow: hidden; border-radius: 12px; height: 250px; background-color: #f1f5f9;">
+            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 25px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); text-align: center; height: 100%;">
+                <div style="overflow: hidden; border-radius: 12px; height: 265px; background-color: #f1f5f9;">
                     <img src="{current_img_url}" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.5s ease-in-out;">
                 </div>
-                <div style="margin-top: 12px; font-weight: 600; color: #007A33; font-size: 0.95rem;">
+                <div style="margin-top: 16px; font-weight: 600; color: #007A33; font-size: 1.05rem;">
                     ✨ {current_caption}
                 </div>
-                <div style="color: #94A3B8; font-size: 0.8rem; margin-top: 4px;">
+                <div style="color: #94A3B8; font-size: 0.85rem; margin-top: 6px;">
                     한국환경공단 수도권서부환경본부 환경시설관리처
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
+    # 하단 여백 추가
+    st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+
     return False
 
 if not check_password():
     st.stop()
-
+    
 logged_user_id = st.session_state.get('logged_user')
 user_emails_map = st.secrets.get("user_emails", {})
 mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
