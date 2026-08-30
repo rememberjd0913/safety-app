@@ -249,7 +249,7 @@ def check_password():
     with col_login:
         st.markdown("""
             <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 45px 35px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); min-height: 300px; display: flex; flex-direction: column; justify-content: center;">
-                <h3 style="color: #007A33; margin-top: 0; margin-bottom: 10px; font-size: 1.5rem; font-weight: 700;">🔐 AI 안전 점검 시스템 인증</h3>
+                <h3 style="color: #007A33; margin-top: 0; margin-bottom: 10px; font-size: 1.5rem; font-weight: 700;">🔐 스마트 건설현장 안전관리 시스템 인증</h3>
                 <p style="color: #64748B; font-size: 1rem; margin-bottom: 30px;">  인증된 사내 감독관만 접근 가능합니다.</p>
                 <div style="background-color: #F8FBF9; border-left: 4px solid #10B981; padding: 10px 14px; border-radius: 6px; margin-bottom: 20px; font-size: 0.85rem; color: #334155; text-align: left;">
                     <b>💡 안내:</b> 사번(ID)과 지정된 비밀번호를 입력하여 로그인해 주세요. 무단 접속 시 관련 규정에 따라 제재를 받을 수 있습니다.
