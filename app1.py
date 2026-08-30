@@ -252,7 +252,7 @@ def check_password():
                 <h3 style="color: #007A33; margin-top: 0; margin-bottom: 10px; font-size: 2rem; font-weight: 700;"> 스마트 건설현장 안전관리 시스템 인증</h3>
                 <p style="color: #64748B; font-size: 1.5rem; margin-bottom: 30px;">&nbsp;&nbsp;&nbsp;&nbsp;인증된 사내 감독관만 접근 가능합니다.</p>
                 <div style="background-color: #F8FBF9; border-left: 4px solid #10B981; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 0.88rem; color: #334155; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                    <b>🤖 AI 보안 인증:</b> 스마트 안전망 구축을 위한 감독관 전용 공간입니다. 인가된 계정으로 접속해 주세요.
+                    <b>✨ 시스템 안내:</b> 환경시설설치사업 통합 관리를 위해 안전한 계정 로그인이 필요합니다.
                 </div>
         """, unsafe_allow_html=True)
 
