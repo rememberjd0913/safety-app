@@ -297,7 +297,7 @@ def check_password():
 
         st.markdown(f"""
             <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 30px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); text-align: center; min-height: 460px; display: flex; flex-direction: column; justify-content: center;">
-                <div style="overflow: hidden; border-radius: 12px; height: 400px; background-color: #f1f5f9;">
+                <div style="overflow: hidden; border-radius: 12px; height: 450px; background-color: #f1f5f9;">
                     <img src="{current_img_url}" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.5s ease-in-out;">
                 </div>
                 <div style="margin-top: 20px; font-weight: 700; color: #007A33; font-size: 1.15rem;">
