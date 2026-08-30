@@ -266,7 +266,7 @@ def check_password():
         st.markdown("</div>", unsafe_allow_html=True)
 
     # --- [우측 열]: 환경 관련 이미지 슬라이드쇼 (세로 크기 확대) ---
-   with col_slide:
+    with col_slide:
         slide_images = [
             ("https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1000&q=80", "지속 가능한 친환경 녹색 인프라 관리"),
             ("https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1000&q=80", "현장 중심 스마트 안전 점검 및 예방"),
