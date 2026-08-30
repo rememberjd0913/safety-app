@@ -211,7 +211,7 @@ def check_password():
     st_autorefresh(interval=4000, key="login_slide_refresh")
 
     # 상단 여백 추가
-    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 1px;'></div>", unsafe_allow_html=True)
 
     # 2. 한국환경공단 공식 스타일 상단 헤더 바 (여백 확대)
     logo_html = f'<img src="data:image/png;base64,{img_base64}" style="height: 42px; vertical-align: middle; margin-right: 12px;">' if img_base64 else '🌱'
