@@ -280,7 +280,6 @@ def check_password():
             ("https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1000&q=80", "첨단 환경시설 설치 현장 스마트 안전 점검"),
             ("https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?auto=format&fit=crop&w=1000&q=80", "지속 가능한 수도권 물환경 및 생태계 보전")
         ]
-        ]
 
         if "slide_index" not in st.session_state:
             st.session_state["slide_index"] = 0
