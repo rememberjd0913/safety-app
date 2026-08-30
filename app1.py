@@ -24,7 +24,7 @@ from fpdf import FPDF
 st.set_page_config(
     page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 점검 시스템",
     page_icon="puru_guru.png",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
