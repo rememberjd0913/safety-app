@@ -1736,7 +1736,7 @@ with main_tab1:
                 f"#{idx} 조치 후 사진 첨부",
                 type=["jpg", "jpeg", "png"],
                 accept_multiple_files=True,
-                key=f"after_imgs_{idx}"
+                key=f"safety_action_after_imgs_{idx}"
             )
             if after_img_files:
                 st.write(f"📷 첨부된 조치 후 사진: **{len(after_img_files)}장**")
@@ -1747,7 +1747,7 @@ with main_tab1:
         desc = st.text_area(
             f"✍️ [항목 #{idx}] 현장 조치 내용 및 설명", 
             placeholder=f"예: 항목 #{idx} - 개구부 안전난간 설치 및 추락방지망 추가 고정 완료", 
-            key=f"desc_{idx}"
+            key=f"safety_action_desc_{idx}"
         )
         
         st.markdown("</div>", unsafe_allow_html=True)
@@ -1844,14 +1844,14 @@ with main_tab2:
 
     col_map_setting1, col_map_setting2 = st.columns([2, 1])
     with col_map_setting1:
-        map_file = st.file_uploader("📂 현장 도면 이미지 업로드 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="blueprint_upload")
+        map_file = st.file_uploader("📂 현장 도면 이미지 업로드 (JPG, PNG)", type=["jpg", "jpeg", "png"], key="safety_action_blueprint_upload")
     
     with col_map_setting2:
         target_item_to_pin = st.selectbox(
             "📌 매칭할 점검 항목 선택", 
             options=list(range(1, st.session_state.item_count + 1)),
             format_func=lambda x: f"점검 항목 #{x}",
-            key="pin_target_item"
+            key="safety_action_pin_target_item"
         )
 
     if map_file is not None:
@@ -1895,13 +1895,13 @@ with main_tab2:
             st.markdown("##### 📍 좌표 직접 입력 또는 확인")
             col_px, col_py, col_pbtn = st.columns([1, 1, 1])
             with col_px:
-                input_x = st.number_input("X 좌표", min_value=0, max_value=img_width, value=clicked_x if clicked_x is not None else 100, key=f"input_x_{target_item_to_pin}")
+                input_x = st.number_input("X 좌표", min_value=0, max_value=img_width, value=clicked_x if clicked_x is not None else 100, key=f"safety_action_input_x_{target_item_to_pin}")
             with col_py:
-                input_y = st.number_input("Y 좌표", min_value=0, max_value=img_height, value=clicked_y if clicked_y is not None else 100, key=f"input_y_{target_item_to_pin}")
+                input_y = st.number_input("Y 좌표", min_value=0, max_value=img_height, value=clicked_y if clicked_y is not None else 100, key=f"safety_action_input_y_{target_item_to_pin}")
             with col_pbtn:
                 st.write("")
                 st.write("")
-                if st.button(f"📌 [항목 #{target_item_to_pin}] 위치 저장", key=f"save_coord_btn_{target_item_to_pin}", use_container_width=True):
+                if st.button(f"📌 [항목 #{target_item_to_pin}] 위치 저장", key=f"safety_action_save_coord_btn_{target_item_to_pin}", use_container_width=True):
                     st.session_state.item_coords[target_item_to_pin] = {"x": input_x, "y": input_y}
                     st.success(f"항목 #{target_item_to_pin} 위치(X:{input_x}, Y:{input_y}) 저장 완료!")
 
