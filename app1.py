@@ -256,6 +256,9 @@ def check_password():
                 </div>
         """, unsafe_allow_html=True)
 
+        st.markdown(
+            "<div style='height: 15px;'></div>", unsafe_allow_html=True
+            
         allowed_users = st.secrets.get("passwords", {})
         
         user_id = st.text_input("👤 감독관 ID (사번)", key="username_input")
