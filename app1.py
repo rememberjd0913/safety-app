@@ -1664,12 +1664,12 @@ with main_tab1:
     
     col_dept, col_site = st.columns(2)
     with col_dept:
-        selected_dept = st.selectbox("📌 담당 부서 선택", departments, key="selected_dept_box_{i}")
+        selected_dept = st.selectbox("📌 담당 부서 선택", departments, key="selected_dept_box_2")
     
     available_sites = department_sites_map.get(selected_dept, ["현장 없음"])
     
     with col_site:
-        selected_site = st.selectbox("🏗️ 점검 현장 선택", available_sites, key="selected_site_box")
+        selected_site = st.selectbox("🏗️ 점검 현장 선택", available_sites, key="selected_site_box_3")
 
     st.markdown(f"""
         <div class="select-card">
