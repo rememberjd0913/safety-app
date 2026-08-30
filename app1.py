@@ -28,6 +28,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+st.markdown(
+    """
+    <style>
+        .main .block-container {
+            max-width: 1200px;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+            padding-left: 3rem;
+            padding-right: 3rem;
+        }
+    </style>
+""",
+    unsafe_allow_html=True,
+)
+
 # ---------------- PDF 생성 함수 정의 ----------------
 def generate_pdf(title, content):
     pdf = FPDF()
