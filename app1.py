@@ -270,9 +270,7 @@ def check_password():
         slide_images = [
             ("https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1000&q=80", "지속 가능한 친환경 녹색 인프라 관리"),
             ("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80", "깨끗하고 안전한 수도권 환경 생태계 조성"),
-            ("https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?auto=format&fit=crop&w=1000&q=80", "첨단 기술을 활용한 환경시설 관리 효율화"),
             ("https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1000&q=80", "자연과 공존하는 생태환경 복원 및 보전"),
-            ("https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1000&q=80", "철저한 시설 점검을 통한 산업 재해 예방"),
             ("https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1000&q=80", "신재생에너지 및 탄소중립 실천 인프라"),
             ("https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1000&q=80", "맑고 깨끗한 수자원 및 대기환경 관리")
         ]
