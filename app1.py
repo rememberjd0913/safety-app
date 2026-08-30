@@ -200,7 +200,7 @@ st.markdown("""
 
 
 # ==========================================
-# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (여백 개선 버전)
+# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (상하 간격 및 높이 확대 버전)
 # ==========================================
 def check_password():
     if st.session_state.get("password_correct", False):
@@ -210,15 +210,18 @@ def check_password():
     from streamlit_autorefresh import st_autorefresh
     st_autorefresh(interval=4000, key="login_slide_refresh")
 
-    # 2. 한국환경공단 공식 스타일 상단 헤더 바 (여백 확대)
+    # 상단 여백
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+    # 2. 한국환경공단 공식 스타일 상단 헤더 바
     logo_html = f'<img src="data:image/png;base64,{img_base64}" style="height: 42px; vertical-align: middle; margin-right: 12px;">' if img_base64 else '🌱'
     
     st.markdown(f"""
-        <div style="background-color: #FFFFFF; border: 1.5px solid #E2E8F0; padding: 18px 30px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <div style="background-color: #FFFFFF; border: 1.5px solid #E2E8F0; padding: 18px 30px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 45px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
             <div style="display: flex; align-items: center;">
                 {logo_html}
-                <span style="font-size: 1.35rem; font-weight: 800; color: #1E293B; letter-spacing: -0.5px;">한국환경공단</span>
-                <span style="font-size: 0.9rem; color: #64748B; margin-left: 14px; border-left: 2px solid #CBD5E1; padding-left: 14px; font-weight: 600;">수도권서부환경본부 환경시설관리처</span>
+                <span style="font-size: 1.5rem; font-weight: 800; color: #1E293B; letter-spacing: -0.5px;">한국환경공단</span>
+                <span style="font-size: 1rem; color: #64748B; margin-left: 14px; border-left: 2px solid #CBD5E1; padding-left: 14px; font-weight: 600;">수도권서부환경본부 환경시설관리처</span>
             </div>
             <div style="display: flex; gap: 30px; font-size: 1rem; font-weight: 600; color: #334155;">
                 <span style="cursor: pointer; color: #007A33;">핵심사업</span>
@@ -233,12 +236,12 @@ def check_password():
     # 3. 메인 2열 레이아웃 (좌측: 로그인 폼 / 우측: 환경 시설 슬라이드쇼)
     col_login, col_slide = st.columns([1, 1.1], gap="large")
 
-    # --- [좌측 열]: 로그인 입력 카드 ---
+    # --- [좌측 열]: 로그인 입력 카드 (세로 크기 확대) ---
     with col_login:
         st.markdown("""
-            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 35px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); height: 100%;">
-                <h3 style="color: #007A33; margin-top: 0; margin-bottom: 8px; font-size: 1.4rem; font-weight: 700;">🔐 AI 안전 점검 시스템 인증</h3>
-                <p style="color: #64748B; font-size: 0.95rem; margin-bottom: 25px;">인증된 사내 감독관만 접근 가능합니다.</p>
+            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 45px 35px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); min-height: 460px; display: flex; flex-direction: column; justify-content: center;">
+                <h3 style="color: #007A33; margin-top: 0; margin-bottom: 10px; font-size: 1.5rem; font-weight: 700;">🔐 AI 안전 점검 시스템 인증</h3>
+                <p style="color: #64748B; font-size: 1rem; margin-bottom: 30px;">인증된 사내 감독관만 접근 가능합니다.</p>
         """, unsafe_allow_html=True)
 
         allowed_users = st.secrets.get("passwords", {})
@@ -262,13 +265,13 @@ def check_password():
                 
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- [우측 열]: 환경 관련 이미지 슬라이드쇼 ---
+    # --- [우측 열]: 환경 관련 이미지 슬라이드쇼 (세로 크기 확대) ---
     with col_slide:
         slide_images = [
-            ("https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80", "지속 가능한 친환경 녹색 인프라 관리"),
-            ("https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80", "현장 중심 스마트 안전 점검 및 예방"),
-            ("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80", "깨끗하고 안전한 수도권 환경 생태계 조성"),
-            ("https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?auto=format&fit=crop&w=800&q=80", "첨단 기술을 활용한 환경시설 관리 효율화")
+            ("https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1000&q=80", "지속 가능한 친환경 녹색 인프라 관리"),
+            ("https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1000&q=80", "현장 중심 스마트 안전 점검 및 예방"),
+            ("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80", "깨끗하고 안전한 수도권 환경 생태계 조성"),
+            ("https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?auto=format&fit=crop&w=1000&q=80", "첨단 기술을 활용한 환경시설 관리 효율화")
         ]
 
         if "slide_index" not in st.session_state:
@@ -279,21 +282,21 @@ def check_password():
         current_img_url, current_caption = slide_images[st.session_state["slide_index"]]
 
         st.markdown(f"""
-            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 25px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); text-align: center; height: 100%;">
-                <div style="overflow: hidden; border-radius: 12px; height: 265px; background-color: #f1f5f9;">
+            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 30px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); text-align: center; min-height: 460px; display: flex; flex-direction: column; justify-content: center;">
+                <div style="overflow: hidden; border-radius: 12px; height: 330px; background-color: #f1f5f9;">
                     <img src="{current_img_url}" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.5s ease-in-out;">
                 </div>
-                <div style="margin-top: 16px; font-weight: 600; color: #007A33; font-size: 1.05rem;">
+                <div style="margin-top: 20px; font-weight: 700; color: #007A33; font-size: 1.15rem;">
                     ✨ {current_caption}
                 </div>
-                <div style="color: #94A3B8; font-size: 0.85rem; margin-top: 6px;">
+                <div style="color: #94A3B8; font-size: 0.9rem; margin-top: 6px;">
                     한국환경공단 수도권서부환경본부 환경시설관리처
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
     # 하단 여백 추가
-    st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 40px;'>0</div>", unsafe_allow_html=True)
 
     return False
 
