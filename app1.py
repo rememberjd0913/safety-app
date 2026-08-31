@@ -632,10 +632,6 @@ with main_tab1:
 
     form_data = {}
 
-    for idx in range(1, st.session_state.item_count + 1):
-        coord_info = st.session_state.item_coords.get(idx)
-        coord_badge = f"📍 도면 좌표 지정됨 (X: {coord_info['x']}, Y: {coord_info['y']})" if coord_info else "📍 도면 위치 미지정 (상단 [실시간 도면 검측 뷰어] 탭에서 지정 가능)"
-        
         st.markdown(f"""
             <div class="item-card">
                 <h4 style="margin-top:0; color:#007A33;">🔹 [점검 항목 #{idx}] <span style="font-size:0.8rem; color:#64748B; font-weight:normal;">({coord_badge})</span></h4>
