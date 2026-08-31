@@ -598,7 +598,6 @@ departments = list(department_sites_map.keys())
 # --- 메인 탭 확장 ---
 main_tab1, main_tab2, main_tab3, main_tab4 = st.tabs([
     "안전 점검 등록", 
-    "🗺️ 실시간 도면 검측 뷰어", 
     "부서별 점검 이력 및 대시보드", 
     "📖 AI 안전 가이드 Q&A (RAG)"
 ])
