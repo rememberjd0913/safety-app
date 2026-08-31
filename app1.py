@@ -569,7 +569,7 @@ st.markdown(f"""
     <div class="mascot-banner">
         <div style="margin-bottom: 8px;">{image_html}</div>
         <h4 style="margin:0; color:#007A33;">"안전점검 시작! 푸루와 그루가 안내해 드릴게요."</h4>
-        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;"> 현장 도면을 보며 검측 위치를 찍고 스마트하게 점검하세요.</p>
+        <p style="margin-top:6px; font-size:0.88rem; color:#64748B;"> 스마트하게 안전점검하세요.</p>
     </div>
 """, unsafe_allow_html=True)
 
