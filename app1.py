@@ -595,13 +595,44 @@ department_sites_map = {
 
 departments = list(department_sites_map.keys())
 
-# --- 메인 탭 확장 ---
-main_tab1, main_tab2, main_tab3, main_tab4 = st.tabs([
-    "안전 점검 등록", 
-    "🗺️ 실시간 도면 검측 뷰어", 
-    "부서별 점검 이력 및 대시보드", 
-    "📖 AI 안전 가이드 Q&A (RAG)"
+# 3. 도면 뷰어를 제거하고 직관적인 아이콘을 적용한 3개 메인 탭 구성
+main_tab1, main_tab2, main_tab3 = st.tabs([
+    "📝 안전 점검 등록", 
+    "📊 부서별 점검 이력 및 대시보드", 
+    "🤖 AI 안전 가이드 Q&A"
 ])
+
+# --- [탭 1] 안전 점검 등록 ---
+with main_tab1:
+    st.subheader("📝 현장 안전 점검 및 조치 결과 등록")
+    st.info("작업 전/후 사진 및 점검 내용을 등록하는 공간입니다. (고유 key 값 적용 유지)")
+    
+    # 예시: 위젯 중복 충돌 방지를 위한 고유 key 적용 팁 반영 영역
+    # idx = 1
+    # before_img_files = st.file_uploader(f"#{idx} 조치 전 사진 첨부", key=f"safety_action_before_imgs_{idx}")
+
+# --- [탭 2] 부서별 점검 이력 및 대시보드 ---
+with main_tab2:
+    st.subheader("📊 부서별 점검 현황 및 통계 대시보드")
+    st.markdown("부서별 조치 완료율과 실시간 통계 데이터를 시각화합니다.")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric(label="전체 점검 건수", value="124건", delta="+12건")
+    with col2:
+        st.metric(label="조치 완료", value="110건", delta="88%")
+    with col3:
+        st.metric(label="조치 지연/미완료", value="14건", delta="-3건", delta_color="inverse")
+
+# --- [탭 3] AI 안전 가이드 Q&A ---
+with main_tab3:
+    st.subheader("🤖 AI 안전 가이드 Q&A (RAG 기반)")
+    st.markdown("안전보건 지침 및 현장 규정에 대해 무엇이든 물어보세요.")
+    
+    # 간단한 채팅 입력창 UI 예시
+    user_query = st.text_input("궁금한 안전 수칙이나 규정을 입력하세요 (예: PTW 대상 공종은?)", placeholder="질문을 입력하고 Enter를 누르세요.")
+    if user_query:
+        st.success(f"AI 답변: '{user_query}'에 대한 가이드 검색 결과입니다...")
 
 with main_tab1:
     st.markdown("""
