@@ -551,7 +551,7 @@ if "item_coords" not in st.session_state:
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 수도권서부환경본부</h2>
-        <p>환경시설관리처 현장 안전 조치 전·후 스마트 점검 시스템 (도면 실시간 검측 연동형)</p>
+        <p>환경시설관리처 건설현장 스마트 안전점검 시스템</p>
     </div>
 """, unsafe_allow_html=True)
 
