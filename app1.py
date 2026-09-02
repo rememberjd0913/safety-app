@@ -195,23 +195,54 @@ st.markdown("""
         font-size: 1rem !important;
         box-shadow: 0 3px 8px rgba(0, 122, 51, 0.2) !important;
     }
-    div.stTabs [data-baseweb="tab-list"] {
-        background-color: #F1F5F9;
-        padding: 6px;
-        border-radius: 12px;
+div.stTabs [data-baseweb="tab-list"] {
+        background-color: transparent !important;
+        border-bottom: 2px solid #E2E8F0;
+        gap: 12px;
+        padding: 0px;
     }
+
+    /* 개별 탭 기본 스타일 (부드러운 전환 효과 추가) */
     div.stTabs [data-baseweb="tab"] {
-        background-color: transparent;
-        border-radius: 8px;
-        padding: 8px 16px;
-        font-weight: bold;
-        color: #475569;
+        background-color: transparent !important;
+        border-radius: 0px !important;
+        padding: 10px 16px !important;
+        font-weight: 600;
+        color: #64748B;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
     }
+
+    /* 마우스를 올렸을 때(Hover) 살짝 위로 떠오르는 애니메이션 효과 */
+    div.stTabs [data-baseweb="tab"]:hover {
+        color: #059669 !important;
+        transform: translateY(-2px);
+    }
+
+    /* 선택된 탭: 배경색 변경 없이, 글자색이 초록색으로 변하고 아래에 초록색 바 표시 */
     div.stTabs [aria-selected="true"] {
-        background-color: #1E293B !important;
-        color: #FFFFFF !important;
+        background-color: transparent !important;
+        color: #059669 !important;
+        font-weight: 700 !important;
     }
-    </style>
+
+    /* 선택된 탭 밑줄 애니메이션 포인트 (초록색 바) */
+    div.stTabs [aria-selected="true"]::after {
+        content: "";
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background-color: #10B981 !important;
+        border-radius: 3px 3px 0 0;
+        animation: slideIn 0.3s ease-in-out;
+    }
+
+    @keyframes slideIn {
+        from { transform: scaleX(0); }
+        to { transform: scaleX(1); }
+    }
 """, unsafe_allow_html=True)
 
 
