@@ -19,6 +19,11 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from fpdf import FPDF
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import SimpleDocTemplate, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 # --- 페이지 기본 설정 ---
 st.set_page_config(
@@ -44,31 +49,49 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---------------- PDF 생성 함수 정의 ----------------
 def generate_pdf(title, content):
-    pdf = FPDF()
-    pdf.add_page()
+    # 1. 한글 폰트 등록 (NanumGothic.ttf 또는 malgun.ttf 파일을 프로젝트 폴더에 두어야 합니다)
+    font_path = "NanumGothic.ttf"  # 또는 "malgun.ttf"
     
-    # 윈도우 환경 기본 한글 폰트 등록 (NanumGothic 이나 malgun 등 사용 가능)
-    # 리눅스 환경(Streamlit Cloud 등)인 경우 나눔고딕 폰트 파일을 경로에 포함해야 합니다.
-    font_path = "C:/Windows/Fonts/malgun.ttf"  # 윈도우 기준 경로
     if os.path.exists(font_path):
-        pdf.add_font("Malgun", "", font_path, uni=True)
-        pdf.set_font("Malgun", size=12)
+        pdfmetrics.registerFont(TTFont('KoreanFont', font_path))
+        font_name = 'KoreanFont'
     else:
-        # 폰트 파일이 없을 경우 기본 폰트 사용 (한글이 깨질 수 있으므로 위 폰트 경로 확인 필요)
-        pdf.set_font("Arial", size=12)
+        # 폰트 파일이 없을 경우의 예외 처리 (기본 폰트는 한글 깨짐)
+        font_name = 'Helvetica' 
 
-    # 문서 제목 추가
-    pdf.cell(200, 10, text=title, new_x="LMARGIN", new_y="NEXT", align="C")
-    pdf.ln(10)
+    # 2. PDF 파일 생성을 위한 BytesIO 설정
+    from io import BytesIO
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    story = []
     
-    # 본문 내용 추가 (줄바꿈 자동 처리)
-    # 멀티라인 텍스트 입력
-    pdf.multi_cell(0, 10, text=content)
+    styles = getSampleStyleSheet()
     
-    # PDF를 바이트로 반환
-    return pdf.output()
+    # 3. 등록한 한글 폰트를 사용하는 스타일 생성
+    korean_style = ParagraphStyle(
+        'KoreanStyle',
+        parent=styles['Normal'],
+        fontName=font_name,
+        fontSize=12,
+        leading=16,
+    )
+    
+    title_style = ParagraphStyle(
+        'KoreanTitle',
+        parent=styles['Heading1'],
+        fontName=font_name,
+        fontSize=18,
+        leading=22,
+    )
+
+    # 4. 내용 추가
+    story.append(Paragraph(title, title_style))
+    story.append(Paragraph(content.replace('\n', '<br/>'), korean_style))
+    
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
 
 # --- Base64 이미지 변환 함수 ---
 def get_base64_image(image_path):
