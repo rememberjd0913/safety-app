@@ -73,8 +73,8 @@ def generate_pdf(title, content):
     font_path = "NanumMyeongjo"  # 또는 "malgun.ttf"
     
     if os.path.exists(font_path):
-        pdfmetrics.registerFont(TTFont('KoreanFont', font_path))
-        font_name = 'KoreanFont'
+        pdfmetrics.registerFont(TTFont('NanumMyeongjo', font_path))
+        font_name = 'NanumMyeongjo'
     else:
         # 폰트 파일이 없을 경우의 예외 처리 (기본 폰트는 한글 깨짐)
         font_name = 'Helvetica' 
@@ -91,7 +91,7 @@ def generate_pdf(title, content):
     korean_style = ParagraphStyle(
         'KoreanStyle',
         parent=styles['Normal'],
-        fontName=font_name,
+        fontName=NanumMyeongjo,
         fontSize=12,
         leading=16,
     )
@@ -99,7 +99,7 @@ def generate_pdf(title, content):
     title_style = ParagraphStyle(
         'KoreanTitle',
         parent=styles['Heading1'],
-        fontName=font_name,
+        fontName=NanumMyeongjo,
         fontSize=18,
         leading=22,
     )
