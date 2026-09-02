@@ -70,7 +70,7 @@ def generate_pdf(title, content):
     )
     
     # 1. 한글 폰트 등록 (NanumGothic.ttf 또는 malgun.ttf 파일을 프로젝트 폴더에 두어야 합니다)
-    font_path = "NanumMyeongjo.ttf"  # 또는 "malgun.ttf"
+    font_path = "NanumMyeongjo"  # 또는 "malgun.ttf"
     
     if os.path.exists(font_path):
         pdfmetrics.registerFont(TTFont('KoreanFont', font_path))
