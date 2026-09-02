@@ -970,30 +970,34 @@ with main_tab3:
                     st.markdown(answer_text)
                     st.session_state.qa_messages.append({"role": "assistant", "content": answer_text})
 
-                    # ====================================================
-                    # 📄 PDF 문서 출력 및 다운로드 기능 (답변 바로 밑에 통합)
-                    # ====================================================
-                    st.markdown("---")
-                    st.subheader("📄 보고서 문서 출력")
-                    
-                    # PDF 생성 버튼 (Streamlit 특성상 버튼 클릭 시 실행)
-                    if st.button("📥 PDF 문서로 다운로드", key="pdf_download_btn"):
-                        try:
-                            # PDF 바이트 데이터 생성
-                            pdf_data = generate_pdf("KECO 현장 안전 점검 및 규정 검토 보고서", answer_text)
-                            
-                            # 다운로드 버튼 제공
-                            st.download_button(
-                                label="클릭하여 PDF 파일 저장",
-                                data=pdf_data,
-                                file_name="safety_inspection_report.pdf",
-                                mime="application/pdf",
-                                key="final_pdf_download"
-                            )
-                            st.success("PDF 문서가 성공적으로 준비되었습니다! 위 버튼을 눌러 저장하세요.")
-                        except Exception as pdf_err:
-                            st.error(f"PDF 생성 중 오류가 발생했습니다: {pdf_err}")
-                    # ====================================================
+# ====================================================
+# 📄 PDF 문서 출력 및 다운로드 기능 (답변 바로 밑에 통합)
+# ====================================================
+st.markdown("---")
+st.subheader("📄 보고서 문서 출력")
+
+# 1. 버튼을 누르고 기다릴 필요 없이, PDF 데이터를 미리 생성합니다.
+# (generate_pdf 함수가 정상 작동한다는 가정 하에 세션이나 변수에 담습니다)
+try:
+  # PDF 바이트 데이터 생성
+  pdf_data = generate_pdf(
+      "KECO 현장 안전 점검 및 규정 검토 보고서", answer_text
+  )
+
+  # 2. st.button 대신 곧바로 st.download_button을 화면에 고정하여 출력합니다.
+  st.download_button(
+      label="📥 클릭하여 PDF 파일 저장",
+      data=pdf_data,
+      file_name="safety_inspection_report.pdf",
+      mime="application/pdf",
+      key="final_pdf_download",
+      type="primary",  # 강조용 초록색/파란색 버튼 스타일 적용
+  )
+  st.success("PDF 문서가 준비되었습니다! 위 버튼을 눌러 저장하세요.")
+
+except Exception as pdf_err:
+  st.error(f"PDF 생성 중 오류가 발생했습니다: {pdf_err}")
+# ====================================================
 
                 except Exception as e:
                     err_msg = f"답변 생성 중 오류가 발생했습니다: {e}"
