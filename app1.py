@@ -994,7 +994,7 @@ with main_tab3:
                         st.success(
                             "PDF 문서가 성공적으로 준비되었습니다! 위 버튼을 눌러 저장하세요."
                         )
-                        except Exception as pdf_err:
+                    except Exception as pdf_err:
                         st.error(f"PDF 생성 중 오류가 발생했습니다: {pdf_err}")
                     
                 except Exception as e:
