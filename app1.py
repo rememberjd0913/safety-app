@@ -70,11 +70,11 @@ def generate_pdf(title, content):
     )
     
     # 1. 한글 폰트 등록 (NanumGothic.ttf 또는 malgun.ttf 파일을 프로젝트 폴더에 두어야 합니다)
-    font_path = "NanumMyeongjo"
+    font_path = "NanumMyeongjo.ttf"
+    font_name = "NanumMyeongjo"
     
     if os.path.exists(font_path):
-        pdfmetrics.registerFont(TTFont('NanumMyeongjo', font_path))
-        font_name = 'NanumMyeongjo'
+        pdfmetrics.registerFont(TTFont(font_name, font_path))
     else:
         # 폰트 파일이 없을 경우의 예외 처리 (기본 폰트는 한글 깨짐)
         font_name = 'Helvetica' 
