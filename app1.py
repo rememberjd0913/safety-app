@@ -50,6 +50,25 @@ st.markdown(
 )
 
 def generate_pdf(title, content):
+    # 1. 텍스트 내의 잘못된 HTML 태그 및 줄바꿈 기호 정제
+    # <br> -> <br/> 로 강제 변환
+    safe_content = content.replace("<br>", "<br/>")
+
+    # 만약 마크다운 줄바꿈(\n)이 포함되어 있다면 <br/>로 변경
+    safe_content = safe_content.replace("\n", "<br/>")
+
+    # ReportLab에서 문제가 될 수 있는 특수 기호(& 등) 처리
+    safe_content = (
+        safe_content.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+    # 정제된 태그들(br 등)은 다시 정상 태그로 복구
+    safe_content = safe_content.replace("&lt;br/&gt;", "<br/>").replace(
+        "&lt;br&gt;", "<br/>"
+    )
+    
     # 1. 한글 폰트 등록 (NanumGothic.ttf 또는 malgun.ttf 파일을 프로젝트 폴더에 두어야 합니다)
     font_path = "NanumMyeongjo.ttf"  # 또는 "malgun.ttf"
     
