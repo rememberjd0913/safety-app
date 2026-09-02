@@ -91,7 +91,7 @@ def generate_pdf(title, content):
     korean_style = ParagraphStyle(
         'KoreanStyle',
         parent=styles['Normal'],
-        fontName=NanumMyeongjo,
+        fontName=font_name,
         fontSize=12,
         leading=16,
     )
@@ -99,7 +99,7 @@ def generate_pdf(title, content):
     title_style = ParagraphStyle(
         'KoreanTitle',
         parent=styles['Heading1'],
-        fontName=NanumMyeongjo,
+        fontName=font_name,
         fontSize=18,
         leading=22,
     )
