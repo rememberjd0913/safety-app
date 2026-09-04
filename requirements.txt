@@ -12,3 +12,4 @@ llama-index-embeddings-google-genai
 streamlit-autorefresh
 fpdf2
 reportlab
+weasyprint
