@@ -24,9 +24,6 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from weasyprint import HTML, CSS
-
-
 
 # --- 페이지 기본 설정 ---
 st.set_page_config(
@@ -53,109 +50,63 @@ st.markdown(
 )
 
 def generate_pdf(title, content):
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    # 1. 텍스트 내의 잘못된 HTML 태그 및 줄바꿈 기호 정제
+    # <br> -> <br/> 로 강제 변환
+    safe_content = content.replace("<br>", "<br/>")
+    safe_content = safe_content.replace("\n", "<br/>")
+    safe_content = (
+        safe_content.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+    # 정제된 태그들(br 등)은 다시 정상 태그로 복구
+    safe_content = safe_content.replace("&lt;br/&gt;", "<br/>").replace(
+        "&lt;br&gt;", "<br/>"
+    )
     
-    # AI 텍스트의 줄바꿈을 HTML 줄바꿈(<br>)으로 변환
-    formatted_content = content.replace("\n", "<br>")
+    # 1. 한글 폰트 등록 (NanumGothic.ttf 또는 malgun.ttf 파일을 프로젝트 폴더에 두어야 합니다)
+    font_path = "NanumMyeongjo.ttf"
+    font_name = "NanumMyeongjo"
+    
+    if os.path.exists(font_path):
+        pdfmetrics.registerFont(TTFont(font_name, font_path))
+    else:
+        # 폰트 파일이 없을 경우의 예외 처리 (기본 폰트는 한글 깨짐)
+        font_name = 'Helvetica' 
 
-    # 쌈박하고 이쁜 양식의 HTML/CSS 템플릿
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="ko">
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            /* 페이지 설정 (A4, 여백 15mm) 및 페이지 번호 */
-            @page {{
-                size: A4;
-                margin: 15mm;
-                @bottom-right {{
-                    content: counter(page) " / " counter(pages);
-                    font-size: 9pt;
-                    color: #888;
-                }}
-            }}
-            
-            body {{
-                /* 한글 깨짐 방지를 위한 폰트 우선순위 설정 (나눔고딕, 맑은 고딕 등) */
-                font-family: 'NanumGothic', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
-                color: #333;
-                line-height: 1.6;
-                margin: 0;
-                padding: 0;
-                background-color: #ffffff;
-            }}
+    # 2. PDF 파일 생성을 위한 BytesIO 설정
+    from io import BytesIO
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    story = []
+    
+    styles = getSampleStyleSheet()
+    
+    # 3. 등록한 한글 폰트를 사용하는 스타일 생성
+    korean_style = ParagraphStyle(
+        'KoreanStyle',
+        parent=styles['Normal'],
+        fontName=font_name,
+        fontSize=12,
+        leading=16,
+    )
+    
+    title_style = ParagraphStyle(
+        'KoreanTitle',
+        parent=styles['Heading1'],
+        fontName=font_name,
+        fontSize=18,
+        leading=22,
+    )
 
-            /* 상단 모던 그라데이션 헤더 배너 */
-            .header-banner {{
-                background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-                color: white;
-                padding: 20px 25px;
-                border-radius: 8px;
-                margin-bottom: 25px;
-            }}
-            .header-banner h1 {{
-                margin: 0 0 5px 0;
-                font-size: 20px;
-                font-weight: 700;
-            }}
-            .header-banner p {{
-                margin: 0;
-                font-size: 12px;
-                opacity: 0.85;
-            }}
-
-            /* 강조 섹션 카드 스타일 */
-            .section-card {{
-                background: #f8f9fa;
-                border-left: 4px solid #2a5298;
-                padding: 15px 20px;
-                margin-bottom: 20px;
-                border-radius: 0 6px 6px 0;
-            }}
-            .section-card h3 {{
-                margin-top: 0;
-                color: #1e3c72;
-                font-size: 14px;
-            }}
-
-            /* 상세 내용 박스 */
-            .content-box {{
-                padding: 20px;
-                border: 1px solid #dfe3e8;
-                border-radius: 6px;
-                background-color: #ffffff;
-                font-size: 11pt;
-            }}
-        </style>
-    </head>
-    <body>
-
-        <!-- 헤더 영역 -->
-        <div class="header-banner">
-            <h1>{title}</h1>
-            <p>생성일시: {current_time} | 시스템: KECO Safety Analyzer</p>
-        </div>
-
-        <!-- 개요 카드 -->
-        <div class="section-card">
-            <h3>🔍 점검 개요 및 안내</h3>
-            <p>본 문서는 현장 점검 데이터를 바탕으로 AI 규정 검토 및 안전 분석 결과를 정리한 공식 보고서입니다.</p>
-        </div>
-
-        <!-- 본문 내용 -->
-        <div class="content-box">
-            <h3>📋 상세 분석 및 조치 사항</h3>
-            <p>{formatted_content}</p>
-        </div>
-
-    </body>
-    </html>
-    """
-
-# WeasyPrint를 이용해 HTML을 PDF 바이트 스트림으로 컴파일
-    pdf_bytes = HTML(string=html_content).write_pdf()
-    return pdf_bytes
+    # 4. 내용 추가
+    story.append(Paragraph(title, title_style))
+    story.append(Paragraph(safe_content, korean_style))
+    
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
 
 # --- Base64 이미지 변환 함수 ---
 def get_base64_image(image_path):
