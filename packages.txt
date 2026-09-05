@@ -1,4 +1,4 @@
 libcairo2
-libpango-1.-0-0
+libpango-1.0-0
 libpangocairo-1.0-0
 fonts-nanum
