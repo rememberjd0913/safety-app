@@ -50,70 +50,897 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# ============================================================
+# 1. 기본 텍스트 정리
+# ============================================================
+
+def _clean_text(text):
+    """Gemini Markdown 흔적 및 불필요한 문자를 정리"""
+    if not text:
+        return ""
+
+    text = text.replace("**", "")
+    text = text.replace("__", "")
+    text = text.replace("###", "")
+    text = text.replace("##", "")
+    text = text.replace("#", "")
+    text = text.replace("---", "")
+
+    return text.strip()
+
+
+# ============================================================
+# 2. Gemini 응답을 6개 섹션으로 분리
+# ============================================================
+
+def _parse_report_sections(content):
+
+    sections = {
+        "overview": [],
+        "risks": [],
+        "laws": [],
+        "actions": [],
+        "cautions": [],
+        "opinion": []
+    }
+
+    if not content:
+        return sections
+
+    # 줄 단위 정리
+    lines = [
+        line.strip()
+        for line in content.splitlines()
+        if line.strip()
+    ]
+
+    current = None
+
+    for line in lines:
+
+        clean = _clean_text(line)
+
+        # -----------------------------------------
+        # 섹션 제목 판별
+        # -----------------------------------------
+
+        if re.match(r"^1\.\s*점검\s*개요", clean):
+            current = "overview"
+            continue
+
+        elif re.match(r"^2\.\s*주요\s*위험요인", clean):
+            current = "risks"
+            continue
+
+        elif re.match(r"^3\.\s*관련\s*법령\s*및\s*기준", clean):
+            current = "laws"
+            continue
+
+        elif re.match(r"^4\.\s*권장\s*조치사항", clean):
+            current = "actions"
+            continue
+
+        elif re.match(r"^5\.\s*현장\s*적용\s*시\s*유의사항", clean):
+            current = "cautions"
+            continue
+
+        elif re.match(r"^6\.\s*종합\s*의견", clean):
+            current = "opinion"
+            continue
+
+        # -----------------------------------------
+        # 구분선 제거
+        # -----------------------------------------
+
+        if set(clean.replace(" ", "")) <= {"=", "-"}:
+            continue
+
+        # -----------------------------------------
+        # 현재 섹션에 추가
+        # -----------------------------------------
+
+        if current:
+            sections[current].append(clean)
+
+    return sections
+
+
+# ============================================================
+# 3. 위험요인 파싱
+# ============================================================
+
+def _parse_risks(lines):
+
+    risks = []
+
+    for line in lines:
+
+        if line in ["해당 없음", "해당없음"]:
+            continue
+
+        # ① 위험요인 | 위험등급: 상 | 위험내용
+        parts = [p.strip() for p in line.split("|")]
+
+        if len(parts) >= 2:
+
+            number = ""
+            risk_name = ""
+            grade = ""
+            description = ""
+
+            # 번호 제거
+            first = parts[0]
+
+            first = re.sub(
+                r"^[①②③④⑤⑥⑦⑧⑨⑩]\s*",
+                "",
+                first
+            )
+
+            first = re.sub(
+                r"^\d+[\.\)]\s*",
+                "",
+                first
+            )
+
+            risk_name = first.strip()
+
+            # 위험등급 찾기
+            grade_match = re.search(
+                r"위험등급\s*[:：]?\s*(상|중|하)",
+                line
+            )
+
+            if grade_match:
+                grade = grade_match.group(1)
+
+            # 위험내용
+            if len(parts) >= 3:
+                description = parts[-1].strip()
+
+            risks.append({
+                "number": len(risks) + 1,
+                "name": risk_name,
+                "grade": grade if grade else "확인 필요",
+                "description": description
+            })
+
+        else:
+
+            # 파싱되지 않은 경우에도 내용을 보존
+            text = re.sub(
+                r"^[①②③④⑤⑥⑦⑧⑨⑩]\s*",
+                "",
+                line
+            )
+
+            risks.append({
+                "number": len(risks) + 1,
+                "name": text,
+                "grade": "확인 필요",
+                "description": ""
+            })
+
+    return risks
+
+
+# ============================================================
+# 4. 법령 파싱
+# ============================================================
+
+def _parse_laws(lines):
+
+    laws = []
+
+    for line in lines:
+
+        if not line:
+            continue
+
+        if line in ["해당 없음", "해당없음"]:
+            continue
+
+        text = re.sub(
+            r"^[①②③④⑤⑥⑦⑧⑨⑩]\s*",
+            "",
+            line
+        )
+
+        text = re.sub(
+            r"^\d+[\.\)]\s*",
+            "",
+            text
+        )
+
+        # "/" 기준 분리
+        parts = [
+            p.strip()
+            for p in text.split("/")
+        ]
+
+        if len(parts) >= 3:
+
+            law_name = parts[0]
+            article = parts[1]
+            description = "/".join(parts[2:]).strip()
+
+        elif len(parts) == 2:
+
+            law_name = parts[0]
+            article = parts[1]
+            description = ""
+
+        else:
+
+            law_name = text
+            article = ""
+            description = ""
+
+        laws.append({
+            "number": len(laws) + 1,
+            "law": law_name,
+            "article": article,
+            "description": description
+        })
+
+    return laws
+
+
+# ============================================================
+# 5. 조치사항 파싱
+# ============================================================
+
+def _parse_actions(lines):
+
+    actions = []
+
+    for line in lines:
+
+        if not line:
+            continue
+
+        text = re.sub(
+            r"^[①②③④⑤⑥⑦⑧⑨⑩]\s*",
+            "",
+            line
+        )
+
+        text = re.sub(
+            r"^\d+[\.\)]\s*",
+            "",
+            text
+        )
+
+        # "즉시 조치: ..."
+        match = re.match(
+            r"^(즉시\s*조치|개선\s*조치|예방\s*조치)\s*[:：]\s*(.*)$",
+            text
+        )
+
+        if match:
+
+            category = match.group(1)
+            action = match.group(2).strip()
+
+        else:
+
+            category = "기타 조치"
+            action = text
+
+        actions.append({
+            "number": len(actions) + 1,
+            "category": category,
+            "action": action
+        })
+
+    return actions
+
+
+# ============================================================
+# 6. 일반 문단 추가
+# ============================================================
+
+def _add_normal_paragraph(doc, text):
+
+    text = _clean_text(text)
+
+    if not text:
+        return
+
+    p = doc.add_paragraph("")
+
+    p.add_run(
+        text,
+        font="맑은 고딕",
+        size=10
+    )
+
+
+# ============================================================
+# 7. 섹션 제목 추가
+# ============================================================
+
+def _add_section_title(doc, number, title):
+
+    p = doc.add_paragraph("")
+
+    p.add_run(
+        f"{number}. {title}",
+        bold=True,
+        font="맑은 고딕",
+        size=14
+    )
+
+    return p
+
+
+# ============================================================
+# 8. 표 셀 입력 함수
+# ============================================================
+
+def _set_cell(table, row, col, text, bold=False, size=9):
+
+    text = "" if text is None else str(text)
+
+    cell = table.rows[row].cells[col]
+
+    # 셀 내부에 문단 생성
+    p = cell.paragraphs[0]
+
+    p.add_run(
+        text,
+        bold=bold,
+        font="맑은 고딕",
+        size=size
+    )
+
+    return cell
+
+
+# ============================================================
+# 9. 위험요인 표
+# ============================================================
+
+def _add_risk_table(doc, risks):
+
+    if not risks:
+        _add_normal_paragraph(
+            doc,
+            "주요 위험요인이 별도로 확인되지 않았습니다."
+        )
+        return
+
+    # 헤더 + 데이터
+    table = doc.add_table(
+        rows=len(risks) + 1,
+        cols=4
+    )
+
+    headers = [
+        "번호",
+        "주요 위험요인",
+        "위험등급",
+        "주요 위험내용"
+    ]
+
+    for col, header in enumerate(headers):
+        _set_cell(
+            table,
+            0,
+            col,
+            header,
+            bold=True,
+            size=9
+        )
+
+    for i, risk in enumerate(risks, start=1):
+
+        _set_cell(
+            table,
+            i,
+            0,
+            risk["number"]
+        )
+
+        _set_cell(
+            table,
+            i,
+            1,
+            risk["name"]
+        )
+
+        _set_cell(
+            table,
+            i,
+            2,
+            risk["grade"],
+            bold=True
+        )
+
+        _set_cell(
+            table,
+            i,
+            3,
+            risk["description"]
+        )
+
+    doc.add_paragraph("")
+
+
+# ============================================================
+# 10. 법령 및 기준 표
+# ============================================================
+
+def _add_law_table(doc, laws):
+
+    if not laws:
+        _add_normal_paragraph(
+            doc,
+            "관련 법령 및 기준이 별도로 제시되지 않았습니다."
+        )
+        return
+
+    table = doc.add_table(
+        rows=len(laws) + 1,
+        cols=4
+    )
+
+    headers = [
+        "번호",
+        "법령·기준",
+        "조항",
+        "관련 내용"
+    ]
+
+    for col, header in enumerate(headers):
+
+        _set_cell(
+            table,
+            0,
+            col,
+            header,
+            bold=True,
+            size=9
+        )
+
+    for i, law in enumerate(laws, start=1):
+
+        _set_cell(
+            table,
+            i,
+            0,
+            law["number"]
+        )
+
+        _set_cell(
+            table,
+            i,
+            1,
+            law["law"]
+        )
+
+        _set_cell(
+            table,
+            i,
+            2,
+            law["article"]
+        )
+
+        _set_cell(
+            table,
+            i,
+            3,
+            law["description"]
+        )
+
+    doc.add_paragraph("")
+
+
+# ============================================================
+# 11. 조치사항 표
+# ============================================================
+
+def _add_action_table(doc, actions):
+
+    if not actions:
+        _add_normal_paragraph(
+            doc,
+            "권장 조치사항이 별도로 제시되지 않았습니다."
+        )
+        return
+
+    table = doc.add_table(
+        rows=len(actions) + 1,
+        cols=3
+    )
+
+    headers = [
+        "번호",
+        "조치 구분",
+        "구체적인 조치사항"
+    ]
+
+    for col, header in enumerate(headers):
+
+        _set_cell(
+            table,
+            0,
+            col,
+            header,
+            bold=True,
+            size=9
+        )
+
+    for i, action in enumerate(actions, start=1):
+
+        _set_cell(
+            table,
+            i,
+            0,
+            action["number"]
+        )
+
+        _set_cell(
+            table,
+            i,
+            1,
+            action["category"],
+            bold=True
+        )
+
+        _set_cell(
+            table,
+            i,
+            2,
+            action["action"]
+        )
+
+    doc.add_paragraph("")
+
+
+# ============================================================
+# 12. HWPX 최종 생성 함수
+# ============================================================
+
 def generate_hwpx(title, content):
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    
-    # 새로운 HWPX 문서 객체 생성
+
+    current_time = datetime.datetime.now().strftime(
+        "%Y-%m-%d %H:%M"
+    )
+
+    # --------------------------------------------------------
+    # HWPX 문서 생성
+    # --------------------------------------------------------
+
     doc = HwpxDocument.new()
-    
-    # 1. 관공서 문서 상단 헤더 (기관명 및 문서번호 형태)
-    doc.add_paragraph("한국환경공단(K-ECO) 수도권서부환경본부", align="center")
-    doc.add_heading("기술 자문 및 안전 점검 보고서", level=1)
-    doc.add_paragraph("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", align="center")
-    
-    # 2. 문서 메타 정보 (시행일자, 수신처 등)
-    doc.add_paragraph(f"• 시 행 일 자: {current_time}")
-    doc.add_paragraph(f"• 대 상 자: 현장 작업 관리자 및 협력업체 임직원")
-    doc.add_paragraph(f"• 제      목: {title}")
-    doc.add_paragraph("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", align="center")
-    doc.add_paragraph("")  # 빈 줄 공백
-    
-    # 3. 개요 섹션
-    doc.add_heading("1. 점검 개요 및 목적", level=2)
-    doc.add_paragraph("본 문서는「산업안전보건기준에 관한 규칙」에 근거하여, 환경공단 현장(하수도, 폐수처리시설, 매립지 등)에서 수행되는 고위험 밀폐공간 작업의 안전사고를 예방하고 현장 실무자에게 정확한 규정 검토 및 대응 지침을 제공하기 위함입니다.")
-    doc.add_paragraph("")
-    
-# -------------------------------------------------------------------------
-    # 4. 제2장 상세 안전 점검 및 규정 검토 결과 (AI 본문 정제 및 가독성 확보)
-    # -------------------------------------------------------------------------
-    doc.add_heading("2. 상세 안전 점검 및 규정 검토 결과", level=2)
-    
-    # AI 답변 내용을 줄바꿈 단위로 순회하며 마크다운 기호 제거 및 단락 배치
-    for line in content.split("\n"):
-        # 불필요한 마크다운 기호 제거
-        clean_line = line.replace("**", "").replace("###", "").replace("---", "").strip()
-        
-        if clean_line:
-            # 소제목이나 강조 항목 형태인지 체크하여 단락 추가
-            if clean_line.startswith("1.") or clean_line.startswith("2.") or clean_line.startswith("3.") or clean_line.startswith("4."):
-                doc.add_heading(clean_line, level=3)
-            elif clean_line.startswith(">"):
-                # 인용구 형태 강조
-                doc.add_paragraph(f" [참고] {clean_line.replace('>', '').strip()}")
-            else:
-                doc.add_paragraph(clean_line)
-                
+
+    # --------------------------------------------------------
+    # 페이지 설정
+    # --------------------------------------------------------
+
+    try:
+
+        section = doc.sections[0]
+
+        # A4 세로
+        section.page_width = 210000
+        section.page_height = 297000
+
+        # 여백
+        section.margin_top = 18000
+        section.margin_bottom = 18000
+        section.margin_left = 20000
+        section.margin_right = 20000
+
+    except Exception:
+        # 라이브러리 버전에 따라 페이지 설정 API가 다를 수 있으므로
+        # 문서 생성 자체는 계속 진행
+        pass
+
+    # --------------------------------------------------------
+    # AI 답변 파싱
+    # --------------------------------------------------------
+
+    sections = _parse_report_sections(content)
+
+    risks = _parse_risks(
+        sections["risks"]
+    )
+
+    laws = _parse_laws(
+        sections["laws"]
+    )
+
+    actions = _parse_actions(
+        sections["actions"]
+    )
+
+    # ========================================================
+    # 표지 / 문서 상단
+    # ========================================================
+
+    p = doc.add_paragraph("")
+
+    p.add_run(
+        "한국환경공단(K-ECO)",
+        bold=True,
+        font="맑은 고딕",
+        size=16
+    )
+
+    p = doc.add_paragraph("")
+
+    p.add_run(
+        "수도권서부환경본부",
+        bold=True,
+        font="맑은 고딕",
+        size=13
+    )
+
+    # --------------------------------------------------------
+    # 보고서 제목
+    # --------------------------------------------------------
+
+    p = doc.add_paragraph("")
+
+    p.add_run(
+        "기술 자문 및 안전 점검 보고서",
+        bold=True,
+        font="맑은 고딕",
+        size=20
+    )
+
+    p = doc.add_paragraph("")
+
+    p.add_run(
+        "AI 안전 기술 자문 결과",
+        font="맑은 고딕",
+        size=11
+    )
+
     doc.add_paragraph("")
 
-    # -------------------------------------------------------------------------
-    # 5. 제3장 행정 및 조치 사항 (가나다 번호 제거, 깔끔한 본문형 적용)
-    # -------------------------------------------------------------------------
-    doc.add_heading("3. 행정 및 조치 사항", level=2)
-    doc.add_paragraph("상기 위험 요소를 현장 작업 전 반드시 숙지하고 관련 안전 조치를 철저히 이행하여 주시기 바랍니다.")
-    doc.add_paragraph("밀폐공간 작업 허가서 미발급 및 가스 측정 누락 사항이 적발될 경우 즉각적인 작업 중지 조치가 시행됩니다.")
-    doc.add_paragraph("현장 안전관리자는 본 보고서 내용을 바탕으로 작업 전 안전교육(TBM)을 반드시 실시해 주시기 바랍니다.")
-    
-    # -------------------------------------------------------------------------
-    # 6. 문서 하단 발신 명의
-    # -------------------------------------------------------------------------
-    doc.add_paragraph("")
-    doc.add_paragraph("")
-    doc.add_paragraph("한국환경공단 수도권서부환경본부장", align="center")
 
-    # 메모리 스트림(BytesIO)에 문서 저장 후 바이트 데이터 반환
+    # ========================================================
+    # 문서 기본정보 표
+    # ========================================================
+
+    info_table = doc.add_table(
+        rows=4,
+        cols=2
+    )
+
+    info_items = [
+        ("시행일자", current_time),
+        ("대상", "현장 작업 관리자 및 협력업체 임직원"),
+        ("문서 제목", title),
+        ("작성 부서", "한국환경공단 수도권서부환경본부")
+    ]
+
+    for row, (label, value) in enumerate(info_items):
+
+        _set_cell(
+            info_table,
+            row,
+            0,
+            label,
+            bold=True,
+            size=9
+        )
+
+        _set_cell(
+            info_table,
+            row,
+            1,
+            value,
+            size=9
+        )
+
+    doc.add_paragraph("")
+
+
+    # ========================================================
+    # 1. 점검 개요
+    # ========================================================
+
+    _add_section_title(
+        doc,
+        1,
+        "점검 개요"
+    )
+
+    if sections["overview"]:
+
+        for line in sections["overview"]:
+            _add_normal_paragraph(
+                doc,
+                line
+            )
+
+    else:
+
+        _add_normal_paragraph(
+            doc,
+            "AI 안전 기술 자문 요청사항 및 점검 대상에 대한 개요입니다."
+        )
+
+    doc.add_paragraph("")
+
+
+    # ========================================================
+    # 2. 주요 위험요인
+    # ========================================================
+
+    _add_section_title(
+        doc,
+        2,
+        "주요 위험요인"
+    )
+
+    _add_risk_table(
+        doc,
+        risks
+    )
+
+
+    # ========================================================
+    # 3. 관련 법령 및 기준
+    # ========================================================
+
+    _add_section_title(
+        doc,
+        3,
+        "관련 법령 및 기준"
+    )
+
+    _add_law_table(
+        doc,
+        laws
+    )
+
+
+    # ========================================================
+    # 4. 권장 조치사항
+    # ========================================================
+
+    _add_section_title(
+        doc,
+        4,
+        "권장 조치사항"
+    )
+
+    _add_action_table(
+        doc,
+        actions
+    )
+
+
+    # ========================================================
+    # 5. 현장 적용 시 유의사항
+    # ========================================================
+
+    _add_section_title(
+        doc,
+        5,
+        "현장 적용 시 유의사항"
+    )
+
+    if sections["cautions"]:
+
+        for line in sections["cautions"]:
+
+            _add_normal_paragraph(
+                doc,
+                line
+            )
+
+    else:
+
+        _add_normal_paragraph(
+            doc,
+            "작업 전 관련 위험요인 및 안전조치 이행 여부를 확인하고, "
+            "현장 여건에 따라 필요한 추가 안전조치를 실시하여야 합니다."
+        )
+
+    doc.add_paragraph("")
+
+
+    # ========================================================
+    # 6. 종합 의견
+    # ========================================================
+
+    _add_section_title(
+        doc,
+        6,
+        "종합 의견"
+    )
+
+    if sections["opinion"]:
+
+        for line in sections["opinion"]:
+
+            _add_normal_paragraph(
+                doc,
+                line
+            )
+
+    else:
+
+        _add_normal_paragraph(
+            doc,
+            "상기 위험요인 및 권장 조치사항을 작업 전에 확인하고 "
+            "필요한 안전조치를 우선적으로 이행하시기 바랍니다."
+        )
+
+    doc.add_paragraph("")
+
+
+    # ========================================================
+    # 7. 행정 및 조치사항
+    # ========================================================
+
+    _add_section_title(
+        doc,
+        7,
+        "행정 및 조치사항"
+    )
+
+    _add_normal_paragraph(
+        doc,
+        "상기 위험요소를 현장 작업 전 반드시 숙지하고 "
+        "관련 안전조치를 철저히 이행하여 주시기 바랍니다."
+    )
+
+    _add_normal_paragraph(
+        doc,
+        "안전조치가 충분히 이루어지지 않은 상태에서 작업을 진행하지 않도록 "
+        "현장 관리자는 작업 전 안전조치 이행 여부를 확인하여야 합니다."
+    )
+
+    _add_normal_paragraph(
+        doc,
+        "현장 안전관리자는 본 보고서의 내용을 바탕으로 "
+        "작업 전 안전교육(TBM)을 실시하여 작업자에게 주요 위험요인과 "
+        "안전조치 사항을 전달하여 주시기 바랍니다."
+    )
+
+    doc.add_paragraph("")
+    doc.add_paragraph("")
+
+
+    # ========================================================
+    # 결재 / 발신 명의
+    # ========================================================
+
+    p = doc.add_paragraph("")
+
+    p.add_run(
+        "한국환경공단",
+        bold=True,
+        font="맑은 고딕",
+        size=12
+    )
+
+    p = doc.add_paragraph("")
+
+    p.add_run(
+        "수도권서부환경본부",
+        bold=True,
+        font="맑은 고딕",
+        size=11
+    )
+
+
+    # ========================================================
+    # 문서 저장
+    # ========================================================
+
     buffer = io.BytesIO()
+
     doc.save_to_stream(buffer)
+
     buffer.seek(0)
+
     return buffer.getvalue()
 
 # --- Base64 이미지 변환 함수 ---
@@ -1002,74 +1829,75 @@ with main_tab3:
                     client = genai.Client(api_key=api_key)
                     
                     rag_prompt = (
-                       "당신은 한국환경공단(KECO) 수도권서부환경본부의 "
-                       "전문 안전 기술 자문 AI입니다.\n\n"
+                        "당신은 한국환경공단(KECO) 수도권서부환경본부의 "
+                        "전문 안전 기술 자문 AI입니다.\n\n"
 
-                       "아래 [참고 문서 내용]을 최우선 근거로 사용하여 "
-                       "질문에 대한 안전 기술 자문 결과를 작성하십시오.\n"
-                       "참고 문서에 명확한 근거가 없는 내용은 임의로 만들어내지 말고 "
-                       "'확인 필요'라고 표시하십시오.\n\n"
+                        "아래 [참고 문서 내용]을 최우선 근거로 사용하여 "
+                        "질문에 대한 안전 기술 자문 결과를 작성하십시오.\n"
 
-                       "답변은 반드시 아래의 보고서 형식을 그대로 지켜야 합니다.\n"
-                       "불필요한 인사말이나 서론은 작성하지 마십시오.\n\n"
+                        "참고 문서에 명확한 근거가 없는 내용은 임의로 만들어내지 말고 "
+                        "'확인 필요'라고 표시하십시오.\n\n"
 
-                       "==================================================\n"
-                       "[답변 형식]\n"
-                       "==================================================\n\n"
+                        "답변은 반드시 아래의 보고서 형식을 그대로 지키십시오.\n"
+                        "불필요한 인사말이나 서론은 작성하지 마십시오.\n\n"
 
-                       "1. 점검 개요\n"
-                       "점검 대상과 질문의 핵심 내용을 2~3문장으로 작성\n\n"
+                        "==================================================\n"
+                        "[답변 형식]\n"
+                        "==================================================\n\n"
 
-                       "2. 주요 위험요인\n"
-                       "① 위험요인명 | 위험등급: 상/중/하 | 위험내용\n"
-                       "② 위험요인명 | 위험등급: 상/중/하 | 위험내용\n"
-                       "③ 위험요인명 | 위험등급: 상/중/하 | 위험내용\n"
-                       "※ 해당 위험요인이 없는 경우 '해당 없음'으로 작성\n\n"
+                        "1. 점검 개요\n"
+                        "점검 대상과 질문의 핵심 내용을 2~3문장으로 작성\n\n"
 
-                       "3. 관련 법령 및 기준\n"
-                       "① 법령명 / 조항 / 관련 내용\n"
-                       "② 법령명 / 조항 / 관련 내용\n"
-                       "※ 정확한 조항을 확인할 수 없는 경우 '확인 필요'라고 작성\n\n"
+                        "2. 주요 위험요인\n"
+                        "① 위험요인명 | 위험등급: 상/중/하 | 위험내용\n"
+                        "② 위험요인명 | 위험등급: 상/중/하 | 위험내용\n"
+                        "③ 위험요인명 | 위험등급: 상/중/하 | 위험내용\n"
+                        "※ 해당 위험요인이 없는 경우 '해당 없음'으로 작성\n\n"
 
-                       "4. 권장 조치사항\n"
-                       "① 즉시 조치: 구체적인 조치 내용\n"
-                       "② 개선 조치: 구체적인 조치 내용\n"
-                       "③ 예방 조치: 구체적인 조치 내용\n\n"
+                        "3. 관련 법령 및 기준\n"
+                        "① 법령명 / 조항 / 관련 내용\n"
+                        "② 법령명 / 조항 / 관련 내용\n"
+                        "※ 정확한 조항을 확인할 수 없는 경우 '확인 필요'라고 작성\n\n"
 
-                       "5. 현장 적용 시 유의사항\n"
-                       "현장 관리자가 실제 작업 전에 확인해야 할 사항을 작성\n\n"
+                        "4. 권장 조치사항\n"
+                        "① 즉시 조치: 구체적인 조치 내용\n"
+                        "② 개선 조치: 구체적인 조치 내용\n"
+                        "③ 예방 조치: 구체적인 조치 내용\n\n"
 
-                       "6. 종합 의견\n"
-                       "전체 내용을 3~5문장으로 정리하고 "
-                       "현장 안전관리자가 우선적으로 해야 할 조치를 명확하게 제시\n\n"
+                        "5. 현장 적용 시 유의사항\n"
+                        "현장 관리자가 실제 작업 전에 확인해야 할 사항을 작성\n\n"
 
-                       "==================================================\n"
-                       "[작성 원칙]\n"
-                       "==================================================\n\n"
+                        "6. 종합 의견\n"
+                        "전체 내용을 3~5문장으로 정리하고 "
+                        "현장 안전관리자가 우선적으로 해야 할 조치를 명확하게 제시\n\n"
 
-                       "1. 참고 문서의 내용을 우선적으로 반영하십시오.\n"
-                       "2. 법령이나 안전기준을 임의로 만들어내지 마십시오.\n"
-                       "3. 법적 근거가 불확실한 경우 반드시 '확인 필요'라고 표시하십시오.\n"
-                       "4. 현장에서 바로 실행할 수 있는 구체적인 조치사항을 제시하십시오.\n"
-                       "5. '안전관리 철저', '주의 필요'와 같은 추상적인 표현만 사용하지 마십시오.\n"
-                       "6. 위험등급은 실제 사고 발생 가능성과 피해 정도를 종합하여 판단하십시오.\n"
-                       "7. 참고 문서에 없는 사실을 사실인 것처럼 단정하지 마십시오.\n"
-                       "8. Markdown 표(|)는 사용하지 마십시오.\n"
-                       "9. 각 항목 사이에 불필요한 빈 줄을 과도하게 넣지 마십시오.\n\n"
+                        "==================================================\n"
+                        "[작성 원칙]\n"
+                        "==================================================\n\n"
 
-                       "==================================================\n"
-                       "[참고 문서 내용]\n"
-                       "==================================================\n\n"
+                        "1. 참고 문서의 내용을 최우선으로 반영하십시오.\n"
+                        "2. 법령이나 안전기준을 임의로 만들어내지 마십시오.\n"
+                        "3. 법적 근거가 불확실한 경우 반드시 '확인 필요'라고 표시하십시오.\n"
+                        "4. 현장에서 바로 실행할 수 있는 구체적인 조치사항을 제시하십시오.\n"
+                        "5. '안전관리 철저', '주의 필요'와 같은 추상적인 표현만 사용하지 마십시오.\n"
+                        "6. 위험등급은 사고 발생 가능성과 피해 정도를 종합하여 판단하십시오.\n"
+                        "7. 참고 문서에 없는 사실을 사실인 것처럼 단정하지 마십시오.\n"
+                        "8. Markdown 표(|)는 사용하지 마십시오.\n"
+                        "9. 각 항목은 가능한 한 간결하게 작성하십시오.\n\n"
 
-                       f"{context_text if context_text else '추가 문서 없음'}\n\n"
+                        "==================================================\n"
+                        "[참고 문서 내용]\n"
+                        "==================================================\n\n"
 
-                       "==================================================\n"
-                       "[질문]\n"
-                       "==================================================\n\n"
+                        f"{context_text if context_text else '추가 문서 없음'}\n\n"
 
-                       f"{user_query}\n\n"
+                        "==================================================\n"
+                        "[질문]\n"
+                        "==================================================\n\n"
 
-                       "위 내용을 바탕으로 지정된 형식의 안전 기술 자문 결과만 작성하십시오."
+                        f"{user_query}\n\n"
+
+                        "위 내용을 바탕으로 지정된 형식의 안전 기술 자문 결과만 작성하십시오."
                     )
                     
                     response = client.models.generate_content(model="gemini-3.6-flash", contents=rag_prompt)
