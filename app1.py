@@ -57,16 +57,15 @@ def generate_hwpx(title, content):
     doc = HwpxDocument.new()
     
     # 1. 관공서 문서 상단 헤더 (기관명 및 문서번호 형태)
-    doc.add_paragraph("한국환경공단(KECO) 수도권서부환경본부", align="center")
+    doc.add_paragraph("한국환경공단(K-ECO) 수도권서부환경본부", align="center")
     doc.add_heading("[기술 자문 및 안전 점검 보고서]", level=1)
-    doc.add_paragraph("--------------------------------------------------------------------------------", align="center")
+    doc.add_paragraph("----------------------------------------------------------------------------", align="center")
     
     # 2. 문서 메타 정보 (시행일자, 수신처 등)
-    doc.add_paragraph(f"• 문서번호: KECO-서부안전-2026-0402호")
     doc.add_paragraph(f"• 시 행 일 자: {current_time}")
     doc.add_paragraph(f"• 대 상 자: 현장 작업 관리자 및 협력업체 임직원")
     doc.add_paragraph(f"• 제      목: {title}")
-    doc.add_paragraph("--------------------------------------------------------------------------------", align="center")
+    doc.add_paragraph("----------------------------------------------------------------------------", align="center")
     
     # 3. 개요 섹션
     doc.add_heading("1. 점검 개요 및 목적", level=2)
@@ -84,9 +83,9 @@ def generate_hwpx(title, content):
             
     # 5. 행정 조치 사항 (관공서 문서 하단 마무리)
     doc.add_heading("3. 행정 및 조치 사항", level=2)
-    doc.add_paragraph("가. 상기 위험 요소를 현장 작업 전 반드시 숙지하고 관련 안전 조치를 이행할 것.")
-    doc.add_paragraph("나. 밀폐공간 작업 허가서(PTW) 미발급 및 가스 측정 누락 시 즉각 작업 중지 조치.")
-    doc.add_paragraph("다. 현장 안전관리자는 본 보고서 내용을 바탕으로 작업 전 안전교육(TBM)을 실시할 것.")
+    doc.add_paragraph("상기 위험 요소를 현장 작업 전 반드시 숙지하고 관련 안전 조치를 이행할 것.")
+    doc.add_paragraph("밀폐공간 작업 허가서(PTW) 미발급 및 가스 측정 누락 시 즉각 작업 중지 조치.")
+    doc.add_paragraph("현장 안전관리자는 본 보고서 내용을 바탕으로 작업 전 안전교육(TBM)을 실시할 것.")
     
     # 하단 발신 명의
     doc.add_paragraph("")
