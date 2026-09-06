@@ -58,38 +58,57 @@ def generate_hwpx(title, content):
     
     # 1. 관공서 문서 상단 헤더 (기관명 및 문서번호 형태)
     doc.add_paragraph("한국환경공단(K-ECO) 수도권서부환경본부", align="center")
-    doc.add_heading("[기술 자문 및 안전 점검 보고서]", level=1)
-    doc.add_paragraph("----------------------------------------------------------------------------", align="center")
+    doc.add_heading("기술 자문 및 안전 점검 보고서", level=1)
+    doc.add_paragraph("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", align="center")
     
     # 2. 문서 메타 정보 (시행일자, 수신처 등)
     doc.add_paragraph(f"• 시 행 일 자: {current_time}")
     doc.add_paragraph(f"• 대 상 자: 현장 작업 관리자 및 협력업체 임직원")
     doc.add_paragraph(f"• 제      목: {title}")
-    doc.add_paragraph("----------------------------------------------------------------------------", align="center")
+    doc.add_paragraph("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", align="center")
+    doc.add_paragraph("")  # 빈 줄 공백
     
     # 3. 개요 섹션
     doc.add_heading("1. 점검 개요 및 목적", level=2)
-    doc.add_paragraph("본 문서는 「산업안전보건기준에 관한 규칙」에 근거하여, 환경공단 현장(하수도, 폐수처리시설, 매립지 등)에서 수행되는 고위험 밀폐공간 작업의 안전사고를 예방하고 현장 실무자에게 정확한 규정 검토 및 대응 지침을 제공하기 위함입니다.")
+    doc.add_paragraph("본 문서는「산업안전보건기준에 관한 규칙」에 근거하여, 환경공단 현장(하수도, 폐수처리시설, 매립지 등)에서 수행되는 고위험 밀폐공간 작업의 안전사고를 예방하고 현장 실무자에게 정확한 규정 검토 및 대응 지침을 제공하기 위함입니다.")
+    doc.add_paragraph("")
     
-    # 4. 상세 내용 본문 (AI 답변 내용 주입)
+# -------------------------------------------------------------------------
+    # 4. 제2장 상세 안전 점검 및 규정 검토 결과 (AI 본문 정제 및 가독성 확보)
+    # -------------------------------------------------------------------------
     doc.add_heading("2. 상세 안전 점검 및 규정 검토 결과", level=2)
     
-    # AI 답변 내용을 줄바꿈 단위로 깔끔하게 파싱하여 단락으로 추가
+    # AI 답변 내용을 줄바꿈 단위로 순회하며 마크다운 기호 제거 및 단락 배치
     for line in content.split("\n"):
-        # 마크다운 특수문자나 볼드 기호 등 가독성을 해치는 요소 정제 (선택사항)
-        clean_line = line.replace("**", "").replace("###", "").replace("---", "")
-        if clean_line.strip():
-            doc.add_paragraph(clean_line)
-            
-    # 5. 행정 조치 사항 (관공서 문서 하단 마무리)
-    doc.add_heading("3. 행정 및 조치 사항", level=2)
-    doc.add_paragraph("상기 위험 요소를 현장 작업 전 반드시 숙지하고 관련 안전 조치를 이행할 것.")
-    doc.add_paragraph("밀폐공간 작업 허가서(PTW) 미발급 및 가스 측정 누락 시 즉각 작업 중지 조치.")
-    doc.add_paragraph("현장 안전관리자는 본 보고서 내용을 바탕으로 작업 전 안전교육(TBM)을 실시할 것.")
-    
-    # 하단 발신 명의
+        # 불필요한 마크다운 기호 제거
+        clean_line = line.replace("**", "").replace("###", "").replace("---", "").strip()
+        
+        if clean_line:
+            # 소제목이나 강조 항목 형태인지 체크하여 단락 추가
+            if clean_line.startswith("1.") or clean_line.startswith("2.") or clean_line.startswith("3.") or clean_line.startswith("4."):
+                doc.add_heading(clean_line, level=3)
+            elif clean_line.startswith(">"):
+                # 인용구 형태 강조
+                doc.add_paragraph(f" [참고] {clean_line.replace('>', '').strip()}")
+            else:
+                doc.add_paragraph(clean_line)
+                
     doc.add_paragraph("")
-    doc.add_paragraph("한 국 환 경 공 단  수 도 권 서 부 환 경 본 부 장", align="center")
+
+    # -------------------------------------------------------------------------
+    # 5. 제3장 행정 및 조치 사항 (가나다 번호 제거, 깔끔한 본문형 적용)
+    # -------------------------------------------------------------------------
+    doc.add_heading("3. 행정 및 조치 사항", level=2)
+    doc.add_paragraph("상기 위험 요소를 현장 작업 전 반드시 숙지하고 관련 안전 조치를 철저히 이행하여 주시기 바랍니다.")
+    doc.add_paragraph("밀폐공간 작업 허가서 미발급 및 가스 측정 누락 사항이 적발될 경우 즉각적인 작업 중지 조치가 시행됩니다.")
+    doc.add_paragraph("현장 안전관리자는 본 보고서 내용을 바탕으로 작업 전 안전교육(TBM)을 반드시 실시해 주시기 바랍니다.")
+    
+    # -------------------------------------------------------------------------
+    # 6. 문서 하단 발신 명의
+    # -------------------------------------------------------------------------
+    doc.add_paragraph("")
+    doc.add_paragraph("")
+    doc.add_paragraph("한국환경공단 수도권서부환경본부장", align="center")
 
     # 메모리 스트림(BytesIO)에 문서 저장 후 바이트 데이터 반환
     buffer = io.BytesIO()
