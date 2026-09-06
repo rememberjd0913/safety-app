@@ -24,6 +24,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from hwpx import HwpxDocument
 
 # --- 페이지 기본 설정 ---
 st.set_page_config(
@@ -49,62 +50,29 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-def generate_pdf(title, content):
-    # 1. 텍스트 내의 잘못된 HTML 태그 및 줄바꿈 기호 정제
-    # <br> -> <br/> 로 강제 변환
-    safe_content = content.replace("<br>", "<br/>")
-    safe_content = safe_content.replace("\n", "<br/>")
-    safe_content = (
-        safe_content.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
-
-    # 정제된 태그들(br 등)은 다시 정상 태그로 복구
-    safe_content = safe_content.replace("&lt;br/&gt;", "<br/>").replace(
-        "&lt;br&gt;", "<br/>"
-    )
+def generate_hwpx(title, content):
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     
-    # 1. 한글 폰트 등록 (NanumGothic.ttf 또는 malgun.ttf 파일을 프로젝트 폴더에 두어야 합니다)
-    font_path = "NanumMyeongjo.ttf"
-    font_name = "NanumMyeongjo"
+    # 새로운 HWPX 문서 객체 생성
+    doc = HwpxDocument.new()
     
-    if os.path.exists(font_path):
-        pdfmetrics.registerFont(TTFont(font_name, font_path))
-    else:
-        # 폰트 파일이 없을 경우의 예외 처리 (기본 폰트는 한글 깨짐)
-        font_name = 'Helvetica' 
-
-    # 2. PDF 파일 생성을 위한 BytesIO 설정
-    from io import BytesIO
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
-    story = []
+    # 문서 제목 및 메타정보 추가
+    doc.add_heading(title, level=1)
+    doc.add_paragraph(f"생성일시: {current_time} | 시스템: KECO Safety Analyzer")
+    doc.add_paragraph("--------------------------------------------------")
     
-    styles = getSampleStyleSheet()
+    # 안내 문구 추가
+    doc.add_heading("점검 개요 및 안내", level=2)
+    doc.add_paragraph("본 문서는 현장 점검 데이터를 바탕으로 AI 규정 검토 및 안전 분석 결과를 정리한 공식 보고서입니다.")
     
-    # 3. 등록한 한글 폰트를 사용하는 스타일 생성
-    korean_style = ParagraphStyle(
-        'KoreanStyle',
-        parent=styles['Normal'],
-        fontName=font_name,
-        fontSize=12,
-        leading=16,
-    )
-    
-    title_style = ParagraphStyle(
-        'KoreanTitle',
-        parent=styles['Heading1'],
-        fontName=font_name,
-        fontSize=18,
-        leading=22,
-    )
-
-    # 4. 내용 추가
-    story.append(Paragraph(title, title_style))
-    story.append(Paragraph(safe_content, korean_style))
-    
-    doc.build(story)
+    # 상세 내용 추가 (줄바꿈 단위로 분리해서 추가)
+    doc.add_heading("상세 분석 및 조치 사항", level=2)
+    for line in content.split("\n"):
+        doc.add_paragraph(line)
+        
+    # 메모리 스트림(BytesIO)에 문서 저장 후 바이트 데이터 반환
+    buffer = io.BytesIO()
+    doc.save_to_stream(buffer)
     buffer.seek(0)
     return buffer.getvalue()
 
@@ -1009,31 +977,31 @@ with main_tab3:
                     st.session_state.qa_messages.append({"role": "assistant", "content": answer_text})
                 
                     # ====================================================
-                    # 📄 PDF 문서 출력 및 다운로드 기능 (답변 바로 밑에 통합)
+                    # 📄 한글(HWPX) 문서 출력 및 다운로드 기능 (답변 바로 밑에 통합)
                     # ====================================================
                     st.markdown("---")
-                    st.subheader("📄 보고서 문서 출력")
+                    st.subheader("📄 보고서 문서 출력 (한글 HWPX)")
 
                     try:
-                        # PDF 바이트 데이터 생성
-                        pdf_data = generate_pdf(
+                        # 한글 파일 바이트 데이터 생성
+                        hwpx_data = generate_hwpx(
                             "KECO 현장 안전 점검 및 규정 검토 보고서", answer_text
                         )
 
                         # 다운로드 버튼 제공
                         st.download_button(
-                            label="📥 클릭하여 PDF 파일 저장",
-                            data=pdf_data,
-                            file_name="safety_inspection_report.pdf",
-                            mime="application/pdf",
-                            key="final_pdf_download",
+                            label="📥 클릭하여 한글 파일 저장 (.hwpx)",
+                            data=hwpx_data,
+                            file_name="safety_inspection_report.hwpx",
+                            mime="application/vnd.hancom.hwpx",
+                            key="final_hwpx_download",
                             type="primary",
                         )
                         st.success(
-                            "PDF 문서가 성공적으로 준비되었습니다! 위 버튼을 눌러 저장하세요."
+                            "한글 문서가 성공적으로 준비되었습니다! 위 버튼을 눌러 저장하세요."
                         )
-                    except Exception as pdf_err:
-                        st.error(f"PDF 생성 중 오류가 발생했습니다: {pdf_err}")
+                    except Exception as hwpx_err:
+                        st.error(f"한글 파일 생성 중 오류가 발생했습니다: {hwpx_err}")
                     
                 except Exception as e:
                     err_msg = f"답변 생성 중 오류가 발생했습니다: {e}"
