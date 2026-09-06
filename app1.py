@@ -56,20 +56,42 @@ def generate_hwpx(title, content):
     # 새로운 HWPX 문서 객체 생성
     doc = HwpxDocument.new()
     
-    # 문서 제목 및 메타정보 추가
-    doc.add_heading(title, level=1)
-    doc.add_paragraph(f"생성일시: {current_time} | 시스템: KECO Safety Analyzer")
-    doc.add_paragraph("--------------------------------------------------")
+    # 1. 관공서 문서 상단 헤더 (기관명 및 문서번호 형태)
+    doc.add_paragraph("한국환경공단(KECO) 수도권서부환경본부", align="center")
+    doc.add_heading("[기술 자문 및 안전 점검 보고서]", level=1)
+    doc.add_paragraph("--------------------------------------------------------------------------------", align="center")
     
-    # 안내 문구 추가
-    doc.add_heading("점검 개요 및 안내", level=2)
-    doc.add_paragraph("본 문서는 현장 점검 데이터를 바탕으로 AI 규정 검토 및 안전 분석 결과를 정리한 공식 보고서입니다.")
+    # 2. 문서 메타 정보 (시행일자, 수신처 등)
+    doc.add_paragraph(f"• 문서번호: KECO-서부안전-2026-0402호")
+    doc.add_paragraph(f"• 시 행 일 자: {current_time}")
+    doc.add_paragraph(f"• 대 상 자: 현장 작업 관리자 및 협력업체 임직원")
+    doc.add_paragraph(f"• 제      목: {title}")
+    doc.add_paragraph("--------------------------------------------------------------------------------", align="center")
     
-    # 상세 내용 추가 (줄바꿈 단위로 분리해서 추가)
-    doc.add_heading("상세 분석 및 조치 사항", level=2)
+    # 3. 개요 섹션
+    doc.add_heading("1. 점검 개요 및 목적", level=2)
+    doc.add_paragraph("본 문서는 「산업안전보건기준에 관한 규칙」에 근거하여, 환경공단 현장(하수도, 폐수처리시설, 매립지 등)에서 수행되는 고위험 밀폐공간 작업의 안전사고를 예방하고 현장 실무자에게 정확한 규정 검토 및 대응 지침을 제공하기 위함입니다.")
+    
+    # 4. 상세 내용 본문 (AI 답변 내용 주입)
+    doc.add_heading("2. 상세 안전 점검 및 규정 검토 결과", level=2)
+    
+    # AI 답변 내용을 줄바꿈 단위로 깔끔하게 파싱하여 단락으로 추가
     for line in content.split("\n"):
-        doc.add_paragraph(line)
-        
+        # 마크다운 특수문자나 볼드 기호 등 가독성을 해치는 요소 정제 (선택사항)
+        clean_line = line.replace("**", "").replace("###", "").replace("---", "")
+        if clean_line.strip():
+            doc.add_paragraph(clean_line)
+            
+    # 5. 행정 조치 사항 (관공서 문서 하단 마무리)
+    doc.add_heading("3. 행정 및 조치 사항", level=2)
+    doc.add_paragraph("가. 상기 위험 요소를 현장 작업 전 반드시 숙지하고 관련 안전 조치를 이행할 것.")
+    doc.add_paragraph("나. 밀폐공간 작업 허가서(PTW) 미발급 및 가스 측정 누락 시 즉각 작업 중지 조치.")
+    doc.add_paragraph("다. 현장 안전관리자는 본 보고서 내용을 바탕으로 작업 전 안전교육(TBM)을 실시할 것.")
+    
+    # 하단 발신 명의
+    doc.add_paragraph("")
+    doc.add_paragraph("한 국 환 경 공 단  수 도 권 서 부 환 경 본 부 장", align="center")
+
     # 메모리 스트림(BytesIO)에 문서 저장 후 바이트 데이터 반환
     buffer = io.BytesIO()
     doc.save_to_stream(buffer)
