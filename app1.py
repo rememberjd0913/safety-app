@@ -1548,7 +1548,7 @@ with main_tab1:
         
 col_b, col_a = st.columns(2)
         
-    with col_b:
+        with col_b:
             st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 또는 실시간 촬영")
             
             input_mode_b = st.radio(
