@@ -1546,12 +1546,11 @@ with main_tab1:
                 <h4 style="margin-top:0; color:#007A33;">🔹 [점검 항목 #{idx}] <span style="font-size:0.8rem; color:#64748B; font-weight:normal;">({coord_badge})</span></h4>
         """, unsafe_allow_html=True)
         
-        col_b, col_a = st.columns(2)
+col_b, col_a = st.columns(2)
         
-with col_b:
+        with col_b:
             st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 또는 실시간 촬영")
             
-            # 입력 방식 선택 (업로드 vs 실시간 촬영)
             input_mode_b = st.radio(
                 "조치 전 입력 방식 선택", 
                 ["파일 업로드(앨범/PC)", "현장 실시간 카메라 촬영"], 
@@ -1571,16 +1570,16 @@ with col_b:
                 if uploaded_files:
                     before_img_files.extend(uploaded_files)
             else:
-                # 카메라 촬영 (한 번에 1장씩 찍어서 추가하는 방식 또는 단건 촬영 지원)
                 cam_file = st.camera_input(f"#{idx} 조치 전 현장 촬영", key=f"before_cam_{idx}")
                 if cam_file is not None:
                     before_img_files.append(cam_file)
             
             if before_img_files:
                 st.write(f"📷 첨부된 조치 전 사진: **{len(before_img_files)}장**")
-                cols = st.columns(min(len(before_img_files), 2))
+                cols = st.columns(2)
                 for img_i, img_f in enumerate(before_img_files):
-                    cols[img_i % 2].image(img_f, caption=f"조치 전 #{img_i+1}", use_container_width=True)
+                    with cols[img_i % 2]:
+                        st.image(img_f, caption=f"조치 전 #{img_i+1}", use_container_width=True)
                 
                 if st.button(f"🔍 [항목 #{idx}] 조치 전 사진 전체 AI 분석", key=f"btn_ai_{idx}", use_container_width=True):
                     with st.spinner("푸루 AI가 조치 전 사진들의 위험요인을 분석 중..."):
@@ -1604,7 +1603,7 @@ with col_b:
                         </div>
                     """, unsafe_allow_html=True)
 
-with col_a:
+        with col_a:
             st.markdown("##### 🟢 조치 후 (After) - 다중 선택 또는 실시간 촬영")
             
             input_mode_a = st.radio(
