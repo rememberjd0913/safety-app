@@ -1604,7 +1604,7 @@ with col_b:
                         </div>
                     """, unsafe_allow_html=True)
 
-        with col_a:
+with col_a:
             st.markdown("##### 🟢 조치 후 (After) - 다중 선택 또는 실시간 촬영")
             
             input_mode_a = st.radio(
