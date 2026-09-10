@@ -1632,9 +1632,10 @@ with col_a:
 
             if after_img_files:
                 st.write(f"📷 첨부된 조치 후 사진: **{len(after_img_files)}장**")
-                cols = st.columns(min(len(after_img_files), 2))
+                cols = st.columns(2)
                 for img_i, img_f in enumerate(after_img_files):
-                    cols[img_i % 2].image(img_f, caption=f"조치 후 #{img_i+1}", use_container_width=True)
+                    with cols[img_i % 2]:
+                        st.image(img_f, caption=f"조치 후 #{img_i+1}", use_container_width=True)
 
         desc = st.text_area(
             f"✍️ [항목 #{idx}] 현장 조치 내용 및 설명", 
@@ -1659,7 +1660,7 @@ with col_a:
                 "coord_x": c_info['x'] if c_info else None,
                 "coord_y": c_info['y'] if c_info else None
             }
-
+            
     btn_col1, btn_col2 = st.columns(2)
     with btn_col1:
         if st.button("➕ 점검 항목 추가하기", use_container_width=True):
