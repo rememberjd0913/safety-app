@@ -1546,7 +1546,8 @@ with main_tab1:
                 <h4 style="margin-top:0; color:#007A33;">🔹 [점검 항목 #{idx}] <span style="font-size:0.8rem; color:#64748B; font-weight:normal;">({coord_badge})</span></h4>
         """, unsafe_allow_html=True)
         
-col_b, col_a = st.columns(2)
+# ✅ 아래 부분이 올바른 들여쓰기(스페이스 8칸)로 정렬되어야 합니다.
+        col_b, col_a = st.columns(2)
         
         with col_b:
             st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 또는 실시간 촬영")
