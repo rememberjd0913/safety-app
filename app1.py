@@ -1548,14 +1548,33 @@ with main_tab1:
         
         col_b, col_a = st.columns(2)
         
-        with col_b:
-            st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 가능")
-            before_img_files = st.file_uploader(
-                f"#{idx} 조치 전 사진 첨부",
-                type=["jpg", "jpeg", "png"],
-                accept_multiple_files=True,
-                key=f"before_imgs_{idx}"
+with col_b:
+            st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 또는 실시간 촬영")
+            
+            # 입력 방식 선택 (업로드 vs 실시간 촬영)
+            input_mode_b = st.radio(
+                "조치 전 입력 방식 선택", 
+                ["파일 업로드(앨범/PC)", "현장 실시간 카메라 촬영"], 
+                key=f"mode_b_{idx}",
+                horizontal=True
             )
+            
+            before_img_files = []
+            
+            if input_mode_b == "파일 업로드(앨범/PC)":
+                uploaded_files = st.file_uploader(
+                    f"#{idx} 조치 전 사진 첨부",
+                    type=["jpg", "jpeg", "png"],
+                    accept_multiple_files=True,
+                    key=f"before_imgs_{idx}"
+                )
+                if uploaded_files:
+                    before_img_files.extend(uploaded_files)
+            else:
+                # 카메라 촬영 (한 번에 1장씩 찍어서 추가하는 방식 또는 단건 촬영 지원)
+                cam_file = st.camera_input(f"#{idx} 조치 전 현장 촬영", key=f"before_cam_{idx}")
+                if cam_file is not None:
+                    before_img_files.append(cam_file)
             
             if before_img_files:
                 st.write(f"📷 첨부된 조치 전 사진: **{len(before_img_files)}장**")
@@ -1586,13 +1605,31 @@ with main_tab1:
                     """, unsafe_allow_html=True)
 
         with col_a:
-            st.markdown("##### 🟢 조치 후 (After) - 다중 선택 가능")
-            after_img_files = st.file_uploader(
-                f"#{idx} 조치 후 사진 첨부",
-                type=["jpg", "jpeg", "png"],
-                accept_multiple_files=True,
-                key=f"after_imgs_{idx}"
+            st.markdown("##### 🟢 조치 후 (After) - 다중 선택 또는 실시간 촬영")
+            
+            input_mode_a = st.radio(
+                "조치 후 입력 방식 선택", 
+                ["파일 업로드(앨범/PC)", "현장 실시간 카메라 촬영"], 
+                key=f"mode_a_{idx}",
+                horizontal=True
             )
+            
+            after_img_files = []
+            
+            if input_mode_a == "파일 업로드(앨범/PC)":
+                uploaded_after = st.file_uploader(
+                    f"#{idx} 조치 후 사진 첨부",
+                    type=["jpg", "jpeg", "png"],
+                    accept_multiple_files=True,
+                    key=f"after_imgs_{idx}"
+                )
+                if uploaded_after:
+                    after_img_files.extend(uploaded_after)
+            else:
+                cam_file_after = st.camera_input(f"#{idx} 조치 후 현장 촬영", key=f"after_cam_{idx}")
+                if cam_file_after is not None:
+                    after_img_files.append(cam_file_after)
+
             if after_img_files:
                 st.write(f"📷 첨부된 조치 후 사진: **{len(after_img_files)}장**")
                 cols = st.columns(min(len(after_img_files), 2))
