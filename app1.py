@@ -1656,7 +1656,7 @@ with main_tab1:
         
         st.markdown("</div>", unsafe_allow_html=True)
         
-        if before_img_files or after_img_files or desc.strip():
+        if before_img_files or after_img_files or desc_before.strip() or desc_after.strip():
             ai_summary_list = []
             if idx in st.session_state.ai_results:
                 for img_i, res_text in st.session_state.ai_results[idx].items():
