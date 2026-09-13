@@ -1637,11 +1637,22 @@ with main_tab1:
                     with cols[img_i % 2]:
                         st.image(img_f, caption=f"조치 후 #{img_i+1}", use_container_width=True)
 
-        desc = st.text_area(
-            f"✍️ [항목 #{idx}] 현장 조치 내용 및 설명", 
-            placeholder=f"예: 항목 #{idx} - 개구부 안전난간 설치 및 추락방지망 추가 고정 완료", 
-            key=f"desc_{idx}"
-        )
+# 조치 전 / 조치 후 입력을 위해 좌우로 2분할 
+        col_before, col_after = st.columns(2)
+        
+        with col_before:
+            desc_before = st.text_area(
+                f"✍️ [항목 #{idx}] 조치 전 내용", 
+                placeholder=f"예: 항목 #{idx} - 개구부 안전난간 미설치 상태 확인", 
+                key=f"desc_before_{idx}"
+            )
+            
+        with col_after:
+            desc_after = st.text_area(
+                f"✍️ [항목 #{idx}] 조치 후 내용", 
+                placeholder=f"예: 항목 #{idx} - 안전난간 설치 및 추락방지망 고정 완료", 
+                key=f"desc_after_{idx}"
+            )
         
         st.markdown("</div>", unsafe_allow_html=True)
         
