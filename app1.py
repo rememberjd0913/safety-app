@@ -1535,8 +1535,6 @@ with main_tab1:
     st.subheader("📸 안전 점검 사진 등록 및 AI 위험 분석")
     st.caption("💡 각 항목마다 여러 장의 사진을 다중 선택하여 동시에 첨부할 수 있습니다.")
 
-    form_data = {}
-
         st.markdown(f"""
             <div class="item-card">
                 <h4 style="margin-top:0; color:#007A33;">🔹 [점검 항목 #{idx}] <span style="font-size:0.8rem; color:#64748B; font-weight:normal;">({coord_badge})</span></h4>
