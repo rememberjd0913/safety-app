@@ -1448,10 +1448,6 @@ if "item_count" not in st.session_state:
 if "ai_results" not in st.session_state:
     st.session_state.ai_results = {}
 
-if "item_coords" not in st.session_state:
-    st.session_state.item_coords = {}  # {idx: {"x": x, "y": y}}
-
-
 # --- 5. 헤더 UI 및 상단 실시간 시계 바 ---
 st.markdown("""
     <div class="keco-header">
@@ -1538,8 +1534,7 @@ with main_tab1:
     form_data = {}
 
     for idx in range(1, st.session_state.item_count + 1):
-        coord_info = st.session_state.item_coords.get(idx)
-        coord_badge = f"📍 도면 좌표 지정됨 (X: {coord_info['x']}, Y: {coord_info['y']})" if coord_info else "📍 도면 위치 미지정 (상단 [실시간 도면 검측 뷰어] 탭에서 지정 가능)"
+        st.write(f"항목 #{idx} 검토 중")
 
         st.markdown(f"""
             <div class="item-card">
