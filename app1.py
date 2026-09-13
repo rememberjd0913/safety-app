@@ -1661,22 +1661,22 @@ with main_tab1:
                 "coord_y": c_info['y'] if c_info else None
             }
             
-    btn_col1, btn_col2 = st.columns(2)
-    with btn_col1:
-        if st.button("➕ 점검 항목 추가하기", use_container_width=True):
-            st.session_state.item_count += 1
-            st.rerun()
+# 1. '점검 항목 추가하기' 버튼을 상단에 가로로 꽉 차게 배치
+    if st.button("➕ 점검 항목 추가하기", use_container_width=True):
+        st.session_state.item_count += 1
+        st.rerun()
 
-    with btn_col2:
-        if st.session_state.item_count > 1:
-            if st.button("➖ 마지막 항목 삭제", use_container_width=True):
-                last_idx = st.session_state.item_count
-                if last_idx in st.session_state.ai_results:
-                    del st.session_state.ai_results[last_idx]
-                if last_idx in st.session_state.item_coords:
-                    del st.session_state.item_coords[last_idx]
-                st.session_state.item_count -= 1
-                st.rerun()
+    # 2. '마지막 항목 삭제' 버튼 (항목이 2개 이상일 때만 표시되며, 이 역시 가로로 꽉 차게 하거나 깔끔하게 배치)
+    if st.session_state.item_count > 1:
+        if st.button("➖ 마지막 항목 삭제", use_container_width=True):
+            last_idx = st.session_state.item_count
+            if last_idx in st.session_state.ai_results:
+                del st.session_state.ai_results[last_idx]
+            # (만약 item_coords 관련 코드를 완전히 지우셨다면 아래 2줄은 생략하셔도 됩니다)
+            if 'item_coords' in st.session_state and last_idx in st.session_state.item_coords:
+                del st.session_state.item_coords[last_idx]
+            st.session_state.item_count -= 1
+            st.rerun()
 
     st.markdown("---")
 
