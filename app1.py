@@ -1539,7 +1539,7 @@ with main_tab1:
 
     for idx in range(1, st.session_state.item_count + 1):
         coord_info = st.session_state.item_coords.get(idx)
-        status_badge = f"✅ 설정 완료 (X: {coord_info['x']}, Y: {coord_info['y']})" if coord_info else "❌ 위치 미설정"
+        coord_badge = f"📍 도면 좌표 지정됨 (X: {coord_info['x']}, Y: {coord_info['y']})" if coord_info else "📍 도면 위치 미지정 (상단 [실시간 도면 검측 뷰어] 탭에서 지정 가능)"
 
         st.markdown(f"""
             <div class="item-card">
