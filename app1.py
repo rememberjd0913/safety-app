@@ -1192,10 +1192,10 @@ def check_password():
         image_dir = Path(__file__).resolve().parent / "images"
 
         slide_images = [
-            (image_dir / "bto.png", "BTO 사업"),
-            (image_dir / "incineration.png", "소각시설"),
-            (image_dir / "sewage.png", "하수처리시설"),
-            (image_dir / "livestock.png", "가축분뇨처리시설"),
+            (image_dir / "bto.png.png", "BTO 사업"),
+            (image_dir / "incineration.png.png", "소각시설"),
+            (image_dir / "sewage.png.png", "하수처리시설"),
+            (image_dir / "livestock.png.png", "가축분뇨처리시설"),
         ]
 
         if "slide_index" not in st.session_state:
