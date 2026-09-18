@@ -1183,50 +1183,93 @@ def check_password():
                 
         st.markdown("</div>", unsafe_allow_html=True)
 
-# --- [우측 열]: 환경시설 이미지 슬라이드쇼 ---
-with col_slide:
-    # 파이썬 실행 파일이 있는 폴더를 기준으로 사진 위치 지정
-    image_dir = Path(__file__).resolve().parent / "images"
+    # --- [우측 열]: 환경시설 이미지 슬라이드쇼 ---
+    # 이 구간은 check_password() 함수 내부입니다.
+    from pathlib import Path
+    import base64
 
-    slide_images = [
-        (str(image_dir / "bto.png"), "BTO 사업"),
-        (str(image_dir / "incineration.png"), "소각시설"),
-        (str(image_dir / "sewage.png"), "하수처리시설"),
-        (str(image_dir / "livestock.png"), "가축분뇨처리시설"),
-    ]
+    with col_slide:
+        image_dir = Path(__file__).resolve().parent / "images"
 
-    if "slide_index" not in st.session_state:
-        st.session_state["slide_index"] = 0
-    else:
-        st.session_state["slide_index"] = (
-            st.session_state["slide_index"] + 1
-        ) % len(slide_images)
+        slide_images = [
+            (image_dir / "bto.png", "BTO 사업"),
+            (image_dir / "incineration.png", "소각시설"),
+            (image_dir / "sewage.png", "하수처리시설"),
+            (image_dir / "livestock.png", "가축분뇨처리시설"),
+        ]
 
-    current_img_path, current_caption = slide_images[
-        st.session_state["slide_index"]
-    ]
+        if "slide_index" not in st.session_state:
+            st.session_state["slide_index"] = 0
+        else:
+            st.session_state["slide_index"] = (
+                st.session_state["slide_index"] + 1
+            ) % len(slide_images)
 
-    if Path(current_img_path).is_file():
-        st.image(
-            current_img_path,
-            caption=current_caption,
-            use_container_width=True,
-        )
-    else:
-        st.warning(f"사진 파일을 확인해 주세요: {current_img_path}")
-        st.markdown(f"""
-            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 30px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); text-align: center; min-height: 460px; display: flex; flex-direction: column; justify-content: center;">
-                <div style="overflow: hidden; border-radius: 12px; height: 500px; background-color: #f1f5f9;">
-                    <img src="{current_img_url}" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.5s ease-in-out;">
+        current_img_path, current_caption = slide_images[
+            st.session_state["slide_index"]
+        ]
+
+        if current_img_path.is_file():
+            # 로컬 사진을 HTML에서도 표시할 수 있도록 변환
+            image_base64 = base64.b64encode(
+                current_img_path.read_bytes()
+            ).decode("utf-8")
+
+            st.markdown(
+                f"""
+                <div style="
+                    background: white;
+                    border: 1.5px solid #E2E8F0;
+                    border-radius: 16px;
+                    padding: 20px;
+                    box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+                    text-align: center;
+                ">
+                    <div style="
+                        overflow: hidden;
+                        border-radius: 12px;
+                        height: 500px;
+                        background-color: #F1F5F9;
+                    ">
+                        <img
+                            src="data:image/png;base64,{image_base64}"
+                            alt="{current_caption}"
+                            style="
+                                width: 100%;
+                                height: 100%;
+                                object-fit: cover;
+                                object-position: center;
+                                display: block;
+                            "
+                        >
+                    </div>
+                    <div style="
+                        margin-top: 14px;
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: #1E293B;
+                    ">
+                        {current_caption}
+                    </div>
                 </div>
-            </div>
-        """, unsafe_allow_html=True)
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.warning(
+                f"사진 파일을 확인해 주세요: images/{current_img_path.name}"
+            )
 
-    # 하단 여백 추가
-    st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
+    # 하단 여백 — check_password() 함수 내부
+    st.markdown(
+        "<div style='height: 40px;'></div>",
+        unsafe_allow_html=True,
+    )
 
     return False
 
+
+# 여기부터는 함수 밖이므로 앞에 공백을 넣지 않습니다.
 if not check_password():
     st.stop()
     
