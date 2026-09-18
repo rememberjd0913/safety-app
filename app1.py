@@ -1183,23 +1183,37 @@ def check_password():
                 
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- [우측 열]: 환경 관련 이미지 슬라이드쇼 (세로 크기 확대) ---
-    with col_slide:
-        slide_images = [
-            ("https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1000&q=80", "1"), 
-            ("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80", "1"),
-            ("https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1000&q=80", "1"),
-            ("https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1000&q=80", "1"),
-            ("https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1000&q=80", "1")
-        ]
+# --- [우측 열]: 환경시설 이미지 슬라이드쇼 ---
+with col_slide:
+    # 파이썬 실행 파일이 있는 폴더를 기준으로 사진 위치 지정
+    image_dir = Path(__file__).resolve().parent / "images"
 
-        if "slide_index" not in st.session_state:
-            st.session_state["slide_index"] = 0
-        else:
-            st.session_state["slide_index"] = (st.session_state["slide_index"] + 1) % len(slide_images)
+    slide_images = [
+        (str(image_dir / "bto.png"), "BTO 사업"),
+        (str(image_dir / "incineration.png"), "소각시설"),
+        (str(image_dir / "sewage.png"), "하수처리시설"),
+        (str(image_dir / "livestock.png"), "가축분뇨처리시설"),
+    ]
 
-        current_img_url, current_caption = slide_images[st.session_state["slide_index"]]
+    if "slide_index" not in st.session_state:
+        st.session_state["slide_index"] = 0
+    else:
+        st.session_state["slide_index"] = (
+            st.session_state["slide_index"] + 1
+        ) % len(slide_images)
 
+    current_img_path, current_caption = slide_images[
+        st.session_state["slide_index"]
+    ]
+
+    if Path(current_img_path).is_file():
+        st.image(
+            current_img_path,
+            caption=current_caption,
+            use_container_width=True,
+        )
+    else:
+        st.warning(f"사진 파일을 확인해 주세요: {current_img_path}")
         st.markdown(f"""
             <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 30px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); text-align: center; min-height: 460px; display: flex; flex-direction: column; justify-content: center;">
                 <div style="overflow: hidden; border-radius: 12px; height: 500px; background-color: #f1f5f9;">
