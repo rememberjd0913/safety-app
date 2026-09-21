@@ -987,6 +987,90 @@ st.markdown("""
     .stApp {
         background-color: #F8FBF9;
     }
+    /* 로그인 첫 화면 */
+    .login-brand-bar {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        background: #FFFFFF;
+        border: 1px solid #DCE6E0;
+        border-radius: 16px;
+        padding: 16px 22px;
+        margin-bottom: 28px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+    .login-brand-logo {
+        width: auto !important;
+        height: 42px !important;
+        flex: 0 0 auto;
+        object-fit: contain;
+    }
+    .login-brand-text {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .login-brand-name {
+        color: #183328 !important;
+        font-size: clamp(1.05rem, 2.2vw, 1.45rem);
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        white-space: nowrap !important;
+    }
+    .login-branch-name {
+        color: #52645C !important;
+        font-size: clamp(0.82rem, 1.5vw, 1rem);
+        font-weight: 650;
+        line-height: 1.45;
+        border-left: 2px solid #C7D6CE;
+        padding-left: 14px;
+    }
+    .login-intro-card {
+        background: linear-gradient(145deg, #FFFFFF 0%, #F4FAF6 100%);
+        border: 1px solid #D9E7DE;
+        border-top: 5px solid #07813A;
+        border-radius: 16px;
+        padding: 28px 26px 22px;
+        margin-bottom: 14px;
+        box-shadow: 0 8px 22px rgba(0, 90, 45, 0.08);
+    }
+    .login-badge {
+        display: inline-block;
+        color: #006B2D !important;
+        background: #DFF4E7;
+        border-radius: 999px;
+        padding: 5px 10px;
+        margin-bottom: 12px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+    }
+    .login-title {
+        color: #16392A !important;
+        margin: 0 0 10px !important;
+        font-size: clamp(1.55rem, 3vw, 2.05rem) !important;
+        line-height: 1.28 !important;
+        letter-spacing: -0.045em;
+        word-break: keep-all !important;
+    }
+    .login-subtitle {
+        color: #5A6B63 !important;
+        margin: 0 0 18px !important;
+        font-size: 0.98rem !important;
+        line-height: 1.55 !important;
+    }
+    .login-guide {
+        color: #314B3F !important;
+        background: #EDF6F0;
+        border-left: 4px solid #10A553;
+        border-radius: 8px;
+        padding: 11px 13px;
+        font-size: 0.86rem;
+        line-height: 1.5;
+    }
     .keco-header {
         background: linear-gradient(135deg, #007A33 0%, #10B981 100%);
         padding: 22px 18px;
@@ -1080,14 +1164,20 @@ st.markdown("""
         box-shadow: 0 3px 8px rgba(0, 122, 51, 0.2) !important;
     }
 div.stTabs [data-baseweb="tab-list"] {
-        background-color: transparent !important;
+        display: flex !important;
+        width: 100% !important;
+        background-color: #EAF2ED !important;
         border-bottom: 2px solid #E2E8F0;
-        gap: 12px;
-        padding: 0px;
+        gap: 6px;
+        padding: 5px 5px 0;
+        border-radius: 12px 12px 0 0;
     }
 
     /* 개별 탭 기본 스타일 (부드러운 전환 효과 추가) */
     div.stTabs [data-baseweb="tab"] {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+        justify-content: center !important;
         background-color: #E8F1EC !important;
         border: 1px solid #CBD5E1 !important;
         border-radius: 10px 10px 0 0 !important;
@@ -1102,6 +1192,9 @@ div.stTabs [data-baseweb="tab-list"] {
         color: #334155 !important;
         opacity: 1 !important;
         -webkit-text-fill-color: #334155 !important;
+        text-align: center !important;
+        white-space: normal !important;
+        line-height: 1.3 !important;
     }
 
     /* 마우스를 올렸을 때(Hover) 살짝 위로 떠오르는 애니메이션 효과 */
@@ -1185,17 +1278,65 @@ div.stTabs [data-baseweb="tab-list"] {
             border-radius: 10px !important;
             overflow-wrap: anywhere !important;
         }
+        .login-brand-bar {
+            align-items: flex-start;
+            gap: 10px;
+            padding: 13px 12px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+        }
+        .login-brand-logo {
+            height: 34px !important;
+            max-width: 70px !important;
+        }
+        .login-brand-text {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+        .login-brand-name {
+            font-size: 1.02rem !important;
+            white-space: normal !important;
+            line-height: 1.3;
+        }
+        .login-branch-name {
+            font-size: 0.76rem !important;
+            border-left: 0;
+            padding-left: 0;
+            line-height: 1.35;
+        }
+        .login-intro-card {
+            padding: 21px 17px 17px;
+            border-radius: 13px;
+            margin-bottom: 8px;
+        }
+        .login-title {
+            font-size: 1.48rem !important;
+            line-height: 1.3 !important;
+        }
+        .login-subtitle {
+            font-size: 0.9rem !important;
+            margin-bottom: 14px !important;
+        }
+        .login-guide { font-size: 0.8rem; padding: 10px 11px; }
         div.stTabs [data-baseweb="tab-list"] {
-            overflow-x: auto !important;
+            overflow: visible !important;
             flex-wrap: nowrap !important;
-            gap: 4px !important;
-            scrollbar-width: thin;
+            gap: 3px !important;
+            padding: 4px 4px 0 !important;
         }
         div.stTabs [data-baseweb="tab"] {
-            flex: 0 0 auto !important;
-            padding: 9px 10px !important;
-            font-size: 0.82rem !important;
-            white-space: nowrap !important;
+            flex: 1 1 0 !important;
+            min-width: 0 !important;
+            padding: 9px 5px !important;
+            font-size: 0.74rem !important;
+            white-space: normal !important;
+        }
+        div.stTabs [data-baseweb="tab"] p,
+        div.stTabs [data-baseweb="tab"] span {
+            font-size: 0.74rem !important;
+            word-break: keep-all !important;
+            overflow-wrap: normal !important;
         }
         div.stButton > button, div[data-testid="stDownloadButton"] > button {
             width: 100% !important;
@@ -1232,6 +1373,15 @@ div.stTabs [data-baseweb="tab-list"] {
         }
         .keco-header h2 { font-size: 1.05rem !important; }
         .top-status-bar { font-size: 0.80rem !important; }
+        .login-brand-logo { height: 30px !important; max-width: 62px !important; }
+        .login-brand-name { font-size: 0.94rem !important; }
+        .login-branch-name { font-size: 0.7rem !important; }
+        .login-title { font-size: 1.32rem !important; }
+        div.stTabs [data-baseweb="tab"],
+        div.stTabs [data-baseweb="tab"] p,
+        div.stTabs [data-baseweb="tab"] span {
+            font-size: 0.68rem !important;
+        }
     }
 """, unsafe_allow_html=True)
 
@@ -1248,14 +1398,14 @@ def check_password():
     st_autorefresh(interval=4000, key="login_slide_refresh")
 
     # 2. 한국환경공단 공식 스타일 상단 헤더 바
-    logo_html = f'<img src="data:image/png;base64,{img_base64}" style="height: 42px; vertical-align: middle; margin-right: 12px;">' if img_base64 else '🌱'
+    logo_html = f'<img class="login-brand-logo" src="data:image/png;base64,{img_base64}" alt="한국환경공단 로고">' if img_base64 else '<span style="font-size:2rem;">🌱</span>'
     
     st.markdown(f"""
-        <div style="background-color: #FFFFFF; border: 1.5px solid #E2E8F0; padding: 18px 30px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 45px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
-            <div style="display: flex; align-items: center;">
-                {logo_html}
-                <span style="font-size: 1.5rem; font-weight: 800; color: #1E293B; letter-spacing: -0.5px;">한국환경공단</span>
-                <span style="font-size: 1rem; color: #64748B; margin-left: 14px; border-left: 2px solid #CBD5E1; padding-left: 14px; font-weight: 600;">수도권서부환경본부 환경시설관리처</span>
+        <div class="login-brand-bar">
+            {logo_html}
+            <div class="login-brand-text">
+                <span class="login-brand-name">한국환경공단</span>
+                <span class="login-branch-name">수도권서부환경본부 환경시설관리처</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -1266,16 +1416,19 @@ def check_password():
     # --- [좌측 열]: 로그인 입력 카드 (세로 크기 확대) ---
     with col_login:
         st.markdown("""
-            <div style="background: white; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 45px 35px; box-shadow: 0 6px 16px rgba(0,0,0,0.05); min-height: 250px; display: flex; flex-direction: column; justify-content: center;">
-                <h3 style="color: #007A33; margin-top: 0; margin-bottom: 10px; font-size: 2rem; font-weight: 700;"> 스마트 건설현장 안전관리 시스템 인증</h3>
-                <p style="color: #64748B; font-size: 1.5rem; margin-bottom: 30px;">&nbsp;&nbsp;&nbsp;&nbsp;인증된 사내 감독관만 접근 가능합니다.</p>
-                <div style="background-color: #F8FBF9; border-left: 4px solid #10B981; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 0.88rem; color: #334155; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                    <b>✨ 시스템 안내:</b> 환경시설설치사업 건설현장 통합 안전관리를 위한 계정 로그인이 필요합니다.
+            <div class="login-intro-card">
+                <span class="login-badge">SUPERVISOR LOGIN</span>
+                <h1 class="login-title">스마트 건설현장<br>안전관리 시스템</h1>
+                <p class="login-subtitle">인증된 사내 감독관 전용 서비스입니다.</p>
+                <div class="login-guide">
+                    <b>시스템 안내</b><br>
+                    환경시설 설치사업 건설현장의 안전점검·위험분석·조치이력을 통합 관리합니다.
                 </div>
+            </div>
         """, unsafe_allow_html=True)
 
         st.markdown(
-            "<div style='height: 30px;'></div>", unsafe_allow_html=True
+            "<div style='height: 8px;'></div>", unsafe_allow_html=True
         )
         
         allowed_users = st.secrets.get("passwords", {})
@@ -1297,8 +1450,6 @@ def check_password():
             else:
                 st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
                 
-        st.markdown("</div>", unsafe_allow_html=True)
-
     # --- [우측 열]: 환경시설 이미지 슬라이드쇼 ---
     # 이 구간은 check_password() 함수 내부입니다.
     from pathlib import Path
@@ -1677,7 +1828,7 @@ departments = list(department_sites_map.keys())
 main_tab1, main_tab2, main_tab3 = st.tabs([
     "안전 점검 등록", 
     "부서별 점검 이력 및 대시보드", 
-    "📖 AI 안전 가이드 Q&A (RAG)"
+    "AI 안전 가이드"
 ])
 
 with main_tab1:
