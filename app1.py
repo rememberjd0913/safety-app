@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import streamlit as st
-import streamlit.components.v1 as components
 from streamlit_autorefresh import st_autorefresh
 from google import genai
 import gspread
@@ -17,7 +16,6 @@ from email.header import Header
 from PIL import Image
 import io
 import re
-from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -54,100 +52,6 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
-# ============================================================
-# 휴대폰 기본 후면 카메라 호출용 고화질 촬영 컴포넌트
-# ============================================================
-
-_NATIVE_CAMERA_HTML = r"""<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; padding: 2px; font-family: Arial, sans-serif; background: transparent; }
-    .camera-button {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      width: 100%; min-height: 52px; padding: 12px 16px;
-      border: 0; border-radius: 11px; cursor: pointer;
-      background: linear-gradient(135deg, #007A33, #059669);
-      color: #fff; font-weight: 800; font-size: 16px;
-      box-shadow: 0 3px 9px rgba(0, 122, 51, .22);
-    }
-    input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-    .status { margin: 9px 2px 0; color: #475569; font-size: 13px; line-height: 1.45; }
-    .preview { display: none; width: 100%; max-height: 420px; object-fit: contain;
-      margin-top: 10px; border-radius: 10px; background: #eef2f4; }
-  </style>
-</head>
-<body>
-  <label class="camera-button" for="cameraFile">📷 고화질 카메라 촬영</label>
-  <input id="cameraFile" type="file" accept="image/*" capture="environment">
-  <div id="status" class="status">휴대폰 기본 후면카메라로 촬영합니다.</div>
-  <img id="preview" class="preview" alt="촬영 사진 미리보기">
-  <script>
-    const send = (type, payload = {}) => window.parent.postMessage(
-      Object.assign({isStreamlitMessage: true, type: type}, payload), "*"
-    );
-    const resize = () => send("streamlit:setFrameHeight", {
-      height: Math.max(document.documentElement.scrollHeight, document.body.scrollHeight)
-    });
-    send("streamlit:componentReady", {apiVersion: 1});
-    resize();
-    const input = document.getElementById("cameraFile");
-    const status = document.getElementById("status");
-    const preview = document.getElementById("preview");
-    input.addEventListener("change", () => {
-      const file = input.files && input.files[0];
-      if (!file) return;
-      status.textContent = "촬영 사진을 불러오는 중입니다...";
-      const reader = new FileReader();
-      reader.onload = () => {
-        preview.src = reader.result;
-        preview.style.display = "block";
-        status.textContent = "촬영 사진이 등록되었습니다.";
-        send("streamlit:setComponentValue", {value: {
-          data_url: reader.result,
-          name: file.name || "mobile_camera.jpg",
-          mime_type: file.type || "image/jpeg"
-        }});
-        setTimeout(resize, 100);
-      };
-      reader.onerror = () => { status.textContent = "사진을 불러오지 못했습니다. 다시 촬영해 주세요."; };
-      reader.readAsDataURL(file);
-    });
-  </script>
-</body>
-</html>"""
-
-_native_camera_dir = Path(__file__).resolve().parent / ".native_camera_component"
-_native_camera_dir.mkdir(parents=True, exist_ok=True)
-_native_camera_index = _native_camera_dir / "index.html"
-if not _native_camera_index.exists() or _native_camera_index.read_text(encoding="utf-8") != _NATIVE_CAMERA_HTML:
-    _native_camera_index.write_text(_NATIVE_CAMERA_HTML, encoding="utf-8")
-
-_native_camera_component = components.declare_component(
-    "keco_native_camera",
-    path=str(_native_camera_dir)
-)
-
-
-def native_high_quality_camera(label, key):
-    """휴대폰 기본 카메라 촬영 결과를 UploadedFile과 유사한 BytesIO로 반환."""
-    result = _native_camera_component(label=label, key=key, default=None)
-    if not result or not result.get("data_url"):
-        return None
-    try:
-        _, encoded = result["data_url"].split(",", 1)
-        image_file = io.BytesIO(base64.b64decode(encoded))
-        image_file.name = result.get("name") or "mobile_camera.jpg"
-        image_file.type = result.get("mime_type") or "image/jpeg"
-        image_file.seek(0)
-        return image_file
-    except Exception as exc:
-        st.error(f"고화질 촬영 사진을 불러오지 못했습니다: {exc}")
-        return None
 
 # ============================================================
 # 1. 기본 텍스트 정리
@@ -1259,7 +1163,7 @@ st.markdown("""
         font-size: 1rem !important;
         box-shadow: 0 3px 8px rgba(0, 122, 51, 0.2) !important;
     }
-    /* 사진 첨부 영역과 Upload/파일 찾기 버튼 가독성 */
+    /* 사진 첨부 영역과 Browse files/파일 찾기 버튼 가독성 */
     div[data-testid="stFileUploader"] section {
         background: #FFFFFF !important;
         border: 2px dashed #83B99A !important;
@@ -1273,7 +1177,7 @@ st.markdown("""
         -webkit-text-fill-color: #334155 !important;
         opacity: 1 !important;
     }
-    div[data-testid="stFileUploader"] section button {
+    div[data-testid="stFileUploader"] button {
         min-width: 126px !important;
         min-height: 42px !important;
         background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
@@ -1285,8 +1189,8 @@ st.markdown("""
         box-shadow: 0 3px 8px rgba(0, 122, 51, 0.18) !important;
         opacity: 1 !important;
     }
-    div[data-testid="stFileUploader"] section button span,
-    div[data-testid="stFileUploader"] section button p {
+    div[data-testid="stFileUploader"] button span,
+    div[data-testid="stFileUploader"] button p {
         color: #FFFFFF !important;
         -webkit-text-fill-color: #FFFFFF !important;
         opacity: 1 !important;
@@ -2002,11 +1906,11 @@ with main_tab1:
         col_b, col_a = st.columns(2)
         
         with col_b:
-            st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 또는 고화질 촬영")
+            st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 또는 실시간 촬영")
             
             input_mode_b = st.radio(
                 "조치 전 입력 방식 선택", 
-                ["파일 업로드(앨범/PC)", "고화질 카메라 촬영"], 
+                ["파일 업로드(앨범/PC)", "현장 실시간 카메라 촬영"], 
                 key=f"mode_b_{idx}",
                 horizontal=True
             )
@@ -2023,10 +1927,18 @@ with main_tab1:
                 if uploaded_files:
                     before_img_files.extend(uploaded_files)
             else:
-                st.caption("휴대폰 기본 후면카메라를 호출하여 원본 화질로 촬영합니다.")
-                cam_file = native_high_quality_camera(
-                    f"#{idx} 조치 전 고화질 촬영",
-                    key=f"before_cam_{idx}"
+                st.info(
+                    "📱 아래 녹색 ‘Browse files(파일 찾기/파일 선택)’ 버튼을 누르세요. "
+                    "그다음 휴대폰 메뉴에서 ‘카메라’ 또는 ‘사진 촬영’을 선택하면 됩니다."
+                )
+                # st.camera_input은 브라우저 카메라 권한에 따라 차단될 수 있으므로,
+                # 모바일 운영체제의 기본 카메라/사진 선택창을 이용합니다.
+                cam_file = st.file_uploader(
+                    f"📷 #{idx} 조치 전 사진 촬영 또는 선택",
+                    type=["jpg", "jpeg", "png"],
+                    accept_multiple_files=False,
+                    key=f"before_mobile_camera_{idx}",
+                    help="휴대폰에서는 카메라 촬영 또는 사진 보관함을 선택할 수 있습니다."
                 )
                 if cam_file is not None:
                     before_img_files.append(cam_file)
@@ -2061,11 +1973,11 @@ with main_tab1:
                     """, unsafe_allow_html=True)
 
         with col_a:
-            st.markdown("##### 🟢 조치 후 (After) - 다중 선택 또는 고화질 촬영")
+            st.markdown("##### 🟢 조치 후 (After) - 다중 선택 또는 실시간 촬영")
             
             input_mode_a = st.radio(
                 "조치 후 입력 방식 선택", 
-                ["파일 업로드(앨범/PC)", "고화질 카메라 촬영"], 
+                ["파일 업로드(앨범/PC)", "현장 실시간 카메라 촬영"], 
                 key=f"mode_a_{idx}",
                 horizontal=True
             )
@@ -2082,10 +1994,16 @@ with main_tab1:
                 if uploaded_after:
                     after_img_files.extend(uploaded_after)
             else:
-                st.caption("휴대폰 기본 후면카메라를 호출하여 원본 화질로 촬영합니다.")
-                cam_file_after = native_high_quality_camera(
-                    f"#{idx} 조치 후 고화질 촬영",
-                    key=f"after_cam_{idx}"
+                st.info(
+                    "📱 아래 녹색 ‘Browse files(파일 찾기/파일 선택)’ 버튼을 누르세요. "
+                    "그다음 휴대폰 메뉴에서 ‘카메라’ 또는 ‘사진 촬영’을 선택하면 됩니다."
+                )
+                cam_file_after = st.file_uploader(
+                    f"📷 #{idx} 조치 후 사진 촬영 또는 선택",
+                    type=["jpg", "jpeg", "png"],
+                    accept_multiple_files=False,
+                    key=f"after_mobile_camera_{idx}",
+                    help="휴대폰에서는 카메라 촬영 또는 사진 보관함을 선택할 수 있습니다."
                 )
                 if cam_file_after is not None:
                     after_img_files.append(cam_file_after)
