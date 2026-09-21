@@ -1163,7 +1163,7 @@ st.markdown("""
         font-size: 1rem !important;
         box-shadow: 0 3px 8px rgba(0, 122, 51, 0.2) !important;
     }
-    /* 사진 첨부 영역과 Browse files/파일 찾기 버튼 가독성 */
+    /* 사진 첨부 영역과 Upload/파일 찾기 버튼 가독성 */
     div[data-testid="stFileUploader"] section {
         background: #FFFFFF !important;
         border: 2px dashed #83B99A !important;
@@ -1177,7 +1177,7 @@ st.markdown("""
         -webkit-text-fill-color: #334155 !important;
         opacity: 1 !important;
     }
-    div[data-testid="stFileUploader"] button {
+    div[data-testid="stFileUploader"] section button {
         min-width: 126px !important;
         min-height: 42px !important;
         background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
@@ -1189,8 +1189,8 @@ st.markdown("""
         box-shadow: 0 3px 8px rgba(0, 122, 51, 0.18) !important;
         opacity: 1 !important;
     }
-    div[data-testid="stFileUploader"] button span,
-    div[data-testid="stFileUploader"] button p {
+    div[data-testid="stFileUploader"] section button span,
+    div[data-testid="stFileUploader"] section button p {
         color: #FFFFFF !important;
         -webkit-text-fill-color: #FFFFFF !important;
         opacity: 1 !important;
@@ -1928,17 +1928,12 @@ with main_tab1:
                     before_img_files.extend(uploaded_files)
             else:
                 st.info(
-                    "📱 아래 녹색 ‘Browse files(파일 찾기/파일 선택)’ 버튼을 누르세요. "
-                    "그다음 휴대폰 메뉴에서 ‘카메라’ 또는 ‘사진 촬영’을 선택하면 됩니다."
+                    "📷 카메라가 표시되지 않으면 카카오톡 등 앱 내부 화면이 아닌 "
+                    "Chrome 또는 Safari에서 접속하고, 해당 사이트의 카메라 권한을 ‘허용’하세요."
                 )
-                # st.camera_input은 브라우저 카메라 권한에 따라 차단될 수 있으므로,
-                # 모바일 운영체제의 기본 카메라/사진 선택창을 이용합니다.
-                cam_file = st.file_uploader(
-                    f"📷 #{idx} 조치 전 사진 촬영 또는 선택",
-                    type=["jpg", "jpeg", "png"],
-                    accept_multiple_files=False,
-                    key=f"before_mobile_camera_{idx}",
-                    help="휴대폰에서는 카메라 촬영 또는 사진 보관함을 선택할 수 있습니다."
+                cam_file = st.camera_input(
+                    f"📷 #{idx} 조치 전 현장 카메라",
+                    key=f"before_cam_{idx}"
                 )
                 if cam_file is not None:
                     before_img_files.append(cam_file)
@@ -1995,15 +1990,12 @@ with main_tab1:
                     after_img_files.extend(uploaded_after)
             else:
                 st.info(
-                    "📱 아래 녹색 ‘Browse files(파일 찾기/파일 선택)’ 버튼을 누르세요. "
-                    "그다음 휴대폰 메뉴에서 ‘카메라’ 또는 ‘사진 촬영’을 선택하면 됩니다."
+                    "📷 카메라가 표시되지 않으면 카카오톡 등 앱 내부 화면이 아닌 "
+                    "Chrome 또는 Safari에서 접속하고, 해당 사이트의 카메라 권한을 ‘허용’하세요."
                 )
-                cam_file_after = st.file_uploader(
-                    f"📷 #{idx} 조치 후 사진 촬영 또는 선택",
-                    type=["jpg", "jpeg", "png"],
-                    accept_multiple_files=False,
-                    key=f"after_mobile_camera_{idx}",
-                    help="휴대폰에서는 카메라 촬영 또는 사진 보관함을 선택할 수 있습니다."
+                cam_file_after = st.camera_input(
+                    f"📷 #{idx} 조치 후 현장 카메라",
+                    key=f"after_cam_{idx}"
                 )
                 if cam_file_after is not None:
                     after_img_files.append(cam_file_after)
