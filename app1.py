@@ -962,6 +962,14 @@ st.markdown("""
     html, body, [data-testid="stAppViewContainer"] {
         color: #1E293B !important;
     }
+    /* 밝은 배경에서 Streamlit 테마의 흰색 글자가 남지 않도록 본문 색상 고정 */
+    [data-testid="stAppViewContainer"] .stMarkdown,
+    [data-testid="stAppViewContainer"] .stMarkdown p,
+    [data-testid="stAppViewContainer"] .stMarkdown li,
+    [data-testid="stAppViewContainer"] [data-testid="stCaptionContainer"],
+    [data-testid="stAppViewContainer"] [data-testid="stWidgetLabel"] p {
+        color: #1E293B !important;
+    }
     .stMarkdown, p, div, span, label {
         word-break: keep-all !important;
         white-space: normal !important;
@@ -1080,26 +1088,40 @@ div.stTabs [data-baseweb="tab-list"] {
 
     /* 개별 탭 기본 스타일 (부드러운 전환 효과 추가) */
     div.stTabs [data-baseweb="tab"] {
-        background-color: transparent !important;
-        border-radius: 0px !important;
+        background-color: #E8F1EC !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 10px 10px 0 0 !important;
         padding: 10px 16px !important;
         font-weight: 600;
-        color: #64748B;
+        color: #334155 !important;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
+    }
+    div.stTabs [data-baseweb="tab"] p,
+    div.stTabs [data-baseweb="tab"] span {
+        color: #334155 !important;
+        opacity: 1 !important;
+        -webkit-text-fill-color: #334155 !important;
     }
 
     /* 마우스를 올렸을 때(Hover) 살짝 위로 떠오르는 애니메이션 효과 */
     div.stTabs [data-baseweb="tab"]:hover {
         color: #059669 !important;
+        background-color: #DDF3E7 !important;
         transform: translateY(-2px);
     }
 
     /* 선택된 탭: 배경색 변경 없이, 글자색이 초록색으로 변하고 아래에 초록색 바 표시 */
     div.stTabs [aria-selected="true"] {
-        background-color: transparent !important;
-        color: #059669 !important;
+        background-color: #FFFFFF !important;
+        color: #006B2D !important;
         font-weight: 700 !important;
+    }
+    div.stTabs [aria-selected="true"] p,
+    div.stTabs [aria-selected="true"] span {
+        color: #006B2D !important;
+        opacity: 1 !important;
+        -webkit-text-fill-color: #006B2D !important;
     }
 
     /* 선택된 탭 밑줄 애니메이션 포인트 (초록색 바) */
@@ -1722,6 +1744,10 @@ with main_tab1:
                 if uploaded_files:
                     before_img_files.extend(uploaded_files)
             else:
+                st.info(
+                    "📷 최초 1회는 브라우저의 카메라 사용 확인창에서 "
+                    "‘허용’을 눌러야 합니다. 이후에는 같은 브라우저에서 바로 촬영됩니다."
+                )
                 cam_file = st.camera_input(f"#{idx} 조치 전 현장 촬영", key=f"before_cam_{idx}")
                 if cam_file is not None:
                     before_img_files.append(cam_file)
@@ -1777,6 +1803,10 @@ with main_tab1:
                 if uploaded_after:
                     after_img_files.extend(uploaded_after)
             else:
+                st.info(
+                    "📷 최초 1회는 브라우저의 카메라 사용 확인창에서 "
+                    "‘허용’을 눌러야 합니다. 이후에는 같은 브라우저에서 바로 촬영됩니다."
+                )
                 cam_file_after = st.camera_input(f"#{idx} 조치 후 현장 촬영", key=f"after_cam_{idx}")
                 if cam_file_after is not None:
                     after_img_files.append(cam_file_after)
@@ -1817,7 +1847,10 @@ with main_tab1:
             form_data[idx] = {
                 "before_files": before_img_files if before_img_files else [],
                 "after_files": after_img_files if after_img_files else [],
-                "desc": desc.strip(),
+                "desc": (
+                    f"[조치 전] {desc_before.strip() or '내용 없음'}\n"
+                    f"[조치 후] {desc_after.strip() or '내용 없음'}"
+                ),
                 "ai_analysis": "\n".join(ai_summary_list) if ai_summary_list else "분석 미실행",
                 "coord_x": c_info['x'] if c_info else None,
                 "coord_y": c_info['y'] if c_info else None
