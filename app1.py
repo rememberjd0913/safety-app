@@ -32,19 +32,21 @@ st.set_page_config(
     page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 점검 시스템",
     page_icon="puru_guru.png",
     layout="wide",
-    initial_sidebar_state="expanded"
+    # 데스크톱은 필요 시 펼치고, 모바일은 본문 폭을 확보하도록 자동 처리
+    initial_sidebar_state="auto"
 )
 
 st.markdown(
     """
     <style>
         [data-testid="block-container"] {
-            max-width: 800px !important;  /* 원하는 중간 크기 (1100px ~ 1300px 조절 가능) */
+            width: 100% !important;
+            max-width: 1180px !important;
             margin: auto !important;       /* 양옆 여백을 균등하게 중앙 정렬 */
             padding-top: 2rem;
             padding-bottom: 2rem;
-            padding-left: 3rem;
-            padding-right: 3rem;
+            padding-left: clamp(1rem, 4vw, 3rem);
+            padding-right: clamp(1rem, 4vw, 3rem);
         }
     </style>
 """,
@@ -1117,6 +1119,98 @@ div.stTabs [data-baseweb="tab-list"] {
         from { transform: scaleX(0); }
         to { transform: scaleX(1); }
     }
+
+    /* 반응형 UI: 태블릿 및 휴대폰 */
+    *, *::before, *::after { box-sizing: border-box; }
+    img, video, canvas, svg { max-width: 100% !important; height: auto; }
+    [data-testid="stAppViewContainer"], [data-testid="stMain"],
+    [data-testid="block-container"] { overflow-x: hidden !important; }
+    div[data-testid="stDataFrame"], div[data-testid="stTable"], .stTable {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 768px) {
+        html { font-size: 15px; }
+        [data-testid="block-container"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0.75rem 0.75rem 2rem !important;
+        }
+        div[data-testid="stHorizontalBlock"] {
+            flex-direction: column !important;
+            gap: 0.75rem !important;
+        }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 0 !important;
+        }
+        .keco-header { padding: 16px 12px !important; border-radius: 12px !important; }
+        .keco-header h2 { font-size: 1.18rem !important; line-height: 1.45 !important; }
+        .keco-header p { font-size: 0.82rem !important; line-height: 1.45 !important; }
+        .top-status-bar {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 6px !important;
+            padding: 12px !important;
+            font-size: 0.84rem !important;
+        }
+        .mascot-banner, .mascot-card, .select-card, .analysis-box, .item-card {
+            padding: 12px !important;
+            border-radius: 10px !important;
+            overflow-wrap: anywhere !important;
+        }
+        div.stTabs [data-baseweb="tab-list"] {
+            overflow-x: auto !important;
+            flex-wrap: nowrap !important;
+            gap: 4px !important;
+            scrollbar-width: thin;
+        }
+        div.stTabs [data-baseweb="tab"] {
+            flex: 0 0 auto !important;
+            padding: 9px 10px !important;
+            font-size: 0.82rem !important;
+            white-space: nowrap !important;
+        }
+        div.stButton > button, div[data-testid="stDownloadButton"] > button {
+            width: 100% !important;
+            min-height: 46px !important;
+            height: auto !important;
+            padding: 10px 12px !important;
+            white-space: normal !important;
+            line-height: 1.35 !important;
+        }
+        div[data-testid="stFileUploader"] section {
+            min-height: 92px !important;
+            padding: 10px !important;
+        }
+        div[data-testid="stFileUploader"] section > div { min-width: 0 !important; }
+        div[data-testid="stCameraInput"] video { width: 100% !important; }
+        div[data-testid="stRadio"] [role="radiogroup"] {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 6px !important;
+        }
+        textarea, input, [data-baseweb="select"] {
+            max-width: 100% !important;
+            font-size: 16px !important;
+        }
+        h1 { font-size: 1.55rem !important; }
+        h2 { font-size: 1.30rem !important; }
+        h3 { font-size: 1.15rem !important; }
+        h4 { font-size: 1.02rem !important; }
+    }
+    @media (max-width: 420px) {
+        [data-testid="block-container"] {
+            padding-left: 0.6rem !important;
+            padding-right: 0.6rem !important;
+        }
+        .keco-header h2 { font-size: 1.05rem !important; }
+        .top-status-bar { font-size: 0.80rem !important; }
+    }
 """, unsafe_allow_html=True)
 
 
@@ -1169,7 +1263,7 @@ def check_password():
         
         st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
         
-        if st.button("로그인", use_container_width=True):
+        if st.button("로그인", width="stretch"):
             user_id_clean = str(user_id).strip()
             user_pw_clean = str(user_pw).strip()
             allowed_users_str = {str(k): str(v) for k, v in allowed_users.items()}
@@ -1228,7 +1322,7 @@ def check_password():
                     <div style="
                         overflow: hidden;
                         border-radius: 12px;
-                        height: 500px;
+                        height: clamp(230px, 48vw, 500px);
                         background-color: #F1F5F9;
                     ">
                         <img
@@ -1314,7 +1408,7 @@ st.sidebar.markdown(
 )
 
 st.sidebar.markdown("---")
-if st.sidebar.button("🔓 로그아웃", use_container_width=True):
+if st.sidebar.button("🔓 로그아웃", width="stretch"):
     st.session_state["password_correct"] = False
     st.rerun()
 
@@ -1637,9 +1731,9 @@ with main_tab1:
                 cols = st.columns(2)
                 for img_i, img_f in enumerate(before_img_files):
                     with cols[img_i % 2]:
-                        st.image(img_f, caption=f"조치 전 #{img_i+1}", use_container_width=True)
+                        st.image(img_f, caption=f"조치 전 #{img_i+1}", width="stretch")
                 
-                if st.button(f"🔍 [항목 #{idx}] 조치 전 사진 전체 AI 분석", key=f"btn_ai_{idx}", use_container_width=True):
+                if st.button(f"🔍 [항목 #{idx}] 조치 전 사진 전체 AI 분석", key=f"btn_ai_{idx}", width="stretch"):
                     with st.spinner("푸루 AI가 조치 전 사진들의 위험요인을 분석 중..."):
                         if idx not in st.session_state.ai_results:
                             st.session_state.ai_results[idx] = {}
@@ -1692,7 +1786,7 @@ with main_tab1:
                 cols = st.columns(2)
                 for img_i, img_f in enumerate(after_img_files):
                     with cols[img_i % 2]:
-                        st.image(img_f, caption=f"조치 후 #{img_i+1}", use_container_width=True)
+                        st.image(img_f, caption=f"조치 후 #{img_i+1}", width="stretch")
 
 # 조치 전 / 조치 후 입력을 위해 좌우로 2분할 
         col_before, col_after = st.columns(2)
@@ -1730,13 +1824,13 @@ with main_tab1:
             }
             
 # 1. '점검 항목 추가하기' 버튼을 상단에 가로로 꽉 차게 배치
-    if st.button("➕ 점검 항목 추가하기", use_container_width=True):
+    if st.button("➕ 점검 항목 추가하기", width="stretch"):
         st.session_state.item_count += 1
         st.rerun()
 
     # 2. '마지막 항목 삭제' 버튼 (항목이 2개 이상일 때만 표시되며, 이 역시 가로로 꽉 차게 하거나 깔끔하게 배치)
     if st.session_state.item_count > 1:
-        if st.button("➖ 마지막 항목 삭제", use_container_width=True):
+        if st.button("➖ 마지막 항목 삭제", width="stretch"):
             last_idx = st.session_state.item_count
             if last_idx in st.session_state.ai_results:
                 del st.session_state.ai_results[last_idx]
@@ -1748,7 +1842,7 @@ with main_tab1:
 
     st.markdown("---")
 
-    if st.button(f"💾 [{selected_dept} {selected_site}] 전체 점검 내역 저장, 이메일 전송 및 완료", use_container_width=True):
+    if st.button(f"💾 [{selected_dept} {selected_site}] 전체 점검 내역 저장, 이메일 전송 및 완료", width="stretch"):
         if not form_data:
             st.warning("⚠️ 최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
         else:
@@ -1854,7 +1948,7 @@ with main_tab2:
                     margin=dict(t=10, b=10, l=10, r=10),
                     showlegend=True if "점검 부서" in df.columns else False
                 )
-                st.plotly_chart(fig_bar, use_container_width=True)
+                st.plotly_chart(fig_bar, width="stretch", config={"responsive": True})
 
         with col_b:
             st.markdown("##### ⚠️ 주요 사고 유형별 비율")
@@ -1887,13 +1981,13 @@ with main_tab2:
                     margin=dict(t=10, b=10, l=10, r=10),
                     legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
                 )
-                st.plotly_chart(fig_pie, use_container_width=True)
+                st.plotly_chart(fig_pie, width="stretch", config={"responsive": True})
             else:
                 st.info("데이터가 부족하여 사고 유형 분석을 표시할 수 없습니다.")
 
         st.markdown("---")
         st.markdown("##### 📋 전체 점검 이력 원본 데이터")
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width="stretch")
     else:
         st.info("📝 아직 구글 시트에 저장된 점검 이력이 없습니다. [안전 점검 등록] 탭에서 첫 점검을 완료해 보세요.")
 
