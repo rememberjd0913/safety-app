@@ -1896,10 +1896,18 @@ with main_tab1:
                     before_img_files.extend(uploaded_files)
             else:
                 st.info(
-                    "📷 최초 1회는 브라우저의 카메라 사용 확인창에서 "
-                    "‘허용’을 눌러야 합니다. 이후에는 같은 브라우저에서 바로 촬영됩니다."
+                    "📱 아래 ‘사진 촬영’ 버튼을 누른 뒤 휴대폰 메뉴에서 "
+                    "‘카메라’ 또는 ‘사진 촬영’을 선택하세요."
                 )
-                cam_file = st.camera_input(f"#{idx} 조치 전 현장 촬영", key=f"before_cam_{idx}")
+                # st.camera_input은 브라우저 카메라 권한에 따라 차단될 수 있으므로,
+                # 모바일 운영체제의 기본 카메라/사진 선택창을 이용합니다.
+                cam_file = st.file_uploader(
+                    f"📷 #{idx} 조치 전 사진 촬영",
+                    type=["jpg", "jpeg", "png"],
+                    accept_multiple_files=False,
+                    key=f"before_mobile_camera_{idx}",
+                    help="휴대폰에서는 카메라 촬영 또는 사진 보관함을 선택할 수 있습니다."
+                )
                 if cam_file is not None:
                     before_img_files.append(cam_file)
             
@@ -1955,10 +1963,16 @@ with main_tab1:
                     after_img_files.extend(uploaded_after)
             else:
                 st.info(
-                    "📷 최초 1회는 브라우저의 카메라 사용 확인창에서 "
-                    "‘허용’을 눌러야 합니다. 이후에는 같은 브라우저에서 바로 촬영됩니다."
+                    "📱 아래 ‘사진 촬영’ 버튼을 누른 뒤 휴대폰 메뉴에서 "
+                    "‘카메라’ 또는 ‘사진 촬영’을 선택하세요."
                 )
-                cam_file_after = st.camera_input(f"#{idx} 조치 후 현장 촬영", key=f"after_cam_{idx}")
+                cam_file_after = st.file_uploader(
+                    f"📷 #{idx} 조치 후 사진 촬영",
+                    type=["jpg", "jpeg", "png"],
+                    accept_multiple_files=False,
+                    key=f"after_mobile_camera_{idx}",
+                    help="휴대폰에서는 카메라 촬영 또는 사진 보관함을 선택할 수 있습니다."
+                )
                 if cam_file_after is not None:
                     after_img_files.append(cam_file_after)
 
