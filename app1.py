@@ -2080,8 +2080,7 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
         """
 
         for k, v in form_data.items():
-            loc_str = f"📍 도면 위치(X:{v['coord_x']}, Y:{v['coord_y']})<br>" if v.get('coord_x') is not None else ""
-            body_html += f"<p><b>[항목 #{k}]</b><br>{loc_str}• 조치 내용: {v['desc']}<br>• AI 분석: {v['ai_analysis'].replace(chr(10), '<br>')}</p>"
+            body_html += f"<p><b>[항목 #{k}]</b><br>• 조치 내용: {v['desc']}<br>• AI 분석: {v['ai_analysis'].replace(chr(10), '<br>')}</p>"
 
         msg.attach(MIMEText(body_html, 'html', 'utf-8'))
 
@@ -2205,8 +2204,6 @@ if "item_count" not in st.session_state:
 if "ai_results" not in st.session_state:
     st.session_state.ai_results = {}
 
-if "item_coords" not in st.session_state:
-    st.session_state.item_coords = {}  # {idx: {"x": x, "y": y}}
 
 
 # --- 5. 헤더 UI 및 상단 실시간 시계 바 ---
@@ -2295,12 +2292,10 @@ with main_tab1:
     form_data = {}
 
     for idx in range(1, st.session_state.item_count + 1):
-        coord_info = st.session_state.item_coords.get(idx)
-        coord_badge = f"📍 도면 좌표 지정됨 (X: {coord_info['x']}, Y: {coord_info['y']})" if coord_info else "📍 도면 위치 미지정 (상단 [실시간 도면 검측 뷰어] 탭에서 지정 가능)"
 
         st.markdown(f"""
             <div class="item-card">
-                <h4 style="margin-top:0; color:#007A33;">🔹 [점검 항목 #{idx}] <span style="font-size:0.8rem; color:#64748B; font-weight:normal;">({coord_badge})</span></h4>
+                <h4 style="margin-top:0; color:#007A33;">🔹 [점검 항목 #{idx}]</h4>
         """, unsafe_allow_html=True)
         
 # ✅ 아래 부분이 올바른 들여쓰기(스페이스 8칸)로 정렬되어야 합니다.
@@ -2427,7 +2422,6 @@ with main_tab1:
                 for img_i, res_text in st.session_state.ai_results[idx].items():
                     ai_summary_list.append(f"(사진#{img_i}) {res_text}")
             
-            c_info = st.session_state.item_coords.get(idx)
             form_data[idx] = {
                 "before_files": before_img_files if before_img_files else [],
                 "after_files": after_img_files if after_img_files else [],
@@ -2436,8 +2430,6 @@ with main_tab1:
                     f"[조치 후] {desc_after.strip() or '내용 없음'}"
                 ),
                 "ai_analysis": "\n".join(ai_summary_list) if ai_summary_list else "분석 미실행",
-                "coord_x": c_info['x'] if c_info else None,
-                "coord_y": c_info['y'] if c_info else None
             }
             
 # 1. '점검 항목 추가하기' 버튼을 상단에 가로로 꽉 차게 배치
@@ -2451,9 +2443,6 @@ with main_tab1:
             last_idx = st.session_state.item_count
             if last_idx in st.session_state.ai_results:
                 del st.session_state.ai_results[last_idx]
-            # (만약 item_coords 관련 코드를 완전히 지우셨다면 아래 2줄은 생략하셔도 됩니다)
-            if 'item_coords' in st.session_state and last_idx in st.session_state.item_coords:
-                del st.session_state.item_coords[last_idx]
             st.session_state.item_count -= 1
             st.rerun()
 
@@ -2486,14 +2475,13 @@ with main_tab1:
                         if saved_path: 
                             a_paths.append(saved_path)
 
-                    coord_txt = f"핀좌표(X:{v['coord_x']}, Y:{v['coord_y']})" if v.get('coord_x') is not None else "좌표미지정"
-                    path_text = f"[항목#{k} | {coord_txt}] 전:{len(b_paths)}장, 후:{len(a_paths)}장"
+                    path_text = f"[항목#{k}] 전:{len(b_paths)}장, 후:{len(a_paths)}장"
                     if b_paths or a_paths: 
                         combined_files_path = b_paths + a_paths
                         path_text += f" (경로: {', '.join(combined_files_path)})"
                     
                     all_photo_paths.append(path_text)
-                    details.append(f"[항목 #{k}] {coord_txt}, 전:{len(v['before_files'])}장, 후:{len(v['after_files'])}장 ({v['desc'][:10]})")
+                    details.append(f"[항목 #{k}] 전:{len(v['before_files'])}장, 후:{len(v['after_files'])}장 ({v['desc'][:10]})")
                 
                 combined_ai = "\n\n".join(all_ai_summaries) if all_ai_summaries else "조치 전 AI 분석 미실행"
                 combined_detail = " | ".join(details)
