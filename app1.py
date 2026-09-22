@@ -16,6 +16,8 @@ from email.header import Header
 from PIL import Image
 import io
 import re
+import hashlib
+import json
 from pathlib import Path
 import pandas as pd
 import plotly.express as px
@@ -2045,7 +2047,99 @@ def save_image_to_internal_network(uploaded_file, folder_path, prefix):
         st.error(f"내부망 폴더 사진 저장 실패: {e}")
         return None
 
-def send_inspection_email(dept_name, site_name, inspector_id, form_data):
+def inspection_file_bytes(file):
+    """사진 읽기 위치를 보존하여 화면·저장·이메일에서 함께 사용."""
+    if hasattr(file, "getvalue"):
+        return file.getvalue()
+    position = file.tell()
+    try:
+        file.seek(0)
+        return file.read()
+    finally:
+        file.seek(position)
+
+
+def inspection_report_key(dept, site, inspector, items):
+    payload = [str(dept), str(site), str(inspector)]
+    for idx, item in items.items():
+        payload.append([idx, item.get("desc_before", ""), item.get("desc_after", ""),
+                        item.get("ai_analysis", ""),
+                        [[hashlib.sha256(inspection_file_bytes(f)).hexdigest()
+                          for f in item.get(key, [])]
+                         for key in ("before_files", "after_files")]])
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False).encode()).hexdigest()
+
+
+def generate_inspection_hwpx(dept, site, inspector, items):
+    """실제 사진을 포함한 항목별 한글 보고서. 업로드 원본은 변경하지 않음."""
+    from PIL import ImageOps
+    if not items:
+        raise ValueError("사진 또는 설명을 입력한 점검 항목이 없습니다.")
+    doc = HwpxDocument.new()
+    if not hasattr(doc, "add_picture"):
+        raise RuntimeError("사진 보고서 생성에는 python-hwpx 업데이트가 필요합니다.")
+    # HWPUNIT: 1 inch = 7200. A4 및 상하좌우 18 mm 여백.
+    ns = {"hp": "http://www.hancom.co.kr/hwpml/2011/paragraph"}
+    page = doc.sections[0].element.find(".//hp:pagePr", ns)
+    if page is not None:
+        page.set("width", "59528")
+        page.set("height", "84189")
+        margin = page.find("hp:margin", ns)
+        if margin is not None:
+            for side in ("left", "right", "top", "bottom"):
+                margin.set(side, "5102")
+
+    def paragraph(text, *, size=10, bold=False, new_page=False):
+        # 줄별 문단 생성으로 긴 설명·AI 분석의 자연스러운 페이지 흐름 보장
+        for line_number, line in enumerate(str(text).splitlines() or [""]):
+            p = doc.add_paragraph("", pageBreak="1" if new_page and line_number == 0 else "0")
+            p.add_run(line, font="맑은 고딕", size=size, bold=bold)
+
+    created = datetime.datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M")
+    paragraph("현장 안전점검 및 조치 결과 보고서", size=18, bold=True)
+    paragraph("한국환경공단 수도권서부환경본부 환경시설관리처", size=11)
+    paragraph(f"담당 부서: {dept}  |  점검 현장: {site}")
+    paragraph(f"작성자 사번: {inspector}  |  보고서 생성: {created}")
+    paragraph(f"점검 항목: {len(items)}건")
+
+    for order, (idx, item) in enumerate(items.items()):
+        paragraph(f"점검 항목 {idx}", size=14, bold=True, new_page=order > 0)
+        paragraph("1. 조치 전 내용", size=11, bold=True)
+        paragraph(item.get("desc_before") or "내용 없음")
+        paragraph("2. 조치 후 내용", size=11, bold=True)
+        paragraph(item.get("desc_after") or "내용 없음")
+        paragraph("3. 조치 전·후 사진", size=11, bold=True)
+        before = item.get("before_files", [])
+        after = item.get("after_files", [])
+        for number in range(max(len(before), len(after), 1)):
+            if number:
+                paragraph(f"점검 항목 {idx} · 사진 계속", size=12, bold=True, new_page=True)
+            for label, files in (("조치 전", before), ("조치 후", after)):
+                paragraph(f"{label} 사진 {number + 1}", bold=True)
+                if number >= len(files):
+                    paragraph("해당 번호 사진 없음")
+                    continue
+                try:
+                    with Image.open(io.BytesIO(inspection_file_bytes(files[number]))) as original:
+                        photo = ImageOps.exif_transpose(original).convert("RGB")
+                        photo.thumbnail((1800, 1800))
+                        scale = min(155 / photo.width, 65 / photo.height)
+                        picture = io.BytesIO()
+                        photo.save(picture, format="JPEG", quality=90)
+                        doc.add_picture(picture.getvalue(), "jpg",
+                                        width_mm=photo.width * scale,
+                                        height_mm=photo.height * scale, align="CENTER")
+                except Exception as exc:
+                    raise ValueError(f"항목 {idx} {label} 사진 {number + 1} 삽입 실패: {exc}") from exc
+        paragraph("4. 조치 전 사진 AI 분석", size=11, bold=True)
+        paragraph(item.get("ai_analysis") or "분석 미실행")
+        paragraph("※ AI 분석은 참고자료이며 최종 판단은 현장 확인 결과에 따릅니다.", size=9)
+    output = io.BytesIO()
+    doc.save_to_stream(output)
+    return output.getvalue()
+
+
+def send_inspection_email(dept_name, site_name, inspector_id, form_data, report_bytes=None, report_name=None):
     try:
         smtp_conf = st.secrets.get("smtp", {})
         smtp_server = smtp_conf.get("server", "smtp.gmail.com")
@@ -2083,6 +2177,11 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data):
             body_html += f"<p><b>[항목 #{k}]</b><br>• 조치 내용: {v['desc']}<br>• AI 분석: {v['ai_analysis'].replace(chr(10), '<br>')}</p>"
 
         msg.attach(MIMEText(body_html, 'html', 'utf-8'))
+
+        if report_bytes:
+            report_part = MIMEApplication(report_bytes, _subtype="vnd.hancom.hwpx")
+            report_part.add_header("Content-Disposition", "attachment", filename=report_name or "안전점검_보고서.hwpx")
+            msg.attach(report_part)
 
         for k, v in form_data.items():
             if 'before_files' in v and v['before_files']:
@@ -2331,6 +2430,11 @@ with main_tab1:
                 if cam_file is not None:
                     before_img_files.append(cam_file)
             
+            photo_fingerprint = tuple(hashlib.sha256(inspection_file_bytes(f)).hexdigest() for f in before_img_files)
+            fingerprint_key = f"before_analysis_fingerprint_{idx}"
+            if st.session_state.get(fingerprint_key) != photo_fingerprint:
+                st.session_state.ai_results.pop(idx, None)
+                st.session_state[fingerprint_key] = photo_fingerprint
             if before_img_files:
                 st.write(f"📷 첨부된 조치 전 사진: **{len(before_img_files)}장**")
                 cols = st.columns(2)
@@ -2423,6 +2527,8 @@ with main_tab1:
                     ai_summary_list.append(f"(사진#{img_i}) {res_text}")
             
             form_data[idx] = {
+                "desc_before": desc_before.strip(),
+                "desc_after": desc_after.strip(),
                 "before_files": before_img_files if before_img_files else [],
                 "after_files": after_img_files if after_img_files else [],
                 "desc": (
@@ -2448,7 +2554,33 @@ with main_tab1:
 
     st.markdown("---")
 
-    if st.button(f"💾 [{selected_dept} {selected_site}] 전체 점검 내역 저장, 이메일 전송 및 완료", width="stretch"):
+    st.subheader("📄 점검 결과 한글 보고서")
+    st.caption("입력한 모든 항목의 조치 전·후 사진, 설명, AI 분석을 한글(HWPX) 파일로 만듭니다.")
+    current_report_key = inspection_report_key(selected_dept, selected_site, logged_user_id, form_data)
+    if st.session_state.get("inspection_report_key") != current_report_key:
+        st.session_state.pop("inspection_report_bytes", None)
+        st.session_state.pop("inspection_report_name", None)
+    if st.button("📄 한글 보고서 생성 / 갱신", disabled=not form_data, width="stretch"):
+        try:
+            with st.spinner("사진과 분석 내용을 한글 보고서로 정리 중입니다..."):
+                report_data = generate_inspection_hwpx(selected_dept, selected_site, logged_user_id, form_data)
+                safe_site = re.sub(r'[\\/:*?"<>|\r\n]', "_", str(selected_site))[:60]
+                report_name = f"안전점검_{safe_site}_{datetime.datetime.now(ZoneInfo('Asia/Seoul')):%Y%m%d_%H%M%S}.hwpx"
+                st.session_state.inspection_report_bytes = report_data
+                st.session_state.inspection_report_name = report_name
+                st.session_state.inspection_report_key = current_report_key
+        except Exception as exc:
+            st.error(f"한글 보고서 생성 실패: {exc}")
+    report_bytes = st.session_state.get("inspection_report_bytes")
+    report_name = st.session_state.get("inspection_report_name")
+    if report_bytes:
+        st.download_button("📥 한글 보고서 다운로드 (.hwpx)", report_bytes,
+                           file_name=report_name, mime="application/vnd.hancom.hwpx", width="stretch")
+        st.caption("아래 저장·전송 버튼을 누르면 이 보고서가 이메일에 함께 첨부됩니다.")
+    else:
+        st.info("저장·전송 전에 한글 보고서를 생성해 주세요. 내용을 변경하면 다시 생성해야 합니다.")
+
+    if st.button(f"💾 [{selected_dept} {selected_site}] 전체 점검 내역 저장, 이메일 전송 및 완료", disabled=not report_bytes, width="stretch"):
         if not form_data:
             st.warning("⚠️ 최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
         else:
@@ -2488,7 +2620,7 @@ with main_tab1:
                 combined_paths_str = " || ".join(all_photo_paths)
                 
                 sheet_success = save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail, logged_user_id, combined_paths_str)
-                email_success, email_msg = send_inspection_email(selected_dept, selected_site, logged_user_id, form_data)
+                email_success, email_msg = send_inspection_email(selected_dept, selected_site, logged_user_id, form_data, report_bytes, report_name)
                 
                 if sheet_success and email_success:
                     st.success(f"🎉 [{selected_dept} {selected_site}] 점검 내역이 구글 시트 기록 및 담당자 메일({mapped_email}) 전송이 완료되었습니다!")
