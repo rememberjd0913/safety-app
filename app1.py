@@ -1061,7 +1061,7 @@ def get_base64_image(image_path):
 
 img_base64 = get_base64_image("Keco_logo.png")
 mascot_base64 = get_base64_image("puru_guru.png")
-splash_bg_base64 = get_base64_image("assets/splash_scan_bg.webp")
+splash_bg_base64 = get_base64_image("assets/splash_scan_bg.png")
 
 # --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
 st.markdown("""
@@ -1201,14 +1201,10 @@ st.markdown("""
         background-image: var(--splash-bg);
         background-position: center;
         background-repeat: no-repeat;
-        background-size: cover;
-        filter: saturate(.92);
+        background-size: contain;
     }
     .keco-splash::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(180deg, rgba(2,18,24,.10), rgba(2,18,24,.08) 55%, rgba(2,18,24,.58));
+        content: none;
     }
     .keco-splash > * {
         position: relative;
@@ -1247,6 +1243,10 @@ st.markdown("""
         letter-spacing: .02em;
     }
     .keco-splash-progress {
+        position: absolute;
+        left: 50%;
+        bottom: max(28px, calc(env(safe-area-inset-bottom) + 20px));
+        transform: translateX(-50%);
         width: min(320px, 76vw);
         height: 7px;
         overflow: hidden;
@@ -1791,19 +1791,12 @@ def check_password():
     # 같은 접속 세션에서 최초 1회만 약 3초간 표시
     if not st.session_state.get("splash_shown", False):
         splash_background = (
-            f"url('data:image/webp;base64,{splash_bg_base64}')"
+            f"url('data:image/png;base64,{splash_bg_base64}')"
             if splash_bg_base64 else "linear-gradient(160deg, #082C31, #06171D)"
         )
         st.markdown(
             f"""
             <div class="keco-splash" style="--splash-bg:{splash_background};">
-                {splash_logo_html}
-                <div class="keco-splash-title">
-                    <strong>AI 안전 점검 시스템</strong>
-                    한국환경공단<br>
-                    수도권서부환경본부 환경시설관리처
-                </div>
-                <div class="keco-splash-loading-text">안전 점검 시스템을 준비하고 있습니다</div>
                 <div class="keco-splash-progress"></div>
             </div>
             """,
