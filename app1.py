@@ -1051,13 +1051,17 @@ def generate_hwpx(title, content):
 # --- Base64 이미지 변환 함수 ---
 def get_base64_image(image_path):
     try:
-        with open(image_path, "rb") as img_file:
+        resolved_path = Path(image_path)
+        if not resolved_path.is_absolute():
+            resolved_path = Path(__file__).resolve().parent / resolved_path
+        with open(resolved_path, "rb") as img_file:
             return base64.b64encode(img_file.read()).decode()
     except Exception:
         return ""
 
 img_base64 = get_base64_image("Keco_logo.png")
 mascot_base64 = get_base64_image("puru_guru.png")
+splash_bg_base64 = get_base64_image("assets/splash_scan_bg.webp")
 
 # --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
 st.markdown("""
@@ -1184,86 +1188,94 @@ st.markdown("""
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 15px;
+        gap: 18px;
         padding: 24px;
         overflow: hidden;
-        background:
-            radial-gradient(circle at 18% 18%, rgba(16,185,129,.13), transparent 28%),
-            radial-gradient(circle at 82% 78%, rgba(14,165,233,.11), transparent 30%),
-            linear-gradient(145deg, #F8FFFB 0%, #F5F9FF 100%);
-        animation: kecoSplashOut 3.35s ease-in-out forwards;
+        background: #061B20;
+        animation: kecoSplashOut 3.2s ease-in-out forwards;
     }
-    .keco-splash-logo {
-        width: min(190px, 48vw) !important;
-        max-height: 82px !important;
-        object-fit: contain;
-        animation: splashLogoIn .65s ease-out both;
-    }
-    .keco-splash-visual {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: min(230px, 62vw);
-        height: min(180px, 46vw);
-    }
-    .keco-splash-visual::before,
-    .keco-splash-visual::after {
+    .keco-splash::before {
         content: "";
         position: absolute;
-        border-radius: 50%;
+        inset: 0;
+        background-image: var(--splash-bg);
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+        filter: saturate(.92);
     }
-    .keco-splash-visual::before {
-        width: 86%; height: 86%;
-        background: rgba(6, 148, 71, .10);
-        animation: splashPulse 1.6s ease-in-out infinite;
+    .keco-splash::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(2,18,24,.10), rgba(2,18,24,.08) 55%, rgba(2,18,24,.58));
     }
-    .keco-splash-visual::after {
-        width: 100%; height: 100%;
-        border: 1px solid rgba(6, 148, 71, .18);
-        animation: splashSpin 6s linear infinite;
-    }
-    .keco-splash-mascot {
+    .keco-splash > * {
         position: relative;
         z-index: 2;
-        width: auto !important;
-        max-width: 82% !important;
-        max-height: 92% !important;
+    }
+    .keco-splash-logo {
+        width: min(150px, 38vw) !important;
+        max-height: 118px !important;
         object-fit: contain;
-        filter: drop-shadow(0 12px 16px rgba(15, 80, 45, .16));
-        animation: mascotFloat 1.8s ease-in-out infinite;
+        padding: 12px;
+        border-radius: 50%;
+        background: rgba(255,255,255,.95);
+        box-shadow: 0 0 0 1px rgba(255,255,255,.38), 0 0 34px rgba(52,211,153,.32);
+        animation: splashLogoIn .65s ease-out both, splashLogoGlow 1.5s ease-in-out infinite;
     }
     .keco-splash-title {
-        color: #123D2B !important;
-        font-size: clamp(1.02rem, 3.5vw, 1.45rem);
+        color: #FFFFFF !important;
+        font-size: clamp(1.05rem, 3.7vw, 1.55rem);
         font-weight: 800;
-        line-height: 1.55;
+        line-height: 1.48;
         letter-spacing: -0.035em;
         text-align: center;
+        text-shadow: 0 3px 14px rgba(0,0,0,.7);
+    }
+    .keco-splash-title strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: clamp(1.5rem, 5vw, 2.15rem);
+        color: #FFFFFF !important;
+    }
+    .keco-splash-loading-text {
+        margin-top: 7vh;
+        color: rgba(255,255,255,.86) !important;
+        font-size: .78rem;
+        font-weight: 650;
+        letter-spacing: .02em;
     }
     .keco-splash-progress {
-        width: min(230px, 60vw);
-        height: 5px;
+        width: min(320px, 76vw);
+        height: 7px;
         overflow: hidden;
         border-radius: 99px;
-        background: #DDEBE3;
+        background: rgba(255,255,255,.20);
+        border: 1px solid rgba(255,255,255,.22);
+        box-shadow: 0 5px 20px rgba(0,0,0,.24);
     }
     .keco-splash-progress::after {
         content: "";
         display: block;
         width: 100%; height: 100%;
         border-radius: inherit;
-        background: linear-gradient(90deg, #007A33, #10B981, #38BDF8);
+        background: linear-gradient(90deg, #84CC16, #10B981, #22D3EE);
         transform-origin: left;
-        animation: splashLoading 2.8s ease-in-out both;
+        box-shadow: 0 0 13px rgba(52,211,153,.85);
+        animation: splashLoading 3s linear both;
     }
     @keyframes kecoSplashOut {
         0%, 86% { opacity: 1; visibility: visible; }
         100% { opacity: 0; visibility: hidden; pointer-events: none; }
     }
     @keyframes splashLogoIn {
-        from { opacity: 0; transform: translateY(-12px); }
+        from { opacity: 0; transform: translateY(-12px) scale(.88); }
         to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes splashLogoGlow {
+        0%, 100% { box-shadow: 0 0 0 1px rgba(255,255,255,.38), 0 0 24px rgba(52,211,153,.22); }
+        50% { box-shadow: 0 0 0 1px rgba(255,255,255,.55), 0 0 42px rgba(52,211,153,.46); }
     }
     @keyframes mascotFloat {
         0%, 100% { transform: translateY(0) rotate(-1deg); }
@@ -1693,7 +1705,7 @@ div.stTabs [data-baseweb="tab-list"] {
             left: 16px; right: 16px; bottom: 16px;
             font-size: 0.96rem;
         }
-        .keco-splash-visual { width: min(210px, 60vw); height: min(160px, 44vw); }
+        .keco-splash-logo { width: min(132px, 34vw) !important; }
         div.stTabs [data-baseweb="tab-list"] {
             overflow: visible !important;
             flex-wrap: nowrap !important;
@@ -1776,22 +1788,22 @@ def check_password():
         f'<img class="keco-splash-logo" src="data:image/png;base64,{img_base64}" alt="한국환경공단 로고">'
         if img_base64 else '<div style="font-size:3.5rem;">🌱</div>'
     )
-    splash_mascot_html = (
-        f'<img class="keco-splash-mascot" src="data:image/png;base64,{mascot_base64}" alt="푸루와 그루">'
-        if mascot_base64 else '<div style="position:relative;z-index:2;font-size:5rem;">🌱</div>'
-    )
-
     # 같은 접속 세션에서 최초 1회만 약 3초간 표시
     if not st.session_state.get("splash_shown", False):
+        splash_background = (
+            f"url('data:image/webp;base64,{splash_bg_base64}')"
+            if splash_bg_base64 else "linear-gradient(160deg, #082C31, #06171D)"
+        )
         st.markdown(
             f"""
-            <div class="keco-splash">
+            <div class="keco-splash" style="--splash-bg:{splash_background};">
                 {splash_logo_html}
-                <div class="keco-splash-visual">{splash_mascot_html}</div>
                 <div class="keco-splash-title">
+                    <strong>AI 안전 점검 시스템</strong>
                     한국환경공단<br>
                     수도권서부환경본부 환경시설관리처
                 </div>
+                <div class="keco-splash-loading-text">안전 점검 시스템을 준비하고 있습니다</div>
                 <div class="keco-splash-progress"></div>
             </div>
             """,
