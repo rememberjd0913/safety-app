@@ -2071,14 +2071,11 @@ def inspection_report_key(dept, site, inspector, items):
 
 
 def generate_inspection_hwpx(dept, site, inspector, items):
-    """실제 사진을 포함한 항목별 한글 보고서. 업로드 원본은 변경하지 않음."""
+    """A4 보고서: 가운데 제목, 기본정보, 조치 전후 비교표, AI 분석."""
     from PIL import ImageOps
     if not items:
         raise ValueError("사진 또는 설명을 입력한 점검 항목이 없습니다.")
     doc = HwpxDocument.new()
-    if not hasattr(doc, "add_picture"):
-        raise RuntimeError("사진 보고서 생성에는 python-hwpx 업데이트가 필요합니다.")
-    # HWPUNIT: 1 inch = 7200. A4 및 상하좌우 18 mm 여백.
     ns = {"hp": "http://www.hancom.co.kr/hwpml/2011/paragraph"}
     page = doc.sections[0].element.find(".//hp:pagePr", ns)
     if page is not None:
@@ -2089,51 +2086,93 @@ def generate_inspection_hwpx(dept, site, inspector, items):
             for side in ("left", "right", "top", "bottom"):
                 margin.set(side, "5102")
 
-    def paragraph(text, *, size=10, bold=False, new_page=False):
-        # 줄별 문단 생성으로 긴 설명·AI 분석의 자연스러운 페이지 흐름 보장
+    # 실제 문단 속성으로 정렬 (공백으로 위치를 맞추지 않음).
+    styles = {}
+    for align in ("LEFT", "CENTER", "RIGHT"):
+        temp = doc.add_paragraph("")
+        doc.set_paragraph_format(paragraph_index=len(doc.paragraphs) - 1,
+                                 alignment=align, line_spacing_percent=135,
+                                 spacing_after_pt=3)
+        styles[align] = temp.element.get("paraPrIDRef")
+        temp.remove()
+
+    def paragraph(text, *, size=10, bold=False, align="LEFT", new_page=False):
         for line_number, line in enumerate(str(text).splitlines() or [""]):
-            p = doc.add_paragraph("", pageBreak="1" if new_page and line_number == 0 else "0")
+            p = doc.add_paragraph("", para_pr_id_ref=styles[align],
+                                  pageBreak="1" if new_page and line_number == 0 else "0")
+            p.add_run(line, font="맑은 고딕", size=size, bold=bold)
+
+    def cell_text(cell, text, *, align="LEFT", bold=False, size=10):
+        cell.set_text("")
+        for index, line in enumerate(str(text).splitlines() or [""]):
+            p = cell.paragraphs[0] if index == 0 else cell.add_paragraph("")
+            p.element.set("paraPrIDRef", styles[align])
             p.add_run(line, font="맑은 고딕", size=size, bold=bold)
 
     created = datetime.datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M")
-    paragraph("현장 안전점검 및 조치 결과 보고서", size=18, bold=True)
-    paragraph("한국환경공단 수도권서부환경본부 환경시설관리처", size=11)
-    paragraph(f"담당 부서: {dept}  |  점검 현장: {site}")
-    paragraph(f"작성자 사번: {inspector}  |  보고서 생성: {created}")
-    paragraph(f"점검 항목: {len(items)}건")
+    paragraph("현장 안전점검 및 조치 결과 보고서", size=20, bold=True, align="CENTER")
+    paragraph("")
+    paragraph(f"◎ 담당부서: {dept}", size=11)
+    # 테두리 없는 1행 표로 현장명과 생성시간을 같은 줄에 배치.
+    info = doc.add_table(rows=1, cols=2, width=49324, height=1700)
+    info.element.set("borderFillIDRef", "2")
+    for col, width in enumerate((30000, 19324)):
+        cell = info.cell(0, col)
+        cell.set_size(width=width, height=1700)
+        cell.element.set("borderFillIDRef", "2")
+    cell_text(info.cell(0, 0), f"◎ 점검현장: {site}", size=10)
+    cell_text(info.cell(0, 1), f"보고서 생성: {created}", size=9, align="RIGHT")
+    paragraph("")
 
     for order, (idx, item) in enumerate(items.items()):
-        paragraph(f"점검 항목 {idx}", size=14, bold=True, new_page=order > 0)
-        paragraph("1. 조치 전 내용", size=11, bold=True)
-        paragraph(item.get("desc_before") or "내용 없음")
-        paragraph("2. 조치 후 내용", size=11, bold=True)
-        paragraph(item.get("desc_after") or "내용 없음")
-        paragraph("3. 조치 전·후 사진", size=11, bold=True)
-        before = item.get("before_files", [])
-        after = item.get("after_files", [])
+        paragraph(f"점검 항목 {idx}", size=13, bold=True, new_page=order > 0)
+        before, after = item.get("before_files", []), item.get("after_files", [])
         for number in range(max(len(before), len(after), 1)):
             if number:
-                paragraph(f"점검 항목 {idx} · 사진 계속", size=12, bold=True, new_page=True)
-            for label, files in (("조치 전", before), ("조치 후", after)):
-                paragraph(f"{label} 사진 {number + 1}", bold=True)
+                paragraph(f"점검 항목 {idx} · 사진 {number + 1}", size=12, bold=True, new_page=True)
+            heights = (2200, 21000, 4500)
+            table = doc.add_table(rows=3, cols=2, width=49324, height=sum(heights))
+            table.element.set("repeatHeader", "1")
+            for row in range(3):
+                for col in range(2):
+                    table.cell(row, col).set_size(width=24662, height=heights[row])
+            for col, (label, files, description) in enumerate((
+                ("조치 전 내용", before, item.get("desc_before") or "내용 없음"),
+                ("조치 후 내용", after, item.get("desc_after") or "내용 없음"),
+            )):
+                cell_text(table.cell(0, col), label, align="CENTER", bold=True, size=11)
+                photo_cell = table.cell(1, col)
+                cell_text(table.cell(2, col), description)
                 if number >= len(files):
-                    paragraph("해당 번호 사진 없음")
+                    cell_text(photo_cell, "등록된 사진 없음", align="CENTER")
                     continue
                 try:
                     with Image.open(io.BytesIO(inspection_file_bytes(files[number]))) as original:
                         photo = ImageOps.exif_transpose(original).convert("RGB")
-                        photo.thumbnail((1800, 1800))
-                        scale = min(155 / photo.width, 65 / photo.height)
+                        photo.thumbnail((1600, 1600))
+                        scale = min(80 / photo.width, 67 / photo.height)
                         picture = io.BytesIO()
                         photo.save(picture, format="JPEG", quality=90)
-                        doc.add_picture(picture.getvalue(), "jpg",
-                                        width_mm=photo.width * scale,
-                                        height_mm=photo.height * scale, align="CENTER")
+                        obj = doc.add_picture(picture.getvalue(), "jpg",
+                                              width_mm=photo.width * scale,
+                                              height_mm=photo.height * scale, align="CENTER")
+                    # add_picture가 만든 그림 문단을 해당 표 셀 안으로 이동.
+                    picture_p = obj.element
+                    while picture_p.tag != "{%s}p" % ns["hp"]:
+                        picture_p = picture_p.getparent()
+                    picture_p.set("paraPrIDRef", styles["CENTER"])
+                    sublist = photo_cell.element.find("hp:subList", ns)
+                    for child in list(sublist):
+                        sublist.remove(child)
+                    sublist.append(picture_p)
                 except Exception as exc:
                     raise ValueError(f"항목 {idx} {label} 사진 {number + 1} 삽입 실패: {exc}") from exc
-        paragraph("4. 조치 전 사진 AI 분석", size=11, bold=True)
-        paragraph(item.get("ai_analysis") or "분석 미실행")
-        paragraph("※ AI 분석은 참고자료이며 최종 판단은 현장 확인 결과에 따릅니다.", size=9)
+            paragraph("")
+        analysis = str(item.get("ai_analysis") or "").strip()
+        if analysis and analysis != "분석 미실행":
+            paragraph("조치 전 사진 AI 분석 결과", size=11, bold=True)
+            paragraph(analysis)
+            paragraph("※ AI 분석은 참고자료이며 최종 판단은 현장 확인 결과에 따릅니다.", size=9)
     output = io.BytesIO()
     doc.save_to_stream(output)
     return output.getvalue()
