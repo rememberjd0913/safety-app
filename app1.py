@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh
+import streamlit.components.v1 as components
 from google import genai
 import gspread
 from google.oauth2.service_account import Credentials
@@ -16,6 +16,7 @@ from email.header import Header
 from PIL import Image
 import io
 import re
+from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -52,6 +53,107 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
+# ============================================================
+# 휴대폰 기본 후면 카메라 호출용 고화질 촬영 컴포넌트
+# ============================================================
+
+_NATIVE_CAMERA_HTML = r"""<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 2px; font-family: Arial, sans-serif; background: transparent; }
+    .camera-button {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; min-height: 52px; padding: 12px 16px;
+      border: 0; border-radius: 11px; cursor: pointer;
+      background: linear-gradient(135deg, #007A33, #059669);
+      color: #fff; font-weight: 800; font-size: 16px;
+      box-shadow: 0 3px 9px rgba(0, 122, 51, .22);
+    }
+    input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .status { margin: 9px 2px 0; color: #475569; font-size: 13px; line-height: 1.45; }
+    .preview { display: none; width: 100%; max-height: 420px; object-fit: contain;
+      margin-top: 10px; border-radius: 10px; background: #eef2f4; }
+  </style>
+</head>
+<body>
+  <label class="camera-button" for="cameraFile">📷 고화질 카메라 촬영</label>
+  <input id="cameraFile" type="file" accept="image/*" capture="environment">
+  <div id="status" class="status">휴대폰 기본 후면카메라로 촬영합니다.</div>
+  <img id="preview" class="preview" alt="촬영 사진 미리보기">
+  <script>
+    const send = (type, payload = {}) => window.parent.postMessage(
+      Object.assign({isStreamlitMessage: true, type: type}, payload), "*"
+    );
+    const resize = () => send("streamlit:setFrameHeight", {
+      height: Math.max(document.documentElement.scrollHeight, document.body.scrollHeight)
+    });
+    const input = document.getElementById("cameraFile");
+    const status = document.getElementById("status");
+    const preview = document.getElementById("preview");
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      status.textContent = "촬영 사진을 불러오는 중입니다...";
+      const reader = new FileReader();
+      reader.onload = () => {
+        preview.src = reader.result;
+        preview.style.display = "block";
+        status.textContent = "촬영 사진이 등록되었습니다.";
+        send("streamlit:setComponentValue", {value: {
+          data_url: reader.result,
+          name: file.name || "mobile_camera.jpg",
+          mime_type: file.type || "image/jpeg"
+        }});
+        setTimeout(resize, 100);
+      };
+      reader.onerror = () => { status.textContent = "사진을 불러오지 못했습니다. 다시 촬영해 주세요."; };
+      reader.readAsDataURL(file);
+    });
+    window.addEventListener("load", () => {
+      send("streamlit:componentReady", {apiVersion: 1});
+      setTimeout(resize, 50);
+    });
+    window.addEventListener("message", event => {
+      if (event.data && event.data.type === "streamlit:render") {
+        setTimeout(resize, 20);
+      }
+    });
+  </script>
+</body>
+</html>"""
+
+_native_camera_dir = Path(__file__).resolve().parent / "native_camera_component"
+_native_camera_dir.mkdir(parents=True, exist_ok=True)
+_native_camera_index = _native_camera_dir / "index.html"
+if not _native_camera_index.exists() or _native_camera_index.read_text(encoding="utf-8") != _NATIVE_CAMERA_HTML:
+    _native_camera_index.write_text(_NATIVE_CAMERA_HTML, encoding="utf-8")
+
+_native_camera_component = components.declare_component(
+    "keco_native_camera",
+    path=str(_native_camera_dir)
+)
+
+
+def native_high_quality_camera(label, key):
+    """휴대폰 기본 카메라 촬영 결과를 UploadedFile과 유사한 BytesIO로 반환."""
+    result = _native_camera_component(label=label, key=key, default=None)
+    if not result or not result.get("data_url"):
+        return None
+    try:
+        _, encoded = result["data_url"].split(",", 1)
+        image_file = io.BytesIO(base64.b64decode(encoded))
+        image_file.name = result.get("name") or "mobile_camera.jpg"
+        image_file.type = result.get("mime_type") or "image/jpeg"
+        image_file.seek(0)
+        return image_file
+    except Exception as exc:
+        st.error(f"고화질 촬영 사진을 불러오지 못했습니다: {exc}")
+        return None
 
 # ============================================================
 # 1. 기본 텍스트 정리
@@ -1071,6 +1173,113 @@ st.markdown("""
         font-size: 0.86rem;
         line-height: 1.5;
     }
+    /* 앱 시작 스플래시 화면 */
+    .keco-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        padding: 24px;
+        background: #F8FAFC;
+        animation: kecoSplashOut 1.35s ease-in-out forwards;
+    }
+    .keco-splash img {
+        width: min(210px, 52vw) !important;
+        max-height: 135px !important;
+        object-fit: contain;
+    }
+    .keco-splash-title {
+        color: #123D2B !important;
+        font-size: clamp(1.02rem, 3.5vw, 1.45rem);
+        font-weight: 800;
+        line-height: 1.55;
+        letter-spacing: -0.035em;
+        text-align: center;
+    }
+    .keco-splash-line {
+        width: 46px;
+        height: 4px;
+        border-radius: 99px;
+        background: #079447;
+    }
+    @keyframes kecoSplashOut {
+        0%, 70% { opacity: 1; visibility: visible; }
+        100% { opacity: 0; visibility: hidden; pointer-events: none; }
+    }
+
+    /* 중앙형 로그인 화면 */
+    .login-page-heading {
+        text-align: center;
+        margin: 6px 0 24px;
+    }
+    .login-page-logo {
+        width: min(180px, 45vw) !important;
+        max-height: 90px !important;
+        object-fit: contain;
+        margin-bottom: 18px;
+    }
+    .login-page-title {
+        margin: 0 !important;
+        color: #173C2C !important;
+        font-size: clamp(1.55rem, 4vw, 2.15rem) !important;
+        line-height: 1.28 !important;
+        letter-spacing: -0.045em;
+        font-weight: 850 !important;
+    }
+    .login-page-title span {
+        color: #07813A !important;
+    }
+    .login-page-subtitle {
+        margin: 10px 0 0 !important;
+        color: #64748B !important;
+        font-size: 0.92rem !important;
+        line-height: 1.5 !important;
+    }
+    .login-org-name {
+        margin-top: 22px;
+        padding-top: 16px;
+        border-top: 1px solid #E2E8F0;
+        color: #52645C !important;
+        font-size: 0.82rem;
+        font-weight: 650;
+        line-height: 1.5;
+        text-align: center;
+    }
+    div[data-testid="stForm"] {
+        background: #FFFFFF !important;
+        border: 1px solid #DCE7E0 !important;
+        border-radius: 18px !important;
+        padding: 24px 24px 18px !important;
+        box-shadow: 0 12px 35px rgba(19, 78, 50, 0.09) !important;
+    }
+    div[data-testid="stForm"] div[data-baseweb="input"] {
+        background: #F8FAFC !important;
+        border-color: #D6E1DA !important;
+        border-radius: 10px !important;
+    }
+    div[data-testid="stForm"] input {
+        min-height: 46px !important;
+    }
+    div[data-testid="stFormSubmitButton"] button {
+        width: 100% !important;
+        min-height: 48px !important;
+        margin-top: 8px !important;
+        border: 0 !important;
+        border-radius: 10px !important;
+        background: linear-gradient(135deg, #007A33, #059669) !important;
+        color: #FFFFFF !important;
+        font-size: 1rem !important;
+        font-weight: 800 !important;
+        box-shadow: 0 4px 12px rgba(0, 122, 51, 0.2) !important;
+    }
+    div[data-testid="stFormSubmitButton"] button p {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+    }
     .keco-header {
         background: linear-gradient(135deg, #007A33 0%, #10B981 100%);
         padding: 22px 18px;
@@ -1163,7 +1372,7 @@ st.markdown("""
         font-size: 1rem !important;
         box-shadow: 0 3px 8px rgba(0, 122, 51, 0.2) !important;
     }
-    /* 사진 첨부 영역과 Browse files/파일 찾기 버튼 가독성 */
+    /* 사진 첨부 영역과 Upload/파일 찾기 버튼 가독성 */
     div[data-testid="stFileUploader"] section {
         background: #FFFFFF !important;
         border: 2px dashed #83B99A !important;
@@ -1177,7 +1386,7 @@ st.markdown("""
         -webkit-text-fill-color: #334155 !important;
         opacity: 1 !important;
     }
-    div[data-testid="stFileUploader"] button {
+    div[data-testid="stFileUploader"] section button {
         min-width: 126px !important;
         min-height: 42px !important;
         background: linear-gradient(135deg, #007A33 0%, #059669 100%) !important;
@@ -1189,8 +1398,8 @@ st.markdown("""
         box-shadow: 0 3px 8px rgba(0, 122, 51, 0.18) !important;
         opacity: 1 !important;
     }
-    div[data-testid="stFileUploader"] button span,
-    div[data-testid="stFileUploader"] button p {
+    div[data-testid="stFileUploader"] section button span,
+    div[data-testid="stFileUploader"] section button p {
         color: #FFFFFF !important;
         -webkit-text-fill-color: #FFFFFF !important;
         opacity: 1 !important;
@@ -1351,6 +1560,14 @@ div.stTabs [data-baseweb="tab-list"] {
             margin-bottom: 14px !important;
         }
         .login-guide { font-size: 0.8rem; padding: 10px 11px; }
+        .login-page-heading { margin-top: 2px; margin-bottom: 16px; }
+        .login-page-logo { max-height: 72px !important; margin-bottom: 13px; }
+        .login-page-title { font-size: 1.48rem !important; }
+        .login-page-subtitle { font-size: 0.84rem !important; }
+        div[data-testid="stForm"] {
+            padding: 19px 16px 15px !important;
+            border-radius: 14px !important;
+        }
         div.stTabs [data-baseweb="tab-list"] {
             overflow: visible !important;
             flex-wrap: nowrap !important;
@@ -1419,151 +1636,90 @@ div.stTabs [data-baseweb="tab-list"] {
 
 
 # ==========================================
-# 🔒 [보안] 감독관 로그인 제어 게이트웨이 (상하 간격 및 높이 확대 버전)
+# 🔒 감독관 로그인: 1초 스플래시 + 중앙형 로그인
 # ==========================================
 def check_password():
     if st.session_state.get("password_correct", False):
         return True
 
-    # 1. 자동 새로고침 설정 (우측 슬라이드쇼 4초 간격 전환)
-    from streamlit_autorefresh import st_autorefresh
-    st_autorefresh(interval=4000, key="login_slide_refresh")
+    logo_html = (
+        f'<img src="data:image/png;base64,{img_base64}" alt="한국환경공단 로고">'
+        if img_base64 else '<div style="font-size:4rem;">🌱</div>'
+    )
 
-    # 2. 한국환경공단 공식 스타일 상단 헤더 바
-    logo_html = f'<img class="login-brand-logo" src="data:image/png;base64,{img_base64}" alt="한국환경공단 로고">' if img_base64 else '<span style="font-size:2rem;">🌱</span>'
-    
-    st.markdown(f"""
-        <div class="login-brand-bar">
-            {logo_html}
-            <div class="login-brand-text">
-                <span class="login-brand-name">한국환경공단</span>
-                <span class="login-branch-name">수도권서부환경본부 환경시설관리처</span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # 3. 메인 2열 레이아웃 (좌측: 로그인 폼 / 우측: 환경 시설 슬라이드쇼)
-    col_login, col_slide = st.columns([1, 1.1], gap="large")
-
-    # --- [좌측 열]: 로그인 입력 카드 (세로 크기 확대) ---
-    with col_login:
-        st.markdown("""
-            <div class="login-intro-card">
-                <span class="login-badge">SUPERVISOR LOGIN</span>
-                <h1 class="login-title">스마트 건설현장<br>안전관리 시스템</h1>
-                <p class="login-subtitle">인증된 사내 감독관 전용 서비스입니다.</p>
-                <div class="login-guide">
-                    <b>시스템 안내</b><br>
-                    환경시설 설치사업 건설현장의 안전점검·위험분석·조치이력을 통합 관리합니다.
+    # 같은 접속 세션에서 최초 1회만 약 1초간 표시
+    if not st.session_state.get("splash_shown", False):
+        st.markdown(
+            f"""
+            <div class="keco-splash">
+                {logo_html}
+                <div class="keco-splash-line"></div>
+                <div class="keco-splash-title">
+                    한국환경공단<br>
+                    수도권서부환경본부 환경시설관리처
                 </div>
             </div>
-        """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True,
+        )
+        st.session_state["splash_shown"] = True
+
+    _, login_col, _ = st.columns([1, 1.15, 1], gap="large")
+
+    with login_col:
+        st.markdown(
+            f"""
+            <div class="login-page-heading">
+                {logo_html.replace('<img ', '<img class="login-page-logo" ')}
+                <h1 class="login-page-title">스마트 건설현장<br><span>안전관리 시스템</span></h1>
+                <p class="login-page-subtitle">인증된 사내 감독관 전용 서비스입니다.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        allowed_users = st.secrets.get("passwords", {})
+
+        with st.form("supervisor_login_form", clear_on_submit=False):
+            user_id = st.text_input(
+                "감독관 ID(사번)",
+                placeholder="사번을 입력하세요",
+                key="username_input",
+            )
+            user_pw = st.text_input(
+                "비밀번호",
+                type="password",
+                placeholder="비밀번호를 입력하세요",
+                key="password_input",
+            )
+            submitted = st.form_submit_button("로그인", width="stretch")
 
         st.markdown(
-            "<div style='height: 8px;'></div>", unsafe_allow_html=True
+            """
+            <div class="login-org-name">
+                한국환경공단 수도권서부환경본부<br>
+                환경시설관리처
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        
-        allowed_users = st.secrets.get("passwords", {})
-        
-        user_id = st.text_input("👤 감독관 ID (사번)", key="username_input")
-        user_pw = st.text_input("🔑 비밀번호", type="password", key="password_input")
-        
-        st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
-        
-        if st.button("로그인", width="stretch"):
+
+        if submitted:
             user_id_clean = str(user_id).strip()
             user_pw_clean = str(user_pw).strip()
             allowed_users_str = {str(k): str(v) for k, v in allowed_users.items()}
-            
-            if user_id_clean in allowed_users_str and allowed_users_str[user_id_clean] == user_pw_clean:
+
+            if not user_id_clean or not user_pw_clean:
+                st.warning("사번과 비밀번호를 모두 입력해 주세요.")
+            elif (
+                user_id_clean in allowed_users_str
+                and allowed_users_str[user_id_clean] == user_pw_clean
+            ):
                 st.session_state["password_correct"] = True
                 st.session_state["logged_user"] = user_id_clean
                 st.rerun()
             else:
-                st.error("❌ 아이디 또는 비밀번호가 올바르지 않습니다.")
-                
-    # --- [우측 열]: 환경시설 이미지 슬라이드쇼 ---
-    # 이 구간은 check_password() 함수 내부입니다.
-    from pathlib import Path
-    import base64
-
-    with col_slide:
-        image_dir = Path(__file__).resolve().parent / "images"
-
-        slide_images = [
-            (image_dir / "bto.png.png", "BTO 사업"),
-            (image_dir / "incineration.png.png", "소각시설"),
-            (image_dir / "sewage.png.png", "하수처리시설"),
-            (image_dir / "livestock.png.png", "가축분뇨처리시설"),
-        ]
-
-        if "slide_index" not in st.session_state:
-            st.session_state["slide_index"] = 0
-        else:
-            st.session_state["slide_index"] = (
-                st.session_state["slide_index"] + 1
-            ) % len(slide_images)
-
-        current_img_path, current_caption = slide_images[
-            st.session_state["slide_index"]
-        ]
-
-        if current_img_path.is_file():
-            # 로컬 사진을 HTML에서도 표시할 수 있도록 변환
-            image_base64 = base64.b64encode(
-                current_img_path.read_bytes()
-            ).decode("utf-8")
-
-            st.markdown(
-                f"""
-                <div style="
-                    background: white;
-                    border: 1.5px solid #E2E8F0;
-                    border-radius: 16px;
-                    padding: 20px;
-                    box-shadow: 0 6px 16px rgba(0,0,0,0.05);
-                    text-align: center;
-                ">
-                    <div style="
-                        overflow: hidden;
-                        border-radius: 12px;
-                        height: clamp(230px, 48vw, 500px);
-                        background-color: #F1F5F9;
-                    ">
-                        <img
-                            src="data:image/png;base64,{image_base64}"
-                            alt="{current_caption}"
-                            style="
-                                width: 100%;
-                                height: 100%;
-                                object-fit: cover;
-                                object-position: center;
-                                display: block;
-                            "
-                        >
-                    </div>
-                    <div style="
-                        margin-top: 14px;
-                        font-size: 18px;
-                        font-weight: 700;
-                        color: #1E293B;
-                    ">
-                        {current_caption}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        else:
-            st.warning(
-                f"사진 파일을 확인해 주세요: images/{current_img_path.name}"
-            )
-
-    # 하단 여백 — check_password() 함수 내부
-    st.markdown(
-        "<div style='height: 40px;'></div>",
-        unsafe_allow_html=True,
-    )
+                st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
 
     return False
 
@@ -1906,11 +2062,11 @@ with main_tab1:
         col_b, col_a = st.columns(2)
         
         with col_b:
-            st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 또는 실시간 촬영")
+            st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 또는 고화질 촬영")
             
             input_mode_b = st.radio(
                 "조치 전 입력 방식 선택", 
-                ["파일 업로드(앨범/PC)", "현장 실시간 카메라 촬영"], 
+                ["파일 업로드(앨범/PC)", "고화질 카메라 촬영"], 
                 key=f"mode_b_{idx}",
                 horizontal=True
             )
@@ -1927,18 +2083,10 @@ with main_tab1:
                 if uploaded_files:
                     before_img_files.extend(uploaded_files)
             else:
-                st.info(
-                    "📱 아래 녹색 ‘Browse files(파일 찾기/파일 선택)’ 버튼을 누르세요. "
-                    "그다음 휴대폰 메뉴에서 ‘카메라’ 또는 ‘사진 촬영’을 선택하면 됩니다."
-                )
-                # st.camera_input은 브라우저 카메라 권한에 따라 차단될 수 있으므로,
-                # 모바일 운영체제의 기본 카메라/사진 선택창을 이용합니다.
-                cam_file = st.file_uploader(
-                    f"📷 #{idx} 조치 전 사진 촬영 또는 선택",
-                    type=["jpg", "jpeg", "png"],
-                    accept_multiple_files=False,
-                    key=f"before_mobile_camera_{idx}",
-                    help="휴대폰에서는 카메라 촬영 또는 사진 보관함을 선택할 수 있습니다."
+                st.caption("휴대폰 기본 후면카메라를 호출하여 원본 화질로 촬영합니다.")
+                cam_file = native_high_quality_camera(
+                    f"#{idx} 조치 전 고화질 촬영",
+                    key=f"before_cam_{idx}"
                 )
                 if cam_file is not None:
                     before_img_files.append(cam_file)
@@ -1973,11 +2121,11 @@ with main_tab1:
                     """, unsafe_allow_html=True)
 
         with col_a:
-            st.markdown("##### 🟢 조치 후 (After) - 다중 선택 또는 실시간 촬영")
+            st.markdown("##### 🟢 조치 후 (After) - 다중 선택 또는 고화질 촬영")
             
             input_mode_a = st.radio(
                 "조치 후 입력 방식 선택", 
-                ["파일 업로드(앨범/PC)", "현장 실시간 카메라 촬영"], 
+                ["파일 업로드(앨범/PC)", "고화질 카메라 촬영"], 
                 key=f"mode_a_{idx}",
                 horizontal=True
             )
@@ -1994,16 +2142,10 @@ with main_tab1:
                 if uploaded_after:
                     after_img_files.extend(uploaded_after)
             else:
-                st.info(
-                    "📱 아래 녹색 ‘Browse files(파일 찾기/파일 선택)’ 버튼을 누르세요. "
-                    "그다음 휴대폰 메뉴에서 ‘카메라’ 또는 ‘사진 촬영’을 선택하면 됩니다."
-                )
-                cam_file_after = st.file_uploader(
-                    f"📷 #{idx} 조치 후 사진 촬영 또는 선택",
-                    type=["jpg", "jpeg", "png"],
-                    accept_multiple_files=False,
-                    key=f"after_mobile_camera_{idx}",
-                    help="휴대폰에서는 카메라 촬영 또는 사진 보관함을 선택할 수 있습니다."
+                st.caption("휴대폰 기본 후면카메라를 호출하여 원본 화질로 촬영합니다.")
+                cam_file_after = native_high_quality_camera(
+                    f"#{idx} 조치 후 고화질 촬영",
+                    key=f"after_cam_{idx}"
                 )
                 if cam_file_after is not None:
                     after_img_files.append(cam_file_after)
