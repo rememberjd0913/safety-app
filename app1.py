@@ -1057,6 +1057,7 @@ def get_base64_image(image_path):
         return ""
 
 img_base64 = get_base64_image("Keco_logo.png")
+mascot_base64 = get_base64_image("puru_guru.png")
 
 # --- 커스텀 CSS (모바일 & 다크모드 가독성 완벽 대응) ---
 st.markdown("""
@@ -1182,15 +1183,54 @@ st.markdown("""
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 22px;
+        gap: 15px;
         padding: 24px;
-        background: #F8FAFC;
-        animation: kecoSplashOut 1.35s ease-in-out forwards;
+        overflow: hidden;
+        background:
+            radial-gradient(circle at 18% 18%, rgba(16,185,129,.13), transparent 28%),
+            radial-gradient(circle at 82% 78%, rgba(14,165,233,.11), transparent 30%),
+            linear-gradient(145deg, #F8FFFB 0%, #F5F9FF 100%);
+        animation: kecoSplashOut 3.35s ease-in-out forwards;
     }
-    .keco-splash img {
-        width: min(210px, 52vw) !important;
-        max-height: 135px !important;
+    .keco-splash-logo {
+        width: min(190px, 48vw) !important;
+        max-height: 82px !important;
         object-fit: contain;
+        animation: splashLogoIn .65s ease-out both;
+    }
+    .keco-splash-visual {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: min(230px, 62vw);
+        height: min(180px, 46vw);
+    }
+    .keco-splash-visual::before,
+    .keco-splash-visual::after {
+        content: "";
+        position: absolute;
+        border-radius: 50%;
+    }
+    .keco-splash-visual::before {
+        width: 86%; height: 86%;
+        background: rgba(6, 148, 71, .10);
+        animation: splashPulse 1.6s ease-in-out infinite;
+    }
+    .keco-splash-visual::after {
+        width: 100%; height: 100%;
+        border: 1px solid rgba(6, 148, 71, .18);
+        animation: splashSpin 6s linear infinite;
+    }
+    .keco-splash-mascot {
+        position: relative;
+        z-index: 2;
+        width: auto !important;
+        max-width: 82% !important;
+        max-height: 92% !important;
+        object-fit: contain;
+        filter: drop-shadow(0 12px 16px rgba(15, 80, 45, .16));
+        animation: mascotFloat 1.8s ease-in-out infinite;
     }
     .keco-splash-title {
         color: #123D2B !important;
@@ -1200,15 +1240,42 @@ st.markdown("""
         letter-spacing: -0.035em;
         text-align: center;
     }
-    .keco-splash-line {
-        width: 46px;
-        height: 4px;
+    .keco-splash-progress {
+        width: min(230px, 60vw);
+        height: 5px;
+        overflow: hidden;
         border-radius: 99px;
-        background: #079447;
+        background: #DDEBE3;
+    }
+    .keco-splash-progress::after {
+        content: "";
+        display: block;
+        width: 100%; height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #007A33, #10B981, #38BDF8);
+        transform-origin: left;
+        animation: splashLoading 2.8s ease-in-out both;
     }
     @keyframes kecoSplashOut {
-        0%, 70% { opacity: 1; visibility: visible; }
+        0%, 86% { opacity: 1; visibility: visible; }
         100% { opacity: 0; visibility: hidden; pointer-events: none; }
+    }
+    @keyframes splashLogoIn {
+        from { opacity: 0; transform: translateY(-12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes mascotFloat {
+        0%, 100% { transform: translateY(0) rotate(-1deg); }
+        50% { transform: translateY(-9px) rotate(1deg); }
+    }
+    @keyframes splashPulse {
+        0%, 100% { transform: scale(.92); opacity: .65; }
+        50% { transform: scale(1.05); opacity: 1; }
+    }
+    @keyframes splashSpin { to { transform: rotate(360deg); } }
+    @keyframes splashLoading {
+        from { transform: scaleX(0); }
+        to { transform: scaleX(1); }
     }
 
     /* 중앙형 로그인 화면 */
@@ -1248,6 +1315,54 @@ st.markdown("""
         font-weight: 650;
         line-height: 1.5;
         text-align: center;
+    }
+    .login-photo-panel {
+        position: relative;
+        width: 100%;
+        min-height: 575px;
+        overflow: hidden;
+        border: 1px solid #DCE7E0;
+        border-radius: 22px;
+        background: #EAF2ED;
+        box-shadow: 0 14px 38px rgba(19, 78, 50, .12);
+    }
+    .login-slide {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        animation: loginPhotoSlide 16s infinite;
+    }
+    .login-slide:nth-child(1) { animation-delay: 0s; }
+    .login-slide:nth-child(2) { animation-delay: 4s; }
+    .login-slide:nth-child(3) { animation-delay: 8s; }
+    .login-slide:nth-child(4) { animation-delay: 12s; }
+    .login-slide img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        display: block;
+    }
+    .login-slide::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, transparent 48%, rgba(5, 25, 16, .72) 100%);
+    }
+    .login-slide-caption {
+        position: absolute;
+        z-index: 2;
+        left: 24px;
+        right: 24px;
+        bottom: 24px;
+        color: #FFFFFF !important;
+        font-size: 1.16rem;
+        font-weight: 800;
+        text-shadow: 0 2px 8px rgba(0,0,0,.35);
+    }
+    @keyframes loginPhotoSlide {
+        0% { opacity: 0; transform: scale(1.035); }
+        5%, 22% { opacity: 1; transform: scale(1); }
+        27%, 100% { opacity: 0; transform: scale(1); }
     }
     div[data-testid="stForm"] {
         background: #FFFFFF !important;
@@ -1568,6 +1683,16 @@ div.stTabs [data-baseweb="tab-list"] {
             padding: 19px 16px 15px !important;
             border-radius: 14px !important;
         }
+        .login-photo-panel {
+            min-height: 300px;
+            margin-top: 8px;
+            border-radius: 15px;
+        }
+        .login-slide-caption {
+            left: 16px; right: 16px; bottom: 16px;
+            font-size: 0.96rem;
+        }
+        .keco-splash-visual { width: min(210px, 60vw); height: min(160px, 44vw); }
         div.stTabs [data-baseweb="tab-list"] {
             overflow: visible !important;
             flex-wrap: nowrap !important;
@@ -1636,7 +1761,7 @@ div.stTabs [data-baseweb="tab-list"] {
 
 
 # ==========================================
-# 🔒 감독관 로그인: 1초 스플래시 + 중앙형 로그인
+# 🔒 감독관 로그인: 3초 모션 스플래시 + 현장사진 로그인
 # ==========================================
 def check_password():
     if st.session_state.get("password_correct", False):
@@ -1646,25 +1771,57 @@ def check_password():
         f'<img src="data:image/png;base64,{img_base64}" alt="한국환경공단 로고">'
         if img_base64 else '<div style="font-size:4rem;">🌱</div>'
     )
+    splash_logo_html = (
+        f'<img class="keco-splash-logo" src="data:image/png;base64,{img_base64}" alt="한국환경공단 로고">'
+        if img_base64 else '<div style="font-size:3.5rem;">🌱</div>'
+    )
+    splash_mascot_html = (
+        f'<img class="keco-splash-mascot" src="data:image/png;base64,{mascot_base64}" alt="푸루와 그루">'
+        if mascot_base64 else '<div style="position:relative;z-index:2;font-size:5rem;">🌱</div>'
+    )
 
-    # 같은 접속 세션에서 최초 1회만 약 1초간 표시
+    # 같은 접속 세션에서 최초 1회만 약 3초간 표시
     if not st.session_state.get("splash_shown", False):
         st.markdown(
             f"""
             <div class="keco-splash">
-                {logo_html}
-                <div class="keco-splash-line"></div>
+                {splash_logo_html}
+                <div class="keco-splash-visual">{splash_mascot_html}</div>
                 <div class="keco-splash-title">
                     한국환경공단<br>
                     수도권서부환경본부 환경시설관리처
                 </div>
+                <div class="keco-splash-progress"></div>
             </div>
             """,
             unsafe_allow_html=True,
         )
         st.session_state["splash_shown"] = True
 
-    _, login_col, _ = st.columns([1, 1.15, 1], gap="large")
+    # 로그인 우측 현장사진: 파일명이 .png 또는 .png.png인 경우 모두 대응
+    image_dir = Path(__file__).resolve().parent / "images"
+    slide_specs = [
+        (["bto.png", "bto.png.png"], "BTO 환경시설사업"),
+        (["incineration.png", "incineration.png.png"], "소각시설 설치사업"),
+        (["sewage.png", "sewage.png.png"], "공공하수처리시설"),
+        (["livestock.png", "livestock.png.png"], "가축분뇨처리시설"),
+    ]
+    slide_items = []
+    for file_candidates, caption in slide_specs:
+        image_path = next(
+            (image_dir / name for name in file_candidates if (image_dir / name).is_file()),
+            None,
+        )
+        if image_path:
+            encoded = base64.b64encode(image_path.read_bytes()).decode("utf-8")
+            slide_items.append(
+                f'<div class="login-slide">'
+                f'<img src="data:image/png;base64,{encoded}" alt="{caption}">'
+                f'<div class="login-slide-caption">{caption}</div>'
+                f'</div>'
+            )
+
+    login_col, photo_col = st.columns([0.92, 1.08], gap="large")
 
     with login_col:
         st.markdown(
@@ -1720,6 +1877,25 @@ def check_password():
                 st.rerun()
             else:
                 st.error("아이디 또는 비밀번호가 올바르지 않습니다.")
+
+    with photo_col:
+        if slide_items:
+            st.markdown(
+                f'<div class="login-photo-panel">{"".join(slide_items)}</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                """
+                <div class="login-photo-panel" style="display:flex;align-items:center;justify-content:center;">
+                    <div style="text-align:center;color:#52645C;padding:24px;">
+                        <div style="font-size:3rem;margin-bottom:12px;">🌿</div>
+                        환경시설 현장사진
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     return False
 
