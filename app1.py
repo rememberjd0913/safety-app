@@ -1781,6 +1781,72 @@ def check_password():
     if st.session_state.get("password_correct", False):
         return True
 
+    # 로그인 화면에만 적용되는 모바일 전용 압축 레이아웃 (PC는 유지)
+    st.markdown("""
+    <style>
+    @media (max-width: 768px) {
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 0.75rem !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+        [data-testid="stVerticalBlock"] { gap: 0.6rem !important; }
+        [data-testid="stHorizontalBlock"] {
+            flex-direction: column !important;
+            gap: 0.6rem !important;
+        }
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"],
+        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+            width: 100% !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+        }
+        .login-brand-bar {
+            padding: 10px 12px !important;
+            margin: 0 0 10px !important;
+        }
+        .login-brand-logo { height: 36px !important; }
+        .login-page-heading { margin: 0 0 6px !important; }
+        .login-page-title {
+            font-size: clamp(13px, 4.1vw, 22px) !important;
+            white-space: nowrap !important;
+            line-height: 1.35 !important;
+            padding: 0 !important;
+            letter-spacing: -0.045em !important;
+        }
+        .login-page-title br { display: none !important; }
+        .login-page-title span { white-space: nowrap !important; }
+        .login-page-title span::before { content: " "; }
+        .login-page-subtitle {
+            font-size: 0.75rem !important;
+            margin-top: 5px !important;
+        }
+        div[data-testid="stForm"] { padding: 12px !important; }
+        div[data-testid="stForm"] input {
+            min-height: 40px !important;
+            font-size: 16px !important;
+        }
+        div[data-testid="stFormSubmitButton"] button {
+            min-height: 44px !important;
+            margin-top: 2px !important;
+        }
+        .login-photo-panel {
+            min-height: 0 !important;
+            height: clamp(120px, 23vh, 180px) !important;
+            height: clamp(120px, 23svh, 180px) !important;
+            margin-top: 0 !important;
+            border-radius: 12px !important;
+        }
+        .login-slide-caption {
+            left: 12px !important;
+            bottom: 10px !important;
+            font-size: 0.82rem !important;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     logo_html = (
         f'<img src="data:image/png;base64,{img_base64}" alt="한국환경공단 로고">'
         if img_base64 else '<div style="font-size:4rem;">🌱</div>'
