@@ -1093,43 +1093,44 @@ st.markdown("""
     /* 로그인 첫 화면 */
     .login-brand-bar {
         width: 100%;
+        box-sizing: border-box;
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 18px;
         background: #FFFFFF;
         border: 1px solid #DCE6E0;
-        border-radius: 16px;
-        padding: 16px 22px;
-        margin-bottom: 28px;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+        border-radius: 18px;
+        padding: 18px 24px;
+        margin: 4px 0 22px;
+        box-shadow: 0 10px 28px rgba(19, 78, 50, 0.08);
         overflow: hidden;
     }
     .login-brand-logo {
         width: auto !important;
-        height: 42px !important;
+        height: 58px !important;
+        max-width: 92px !important;
         flex: 0 0 auto;
         object-fit: contain;
     }
     .login-brand-text {
         min-width: 0;
         display: flex;
-        align-items: center;
-        gap: 14px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 3px;
     }
     .login-brand-name {
         color: #183328 !important;
-        font-size: clamp(1.05rem, 2.2vw, 1.45rem);
+        font-size: clamp(1.03rem, 2vw, 1.3rem);
         font-weight: 800;
         letter-spacing: -0.04em;
-        white-space: nowrap !important;
+        line-height: 1.25;
     }
     .login-branch-name {
         color: #52645C !important;
-        font-size: clamp(0.82rem, 1.5vw, 1rem);
+        font-size: clamp(0.78rem, 1.35vw, 0.92rem);
         font-weight: 650;
-        line-height: 1.45;
-        border-left: 2px solid #C7D6CE;
-        padding-left: 14px;
+        line-height: 1.4;
     }
     .login-intro-card {
         background: linear-gradient(145deg, #FFFFFF 0%, #F4FAF6 100%);
@@ -1635,15 +1636,15 @@ div.stTabs [data-baseweb="tab-list"] {
             overflow-wrap: anywhere !important;
         }
         .login-brand-bar {
-            align-items: flex-start;
-            gap: 10px;
-            padding: 13px 12px;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 14px;
             margin-bottom: 16px;
-            border-radius: 12px;
+            border-radius: 14px;
         }
         .login-brand-logo {
-            height: 34px !important;
-            max-width: 70px !important;
+            height: 45px !important;
+            max-width: 72px !important;
         }
         .login-brand-text {
             flex-direction: column;
@@ -1651,12 +1652,12 @@ div.stTabs [data-baseweb="tab-list"] {
             gap: 2px;
         }
         .login-brand-name {
-            font-size: 1.02rem !important;
+            font-size: 0.98rem !important;
             white-space: normal !important;
             line-height: 1.3;
         }
         .login-branch-name {
-            font-size: 0.76rem !important;
+            font-size: 0.73rem !important;
             border-left: 0;
             padding-left: 0;
             line-height: 1.35;
@@ -1826,8 +1827,14 @@ def check_password():
     with login_col:
         st.markdown(
             f"""
+            <div class="login-brand-bar">
+                {logo_html.replace('<img ', '<img class="login-brand-logo" ')}
+                <div class="login-brand-text">
+                    <div class="login-brand-name">한국환경공단</div>
+                    <div class="login-branch-name">수도권서부환경본부 환경시설관리처</div>
+                </div>
+            </div>
             <div class="login-page-heading">
-                {logo_html.replace('<img ', '<img class="login-page-logo" ')}
                 <h1 class="login-page-title">스마트 건설현장<br><span>안전관리 시스템</span></h1>
                 <p class="login-page-subtitle">인증된 사내 감독관 전용 서비스입니다.</p>
             </div>
@@ -1850,16 +1857,6 @@ def check_password():
                 key="password_input",
             )
             submitted = st.form_submit_button("로그인", width="stretch")
-
-        st.markdown(
-            """
-            <div class="login-org-name">
-                한국환경공단 수도권서부환경본부<br>
-                환경시설관리처
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
 
         if submitted:
             user_id_clean = str(user_id).strip()
