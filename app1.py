@@ -31,13 +31,18 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from hwpx import HwpxDocument
 
 # --- 페이지 기본 설정 ---
+# 로그인 화면과 동일한 공단 마크 사용. 실행 위치에 영향받지 않는 절대 경로.
+keco_icon_path = Path(__file__).resolve().parent / "Keco_logo.png"
 st.set_page_config(
     page_title="한국환경공단 수도권서부환경본부 환경시설관리처 | AI 안전 점검 시스템",
-    page_icon="puru_guru.png",
+    page_icon=str(keco_icon_path) if keco_icon_path.is_file() else None,
     layout="wide",
     # 데스크톱은 필요 시 펼치고, 모바일은 본문 폭을 확보하도록 자동 처리
     initial_sidebar_state="auto"
 )
+
+if not keco_icon_path.is_file():
+    st.warning("공단 아이콘 파일이 없습니다. 실행 파일과 같은 폴더에 Keco_logo.png를 넣어 주세요.")
 
 st.markdown(
     """
