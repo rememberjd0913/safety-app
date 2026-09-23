@@ -2179,7 +2179,19 @@ def generate_inspection_hwpx(dept, site, inspector, items):
 
 
 def send_inspection_email(dept_name, site_name, inspector_id, form_data, report_bytes=None, report_name=None):
+    from email import policy
+    from email.parser import BytesParser
+    from email.utils import formataddr, formatdate, make_msgid
+    import zipfile
+
     try:
+        if not isinstance(report_bytes, (bytes, bytearray)) or not report_bytes:
+            return False, "첨부할 보고서가 없습니다. 한글 보고서를 다시 생성해 주세요."
+        report_bytes = bytes(report_bytes)
+        with zipfile.ZipFile(io.BytesIO(report_bytes)) as report_zip:
+            if "Contents/section0.xml" not in report_zip.namelist() or report_zip.testzip():
+                return False, "보고서 파일 검증에 실패했습니다. 보고서를 다시 생성해 주세요."
+
         smtp_conf = st.secrets.get("smtp", {})
         smtp_server = smtp_conf.get("server", "smtp.gmail.com")
         smtp_port = smtp_conf.get("port", 587)
@@ -2195,12 +2207,16 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data, report_
         if not receiver_email:
             return False, f"해당 사번({inspector_id})에 매핑된 이메일 주소가 없습니다."
 
-        msg = MIMEMultipart()
+        msg = MIMEMultipart("mixed", policy=policy.SMTP)
         
         subject_str = f"[안전점검 보고] {dept_name} - {site_name} (작성자: {inspector_id})"
-        msg['Subject'] = Header(subject_str, 'utf-8')
-        msg['From'] = Header(f"KECO 안전점검시스템 <{sender_email}>", 'utf-8')
-        msg['To'] = Header(receiver_email, 'utf-8')
+        msg['Subject'] = subject_str
+        msg['From'] = formataddr(("KECO 안전점검시스템", sender_email), charset="utf-8")
+        msg['To'] = receiver_email
+        msg['Date'] = formatdate(localtime=True)
+        msg['Message-ID'] = make_msgid()
+        # 일부 웹메일의 한글 첨부명 처리 문제를 피하되 실제 파일 형식은 유지합니다.
+        attachment_name = f"safety_inspection_{hashlib.sha256(report_bytes).hexdigest()[:12]}.hwpx"
 
         body_text = (
             "한국환경공단 현장 안전점검 결과 보고서를 송부합니다.\n\n"
@@ -2208,20 +2224,35 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data, report_
             f"점검 현장: {site_name}\n"
             f"작성자 사번: {inspector_id}\n"
             f"점검 항목: {len(form_data)}건\n\n"
-            "조치 전·후 사진, 설명 및 AI 분석 내용은 첨부된 한글 보고서에서 확인해 주세요."
+            "조치 전·후 사진, 설명 및 AI 분석 내용은 첨부된 한글 보고서에서 확인해 주세요.\n\n"
+            f"보고서명: {report_name or '안전점검_보고서.hwpx'}\n"
+            f"첨부파일: {attachment_name}\n"
+            f"첨부 크기: {len(report_bytes):,} bytes"
         )
         msg.attach(MIMEText(body_text, "plain", "utf-8"))
         report_part = MIMEApplication(report_bytes, _subtype="vnd.hancom.hwpx")
+        report_part.set_param("name", attachment_name, header="Content-Type")
         report_part.add_header("Content-Disposition", "attachment",
-                               filename=report_name or "안전점검_보고서.hwpx")
+                               filename=attachment_name)
         msg.attach(report_part)
 
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
+        wire_message = msg.as_bytes(policy=policy.SMTP)
+        parsed_message = BytesParser(policy=policy.default).parsebytes(wire_message)
+        attachments = list(parsed_message.iter_attachments())
+        if (len(attachments) != 1
+                or attachments[0].get_filename() != attachment_name
+                or attachments[0].get_payload(decode=True) != report_bytes):
+            return False, "메일 첨부 검증에 실패하여 전송을 중단했습니다."
+
+        with smtplib.SMTP(smtp_server, smtp_port, timeout=30) as server:
             server.starttls()
             server.login(sender_email, sender_password)
-            server.sendmail(sender_email, receiver_email, msg.as_string())
+            refused = server.sendmail(sender_email, receiver_email, wire_message)
+            if refused:
+                return False, "메일 서버에서 수신자를 거부했습니다. 수신 주소를 확인해 주세요."
 
-        return True, "성공"
+        return True, (f"메일 서버 접수 완료 · 첨부: {attachment_name} "
+                      f"({len(report_bytes):,} bytes) · 메시지 ID: {msg['Message-ID']}")
     except Exception as e:
         return False, str(e)
 
@@ -2629,11 +2660,16 @@ with main_tab1:
                 email_success, email_msg = send_inspection_email(selected_dept, selected_site, logged_user_id, form_data, report_bytes, report_name)
                 
                 if sheet_success and email_success:
-                    st.success(f"🎉 [{selected_dept} {selected_site}] 점검 내역이 구글 시트 기록 및 담당자 메일({mapped_email}) 전송이 완료되었습니다!")
+                    st.success(f"🎉 [{selected_dept} {selected_site}] 구글 시트 기록 완료. 담당자 메일({mapped_email}) 발송을 메일 서버가 접수했습니다.")
                 elif sheet_success:
                     st.warning(f"⚠️ 저장 및 구글 시트는 완료되었으나 이메일 전송에 실패했습니다. (사유: {email_msg})")
+                elif email_success:
+                    st.warning("⚠️ 메일 서버는 발송을 접수했으나 구글 시트 기록에 실패했습니다.")
                 else:
-                    st.error("❌ 저장 및 전송 과정에서 오류가 발생했습니다.")
+                    st.error(f"❌ 저장 및 전송 과정에서 오류가 발생했습니다. 이메일: {email_msg}")
+                if email_success:
+                    st.info(email_msg)
+                    st.caption("수신 메일에 위 첨부파일이 보이지 않으면 발신 계정의 보낸메일에서도 첨부파일이 있는지 확인해 주세요.")
 
 # ---------------- Tab 2: 이력 조회 및 인터랙티브 대시보드 ----------------
 with main_tab2:
