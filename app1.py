@@ -1195,7 +1195,7 @@ st.markdown("""
         padding: 24px;
         overflow: hidden;
         background: #061B20;
-        animation: kecoSplashOut 3.2s ease-in-out forwards;
+        animation: kecoSplashOut 2s ease-in-out forwards;
     }
     .keco-splash::before {
         content: "";
@@ -1266,10 +1266,10 @@ st.markdown("""
         background: linear-gradient(90deg, #84CC16, #10B981, #22D3EE);
         transform-origin: left;
         box-shadow: 0 0 13px rgba(52,211,153,.85);
-        animation: splashLoading 3s linear both;
+        animation: splashLoading 2s linear both;
     }
     @keyframes kecoSplashOut {
-        0%, 86% { opacity: 1; visibility: visible; }
+        0%, 94% { opacity: 1; visibility: visible; }
         100% { opacity: 0; visibility: hidden; pointer-events: none; }
     }
     @keyframes splashLogoIn {
@@ -1777,15 +1777,61 @@ div.stTabs [data-baseweb="tab-list"] {
 
 
 # ==========================================
-# 🔒 감독관 로그인: 3초 모션 스플래시 + 현장사진 로그인
+# 🔒 감독관 로그인: 2초 모션 스플래시 + 현장사진 로그인 (UI 24)
 # ==========================================
 def check_password():
     if st.session_state.get("password_correct", False):
         return True
 
-    # 로그인 화면에만 적용되는 모바일 전용 압축 레이아웃 (PC는 유지)
+    # 로그인 전용: PC 소개 카드 / 모바일 압축 레이아웃
     st.markdown("""
     <style>
+    @media (min-width: 769px) {
+        .login-page-heading.login-heading-v24 {
+            container-type: inline-size;
+            box-sizing: border-box;
+            width: 100%;
+            text-align: left;
+            padding: 24px clamp(16px, 2vw, 28px);
+            margin: 4px 0 20px;
+            border: 1px solid #dce9e4 !important;
+            border-left: 4px solid #069668 !important;
+            border-radius: 18px !important;
+            background: linear-gradient(115deg, #ffffff 0%, #f0f8f4 100%) !important;
+            box-shadow: 0 6px 22px rgba(18, 65, 49, 0.045);
+        }
+        .login-page-title {
+            font-size: clamp(14px, 1.7vw, 30px) !important;
+            font-size: clamp(12px, 4.1cqi, 30px) !important;
+            font-weight: 800 !important;
+            line-height: 1.5 !important;
+            letter-spacing: -0.055em !important;
+            white-space: nowrap;
+            padding: 0 !important;
+            color: #183d34 !important;
+        }
+        .login-page-title br { display: none; }
+        .login-page-title span::before { content: " "; }
+        .login-page-title span { color: #00855b !important; }
+        .login-page-subtitle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 12px 0 0 !important;
+            font-size: clamp(11px, 2.25cqi, 14px) !important;
+            font-weight: 400;
+            color: #586f67 !important;
+            letter-spacing: -0.02em;
+        }
+        .login-page-subtitle::before {
+            content: "";
+            flex: 0 0 6px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #059669;
+        }
+    }
     @media (max-width: 768px) {
         .block-container {
             padding-top: 1rem !important;
@@ -1857,7 +1903,7 @@ def check_password():
         f'<img class="keco-splash-logo" src="data:image/png;base64,{img_base64}" alt="한국환경공단 로고">'
         if img_base64 else '<div style="font-size:3.5rem;">🌱</div>'
     )
-    # 같은 접속 세션에서 최초 1회만 약 3초간 표시
+    # 같은 접속 세션에서 최초 1회만 약 2초간 표시
     if not st.session_state.get("splash_shown", False):
         splash_background = (
             f"url('data:image/webp;base64,{splash_bg_base64}')"
@@ -1865,7 +1911,7 @@ def check_password():
         )
         st.markdown(
             f"""
-            <div class="keco-splash" style="--splash-bg:{splash_background};">
+            <div class="keco-splash" style="--splash-bg:{splash_background};animation-duration:2s !important;">
                 <div class="keco-splash-progress"></div>
             </div>
             """,
@@ -1908,8 +1954,8 @@ def check_password():
                     <div class="login-branch-name">수도권서부환경본부 환경시설관리처</div>
                 </div>
             </div>
-            <div class="login-page-heading">
-                <h1 class="login-page-title">스마트 건설현장<br><span>안전관리 시스템</span></h1>
+            <div class="login-page-heading login-heading-v24">
+                <h1 class="login-page-title">스마트 건설현장 <span>안전관리 시스템</span></h1>
                 <p class="login-page-subtitle">인증된 사내 감독관 전용 서비스입니다.</p>
             </div>
             """,
@@ -1917,6 +1963,7 @@ def check_password():
         )
 
         allowed_users = st.secrets.get("passwords", {})
+        st.caption("UI 24 · 스플래시 2초")
 
         with st.form("supervisor_login_form", clear_on_submit=False):
             user_id = st.text_input(
