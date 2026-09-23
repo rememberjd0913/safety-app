@@ -2202,53 +2202,20 @@ def send_inspection_email(dept_name, site_name, inspector_id, form_data, report_
         msg['From'] = Header(f"KECO 안전점검시스템 <{sender_email}>", 'utf-8')
         msg['To'] = Header(receiver_email, 'utf-8')
 
-        body_html = f"""
-        <h3>🌱 한국환경공단 현장 안전 점검 보고</h3>
-        <p><b>- 담당 부서:</b> {dept_name}</p>
-        <p><b>- 점검 현장:</b> {site_name}</p>
-        <p><b>- 작성 감독관 사번:</b> {inspector_id}</p>
-        <p><b>- 점검 일시:</b> {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-        <hr>
-        <h4>📋 점검 항목별 상세 내용</h4>
-        """
+        body_text = (
+            "한국환경공단 현장 안전점검 결과 보고서를 송부합니다.\n\n"
+            f"담당 부서: {dept_name}\n"
+            f"점검 현장: {site_name}\n"
+            f"작성자 사번: {inspector_id}\n"
+            f"점검 항목: {len(form_data)}건\n\n"
+            "조치 전·후 사진, 설명 및 AI 분석 내용은 첨부된 한글 보고서에서 확인해 주세요."
+        )
+        msg.attach(MIMEText(body_text, "plain", "utf-8"))
+        report_part = MIMEApplication(report_bytes, _subtype="vnd.hancom.hwpx")
+        report_part.add_header("Content-Disposition", "attachment",
+                               filename=report_name or "안전점검_보고서.hwpx")
+        msg.attach(report_part)
 
-        for k, v in form_data.items():
-            body_html += f"<p><b>[항목 #{k}]</b><br>• 조치 내용: {v['desc']}<br>• AI 분석: {v['ai_analysis'].replace(chr(10), '<br>')}</p>"
-
-        msg.attach(MIMEText(body_html, 'html', 'utf-8'))
-
-        if report_bytes:
-            report_part = MIMEApplication(report_bytes, _subtype="vnd.hancom.hwpx")
-            report_part.add_header("Content-Disposition", "attachment", filename=report_name or "안전점검_보고서.hwpx")
-            msg.attach(report_part)
-
-        for k, v in form_data.items():
-            if 'before_files' in v and v['before_files']:
-                for idx, img_f in enumerate(v['before_files']):
-                    try:
-                        img_f.seek(0)
-                        img_bytes = io.BytesIO(img_f.read()).getvalue()
-                        if img_bytes:
-                            filename = f"Before_Item{k}_{idx+1}.jpg"
-                            part = MIMEApplication(img_bytes, Name=filename)
-                            part['Content-Disposition'] = f'attachment; filename="{filename}"'
-                            msg.attach(part)
-                    except Exception as img_err:
-                        print(f"Before 이미지 첨부 실패: {img_err}")
-                
-            if 'after_files' in v and v['after_files']:
-                for idx, img_f in enumerate(v['after_files']):
-                    try:
-                        img_f.seek(0)
-                        img_bytes = io.BytesIO(img_f.read()).getvalue()
-                        if img_bytes:
-                            filename = f"After_Item{k}_{idx+1}.jpg"
-                            part = MIMEApplication(img_bytes, Name=filename)
-                            part['Content-Disposition'] = f'attachment; filename="{filename}"'
-                            msg.attach(part)
-                    except Exception as img_err:
-                        print(f"After 이미지 첨부 실패: {img_err}")
-                
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
             server.login(sender_email, sender_password)
