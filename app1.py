@@ -3298,8 +3298,206 @@ with main_tab1:
                     st.info(email_msg)
                     st.caption("수신 메일에 위 첨부파일이 보이지 않으면 발신 계정의 보낸메일에서도 첨부파일이 있는지 확인해 주세요.")
 
-# ---------------- Tab 2: 이력 조회 및 인터랙티브 대시보드 ----------------
+# 대시보드 집계는 Google Sheets에 저장된 점검 기록을 기준으로 합니다.
+from html import escape as dashboard_escape
+
+
+def dashboard_frame(rows):
+    columns = ['날짜', '점검 부서', '점검 현장', '항목수', 'AI분석', '지적 분류', '작성자', '사진경로']
+    # 저장 함수의 고정 열 순서와 호환하며 짧은 기존 행도 처리합니다.
+    values = [list(r[:8]) + [''] * max(0, 8-len(r)) for r in rows[1:] if any(str(v).strip() for v in r)]
+    df = pd.DataFrame(values, columns=columns).fillna('')
+    df['기록번호'] = range(2, len(df)+2)
+    def parse_day(value):
+        try:
+            ts = pd.to_datetime(str(value), errors='coerce')
+            if pd.isna(ts):
+                return pd.NaT
+            if ts.tzinfo is not None:
+                ts = ts.tz_convert('Asia/Seoul').tz_localize(None)
+            return ts
+        except (ValueError, TypeError):
+            return pd.NaT
+    df['일시'] = pd.to_datetime(df['날짜'].map(parse_day))
+    df['점검항목수'] = pd.to_numeric(df['항목수'].astype(str).str.extract(r'(\d+)')[0], errors='coerce')
+    for c in ['점검 부서', '점검 현장', '작성자']:
+        df[c] = df[c].astype(str).str.strip().replace('', '미기재')
+    def analyzed(value):
+        v = str(value).strip()
+        return bool(v) and v not in ('분석 미실행', '조치 전 AI 분석 미실행', '없음', 'nan')
+    df['분석여부'] = df['AI분석'].map(analyzed)
+    return df
+
+
+def dashboard_risk_counts(df):
+    groups = {
+        '추락·개구부': ('추락', '난간', '개구부', '비계', '발판'),
+        '끼임·협착': ('끼임', '협착', '롤러', '회전체'),
+        '화재·폭발': ('화재', '폭발', '용접', '인화성'),
+        '전기·감전': ('전기', '감전', '누전', '충전부'),
+        '굴착·붕괴': ('굴착', '붕괴', '흙막이', '토사'),
+        '밀폐공간·질식': ('밀폐공간', '질식', '산소', '유해가스'),
+    }
+    texts = df.loc[df['분석여부'], 'AI분석'].astype(str)
+    return pd.DataFrame([{'위험 키워드': name, '언급 기록': sum(any(k in t for k in keys) for t in texts)}
+                         for name, keys in groups.items()])
+
+
+def dashboard_chart_style(fig, height=330):
+    fig.update_layout(template='plotly_white', height=height,
+                      font=dict(family='Malgun Gothic, sans-serif', size=12, color='#334155'),
+                      paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                      margin=dict(l=8, r=24, t=24, b=8),
+                      xaxis=dict(gridcolor='#edf2f7', zeroline=False),
+                      yaxis=dict(gridcolor='#edf2f7', zeroline=False),
+                      hoverlabel=dict(bgcolor='white'), showlegend=False)
+    return fig
+
+
+def render_inspection_dashboard():
+    st.markdown('''<style>
+    .keco-dash-hero{background:linear-gradient(115deg,#093d38,#087f69);border-radius:22px;padding:28px 30px;margin:4px 0 22px;box-shadow:0 10px 28px #093d3815}
+    .keco-dash-hero .eyebrow{color:#a6e9ce!important;font-size:12px;font-weight:700;letter-spacing:1.5px;margin-bottom:9px}
+    .keco-dash-hero h2{color:#fff!important;font-size:clamp(23px,3vw,32px)!important;margin:0!important;padding:0!important;line-height:1.35!important}
+    .keco-dash-hero p{color:#d8f3e9!important;font-size:14px;margin:10px 0 0!important}
+    .keco-dash-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:16px 0 24px}
+    .keco-dash-kpi{background:#fff;border:1px solid #dde7e4;border-radius:18px;padding:20px;border-top:4px solid var(--accent);box-shadow:0 4px 14px #123b3010}
+    .keco-dash-kpi .label{font-size:13px;font-weight:700;color:#475569!important}
+    .keco-dash-kpi .value{font-size:32px;font-weight:800;color:#102f2b!important;line-height:1.5;font-variant-numeric:tabular-nums}
+    .keco-dash-kpi .note{font-size:12px;color:#64748b!important;line-height:1.45}
+    .keco-dash-summary{padding:16px 20px;border-left:4px solid #059669;border-radius:0 12px 12px 0;background:#ecfdf5;color:#164e3e!important;margin:0 0 22px;line-height:1.7;font-size:14px}
+    @media(max-width:640px){.keco-dash-hero{padding:22px 19px;border-radius:17px}.keco-dash-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.keco-dash-kpi{padding:14px}.keco-dash-kpi .value{font-size:28px}}
+    </style>''', unsafe_allow_html=True)
+    st.markdown('''<div class="keco-dash-hero"><div class="eyebrow">KECO · SAFETY OVERVIEW</div>
+    <h2>우리 현장 안전점검, 한눈에</h2><p>점검 활동과 반복해서 언급되는 위험요인을 확인하세요.</p></div>''', unsafe_allow_html=True)
+    rows = get_google_sheet_records()
+    if not rows or len(rows) < 2:
+        st.info('표시할 점검 기록이 없습니다. 안전 점검 등록에서 저장하거나 Google Sheets 연결 상태를 확인해주세요.')
+        return
+    df = dashboard_frame(rows)
+    if df.empty:
+        st.info('표시할 점검 기록이 없습니다.')
+        return
+    with st.container(border=True):
+        st.markdown('**조회 조건**')
+        ca, cb = st.columns(2)
+        dept = ca.selectbox('부서', ['전체 부서'] + sorted(df['점검 부서'].unique()), key='dash_dept')
+        scoped = df if dept == '전체 부서' else df[df['점검 부서'] == dept]
+        sites = ['전체 현장'] + sorted(scoped['점검 현장'].unique())
+        if st.session_state.get('dash_site') not in sites:
+            st.session_state['dash_site'] = '전체 현장'
+        site = cb.selectbox('현장', sites, key='dash_site')
+        cc, cd = st.columns(2)
+        period = cc.selectbox('조회 기간', ['전체 기간', '최근 30일', '최근 90일', '직접 지정'], key='dash_period')
+        search = cd.text_input('기록 검색', placeholder='현장명·작성자·점검 내용', key='dash_search')
+        start = end = None
+        today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
+        if period == '직접 지정':
+            dates = st.date_input('시작일과 종료일', value=(today-datetime.timedelta(days=29), today), key='dash_dates')
+            if not isinstance(dates, (list, tuple)) or len(dates) != 2:
+                st.info('종료일까지 선택해주세요.')
+                return
+            start, end = dates
+        elif period != '전체 기간':
+            start, end = today-datetime.timedelta(days=29 if period == '최근 30일' else 89), today
+        view = scoped.copy()
+        if site != '전체 현장':
+            view = view[view['점검 현장'] == site]
+        if start:
+            view = view[(view['일시'] >= pd.Timestamp(start)) & (view['일시'] < pd.Timestamp(end)+pd.Timedelta(days=1))]
+        if search.strip():
+            haystack = view[['점검 현장', '작성자', '지적 분류', 'AI분석']].astype(str).agg(' '.join, axis=1)
+            view = view[haystack.str.contains(search.strip(), case=False, regex=False)]
+        st.caption('모든 수치와 차트는 위 조회 조건을 따릅니다. 집계 단위는 시트에 저장된 점검 기록이며 실제 사고 건수가 아닙니다.')
+    if view.empty:
+        st.info('조회 조건에 맞는 기록이 없습니다. 기간이나 검색어를 변경해주세요.')
+        return
+    analyzed = int(view['분석여부'].sum())
+    missing_items = int(view['점검항목수'].isna().sum())
+    site_count = len(view[['점검 부서','점검 현장']].drop_duplicates())
+    values = [
+        ('저장된 점검', f'{len(view):,}건', '선택 범위의 점검 기록', '#059669'),
+        ('점검 항목', f'{int(view["점검항목수"].sum()):,}개', f'항목 수 미기재 {missing_items}건' if missing_items else '기록에 입력된 항목 합계', '#2563eb'),
+        ('점검 대상 현장', f'{site_count:,}곳', '부서·현장 조합 기준', '#7c3aed'),
+        ('AI 분석 기록 비율', f'{analyzed/len(view)*100:.0f}%', f'분석 기록 {analyzed} / 전체 {len(view)}건', '#d97706')]
+    cards=''.join(f'<div class="keco-dash-kpi" style="--accent:{color}"><div class="label">{label}</div><div class="value">{value}</div><div class="note">{note}</div></div>' for label,value,note,color in values)
+    st.markdown('<div class="keco-dash-kpis">'+cards+'</div>', unsafe_allow_html=True)
+    risks = dashboard_risk_counts(view)
+    top = risks.sort_values('언급 기록', ascending=False).iloc[0]
+    summary = (f'가장 많이 언급된 위험 키워드는 <b>{dashboard_escape(top["위험 키워드"])}</b>입니다. 관련 기록 <b>{int(top["언급 기록"])}건</b>의 내용을 확인해보세요.'
+               if top['언급 기록'] else 'AI 분석문에서 분류 대상 위험 키워드가 확인되지 않았습니다. 개별 점검 내용을 확인해주세요.')
+    if len(view)-analyzed:
+        summary += f' AI 분석 내용이 없는 기록은 <b>{len(view)-analyzed}건</b>입니다.'
+    st.markdown('<div class="keco-dash-summary">'+summary+'</div>', unsafe_allow_html=True)
+    left, right = st.columns(2)
+    with left:
+        with st.container(border=True):
+            st.markdown('#### 점검 활동 추이')
+            valid = view.dropna(subset=['일시'])
+            if valid.empty:
+                st.info('날짜가 확인되는 기록이 없습니다.')
+            else:
+                monthly = (valid['일시'].max()-valid['일시'].min()).days > 90
+                series = valid.set_index('일시').resample('MS' if monthly else 'D').size()
+                trend = series.rename('점검 건수').rename_axis('기간').reset_index()
+                fig = px.area(trend, x='기간', y='점검 건수', markers=True, color_discrete_sequence=['#059669'])
+                fig.update_traces(line_width=3, fillcolor='rgba(5,150,105,0.10)', hovertemplate='%{x|%Y-%m-%d}<br>점검 %{y}건<extra></extra>')
+                dashboard_chart_style(fig)
+                fig.update_yaxes(title=None, rangemode='tozero', dtick=1 if series.max()<10 else None)
+                fig.update_xaxes(title=None, tickformat='%Y-%m' if monthly else '%m/%d')
+                st.plotly_chart(fig, width='stretch', config={'displayModeBar':False, 'responsive':True})
+                st.caption(('월별' if monthly else '일별')+' 저장 기록 수 · 날짜 미확인 기록은 추이에서 제외')
+    with right:
+        with st.container(border=True):
+            st.markdown('#### 위험 키워드 살펴보기')
+            shown = risks[risks['언급 기록']>0].sort_values('언급 기록')
+            if shown.empty:
+                st.info('집계할 위험 키워드가 없습니다.')
+            else:
+                fig = px.bar(shown, x='언급 기록', y='위험 키워드', orientation='h', text='언급 기록', color_discrete_sequence=['#ed9853'])
+                fig.update_traces(textposition='outside', cliponaxis=False, hovertemplate='%{y}<br>언급 기록 %{x}건<extra></extra>')
+                dashboard_chart_style(fig)
+                fig.update_xaxes(title=None, rangemode='tozero')
+                fig.update_yaxes(title=None)
+                st.plotly_chart(fig, width='stretch', config={'displayModeBar':False, 'responsive':True})
+            st.caption('AI 분석문 키워드 기준·중복 집계. 예방조치나 부정 표현도 포함될 수 있으며 실제 위험 판정·사고 통계가 아닙니다.')
+    with st.container(border=True):
+        st.markdown('#### 현장별 점검 현황')
+        counts = view.groupby(['점검 부서','점검 현장']).size().reset_index(name='점검 건수').sort_values('점검 건수',ascending=False).head(10)
+        counts['현장'] = counts['점검 부서'] + ' · ' + counts['점검 현장']
+        counts = counts.sort_values('점검 건수')
+        fig = px.bar(counts, x='점검 건수', y='현장', orientation='h', text='점검 건수', color_discrete_sequence=['#16877b'])
+        fig.update_traces(textposition='outside', cliponaxis=False, hovertemplate='%{y}<br>저장된 점검 %{x}건<extra></extra>')
+        dashboard_chart_style(fig, max(240, len(counts)*44+60))
+        fig.update_xaxes(title=None, rangemode='tozero')
+        fig.update_yaxes(title=None, tickfont_size=11)
+        st.plotly_chart(fig, width='stretch', config={'displayModeBar':False, 'responsive':True})
+        st.caption('점검 기록이 많은 상위 10개 현장입니다. 점검 건수가 많다고 더 위험한 현장을 의미하지 않습니다.')
+    st.markdown('#### 점검 내역 확인')
+    ordered = view.sort_values('일시', ascending=False, na_position='last').copy()
+    ordered['AI 분석'] = ordered['분석여부'].map({True:'분석 기록 있음',False:'분석 기록 없음'})
+    ordered['점검 일시'] = ordered['일시'].dt.strftime('%Y-%m-%d %H:%M').fillna('날짜 확인 필요')
+    visible = ordered[['기록번호','점검 일시','점검 부서','점검 현장','항목수','작성자','AI 분석']]
+    st.dataframe(visible, hide_index=True, width='stretch')
+    options = ordered.index.tolist()
+    record_index = st.selectbox('자세히 볼 점검 기록', options,
+        format_func=lambda idx:f'{ordered.loc[idx,"점검 일시"]} | {ordered.loc[idx,"점검 부서"]} | {ordered.loc[idx,"점검 현장"]} | 기록 {ordered.loc[idx,"기록번호"]}', key='dash_detail')
+    record=ordered.loc[record_index]
+    with st.expander('선택 기록의 점검 내용 · AI 분석', expanded=True):
+        st.markdown('**점검 내용 요약**')
+        st.text(str(record['지적 분류']) or '기록된 요약이 없습니다.')
+        st.markdown('**AI 분석 원문**')
+        st.text(str(record['AI분석']) or '기록된 분석이 없습니다.')
+        st.caption('조치 완료 여부는 이 시트 요약만으로 판정하지 않습니다. 조치 상태는 내 점검함에서 확인하세요.')
+    issues = int(df['일시'].isna().sum())
+    if issues:
+        st.caption(f'전체 원본 중 날짜 미확인 {issues}건: 전체 기간에서는 표시되며 기간 필터·추이 집계에서는 제외됩니다.')
+
+
+# ---------------- Tab 2: 점검 현황 ----------------
 with main_tab2:
+    render_inspection_dashboard()
+    st.markdown("---")
     with st.expander("📚 여러 점검 건 일괄 보고서", expanded=False):
         st.caption("이번 버전부터 생성한 본인 보고서를 선택하여 사진·설명·AI 분석을 취합합니다. 기존 시트 요약 이력은 포함되지 않습니다.")
         st.caption("재배포 후에도 보관하려면 REPORT_STORAGE_PATH를 영구 저장 경로로 설정해야 합니다. 기본 로컬 저장소는 서버 교체 시 사라질 수 있습니다.")
@@ -3334,102 +3532,6 @@ with main_tab2:
             if st.button("📧 일괄 보고서 이메일 전송"):
                 ok, detail = send_inspection_email("일괄 보고", f"{len(selected_reports)}건", logged_user_id, combined, hwpx, "안전점검_일괄보고서.hwpx", pdf, "batch:" + str(logged_user_id) + ":" + batch_key)
                 (st.success if ok else st.error)(detail)
-    st.subheader("📊 인터랙티브 안전 트렌드 및 재발 방지 대시보드")
-    
-    rows = get_google_sheet_records()
-    
-    if len(rows) > 1:
-        header = rows[0]
-        data_values = rows[1:]
-        df = pd.DataFrame(data_values)
-        
-        expected_cols = ["날짜", "점검 부서", "점검 현장", "항목수", "AI분석", "지적 분류", "작성자", "사진경로"]
-        if len(df.columns) == len(expected_cols):
-            df.columns = expected_cols
-        else:
-            cols = expected_cols[:len(df.columns)]
-            while len(cols) < len(df.columns):
-                cols.append(f"추가컬럼_{len(cols)+1}")
-            df.columns = cols
-        
-        if "날짜" in df.columns:
-            df["날짜"] = pd.to_datetime(df["날짜"], errors='coerce').dt.date
-
-        col_a, col_b = st.columns(2)
-        
-        with col_a:
-            st.markdown("##### 🏗️ 현장 및 부서별 안전 지적 빈도")
-            if "점검 현장" in df.columns and not df.empty:
-                group_cols = ["점검 현장"]
-                if "점검 부서" in df.columns:
-                    group_cols.append("점검 부서")
-                
-                site_counts = df.groupby(group_cols).size().reset_index(name="건수")
-                
-                pastel_colors = {
-                    "시설사업1부": "#A3C1AD",
-                    "시설사업2부": "#A0C4FF",
-                    "시설사업3부": "#FFD6A5"
-                }
-                
-                fig_bar = px.bar(
-                    site_counts, 
-                    x="점검 현장", 
-                    y="건수", 
-                    color="점검 부서" if "점검 부서" in df.columns else None,
-                    color_discrete_map=pastel_colors,
-                    barmode="group",
-                    text="건수"
-                )
-                
-                fig_bar.update_layout(
-                    xaxis_title="", 
-                    yaxis_title="건수", 
-                    margin=dict(t=10, b=10, l=10, r=10),
-                    showlegend=True if "점검 부서" in df.columns else False
-                )
-                st.plotly_chart(fig_bar, width="stretch", config={"responsive": True})
-
-        with col_b:
-            st.markdown("##### ⚠️ 주요 사고 유형별 비율")
-            if not df.empty:
-                def classify_accident_type(text):
-                    text_str = str(text)
-                    if any(k in text_str for k in ["추락", "난간", "개구부", "비계", "발판"]):
-                        return "추락 위험"
-                    elif any(k in text_str for k in ["끼임", "협착", "벨트", "롤러", "회전체"]):
-                        return "끼임 위험"
-                    elif any(k in text_str for k in ["화재", "용접", "불꽃", "소화기", "인화성"]):
-                        return "화재/폭발 위험"
-                    elif any(k in text_str for k in ["전기", "누전", "배선", "충전부"]):
-                        return "전기 안전"
-                    else:
-                        return "기타 일반 안전"
-
-                df["사고유형"] = df["AI분석"].apply(classify_accident_type)
-                type_counts = df["사고유형"].value_counts().reset_index()
-                type_counts.columns = ["유형", "건수"]
-
-                fig_pie = px.pie(
-                    type_counts, 
-                    names="유형", 
-                    values="건수", 
-                    hole=0.4,
-                    color_discrete_sequence=px.colors.qualitative.Pastel
-                )
-                fig_pie.update_layout(
-                    margin=dict(t=10, b=10, l=10, r=10),
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
-                )
-                st.plotly_chart(fig_pie, width="stretch", config={"responsive": True})
-            else:
-                st.info("데이터가 부족하여 사고 유형 분석을 표시할 수 없습니다.")
-
-        st.markdown("---")
-        st.markdown("##### 📋 전체 점검 이력 원본 데이터")
-        st.dataframe(df, width="stretch")
-    else:
-        st.info("📝 아직 구글 시트에 저장된 점검 이력이 없습니다. [안전 점검 등록] 탭에서 첫 점검을 완료해 보세요.")
 
 import os
 
