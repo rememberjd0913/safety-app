@@ -2987,6 +2987,237 @@ if st.session_state.get('case_active_actor') != str(logged_user_id):
             del st.session_state[key]
     st.session_state.case_active_actor = str(logged_user_id)
 
+# 기상청 공공데이터 연동. 인증키는 public_api.weather_service_key에서만 읽습니다.
+import urllib.request as wx_request
+import urllib.parse as wx_url
+import xml.etree.ElementTree as wx_et
+
+# 도시권 대표 격자(5km). 특정 공사현장의 정확한 위치로 자동 간주하지 않습니다.
+WX_CITIES = {
+    '서울': (60,127), '인천': (55,124), '수원': (60,121),
+    '고양': (57,128), '파주': (56,131), '김포': (55,128),
+    '부천': (56,125), '광명': (58,125), '시흥': (57,123),
+    '안산': (58,121), '안양': (59,123), '군포': (59,122),
+    '의왕': (60,122), '과천': (60,124), '성남': (63,124),
+    '용인': (64,119), '화성': (57,119), '오산': (62,118),
+    '평택': (62,114), '안성': (65,115), '이천': (68,121),
+    '여주': (71,121), '광주': (65,123), '하남': (64,126),
+    '구리': (62,127), '남양주': (64,128), '의정부': (61,130),
+    '양주': (61,131), '포천': (64,134), '동두천': (61,134),
+    '가평': (69,133), '양평': (69,125), '연천': (61,138),
+}
+
+
+class WeatherAPIError(RuntimeError):
+    def __init__(self, code, message):
+        self.code = code
+        super().__init__(message)
+
+
+def wx_decode(raw):
+    """오류 XML/JSON을 분류하고 서버의 원문 URL·인증키를 사용자에게 노출하지 않습니다."""
+    try:
+        response = json.loads(raw).get('response', {})
+        header = response.get('header', {})
+        code = str(header.get('resultCode', 'UNKNOWN'))
+        body = response.get('body', {})
+    except (ValueError, AttributeError, TypeError):
+        try:
+            if b'<!DOCTYPE' in raw.upper() or b'<!ENTITY' in raw.upper():
+                raise ValueError()
+            root = wx_et.fromstring(raw)
+            code = root.findtext('.//returnReasonCode') or root.findtext('.//resultCode') or 'UNKNOWN'
+        except (ValueError, wx_et.ParseError):
+            code = 'FORMAT'
+        body = {}
+    if code in ('03', '3'):
+        return []
+    if code not in ('00', '0'):
+        messages = {
+            '30':'날씨 인증키를 확인해주세요.', '31':'인증키 사용 기간을 확인해주세요.',
+            '32':'허용 IP 설정을 확인해주세요.', '20':'해당 날씨 서비스 활용신청·승인 상태를 확인해주세요.',
+            '22':'오늘 API 요청 한도를 초과했습니다.', '10':'기상청 요청값 검증에 실패했습니다.',
+            '12':'신청한 API 서비스가 제공되는지 확인해주세요.',
+        }
+        raise WeatherAPIError(code, '기상청 조회 실패: '+messages.get(code, '서비스 응답을 확인하고 잠시 후 다시 조회해주세요.')+' (코드 '+re.sub(r'[^A-Za-z0-9_]', '', code)[:16]+')')
+    items = body.get('items', {}) or {}
+    values = items.get('item', []) if isinstance(items, dict) else []
+    if isinstance(values, dict):
+        values = [values]
+    if not isinstance(values, list):
+        raise WeatherAPIError('FORMAT', '기상청 자료 형식을 확인할 수 없습니다.')
+    return values
+
+
+@st.cache_data(ttl=300, max_entries=256, show_spinner=False)
+def wx_api(service, operation, key, params, cache_slot):
+    allowed = {('VilageFcstInfoService_2.0','getUltraSrtNcst'),
+               ('VilageFcstInfoService_2.0','getUltraSrtFcst'),
+               ('WthrWrnInfoService','getWthrWrnList')}
+    if (service, operation) not in allowed:
+        raise WeatherAPIError('CONFIG','날씨 요청 종류가 올바르지 않습니다.')
+    # Encoding/Decoding 키 모두 1회 인코딩만 적용. '+' 문자는 보존합니다.
+    normalized_key = wx_url.unquote(key.strip())
+    query = wx_url.urlencode(dict(serviceKey=normalized_key, pageNo=1, numOfRows=1000,
+                                 dataType='JSON', **params))
+    endpoint = f'https://apis.data.go.kr/1360000/{service}/{operation}?{query}'
+    try:
+        req = wx_request.Request(endpoint, headers={'User-Agent':'KecoSafetyWeather/1.0'})
+        with wx_request.urlopen(req, timeout=12) as reply:
+            raw = reply.read(4_000_001)
+        if len(raw) > 4_000_000:
+            raise ValueError()
+    except Exception:
+        raise WeatherAPIError('NETWORK','기상청 연결에 실패했습니다. 인증키·승인 상태 또는 네트워크를 확인하고 다시 조회해주세요.') from None
+    return wx_decode(raw)
+
+
+def wx_base(now, forecast=False):
+    # 매시 30분 예보는 발표 이후 여유 20분, 실황은 정시 이후 여유 40분을 둡니다.
+    lag = 50 if forecast else 40
+    base = now - datetime.timedelta(minutes=lag)
+    return base.replace(minute=30 if forecast else 0, second=0, microsecond=0)
+
+
+def wx_fetch_grid(key, nx, ny, now, forecast=False):
+    base = wx_base(now, forecast)
+    for back in range(2):
+        candidate = base - datetime.timedelta(hours=back)
+        params = {'base_date':candidate.strftime('%Y%m%d'), 'base_time':candidate.strftime('%H%M'),
+                  'nx':nx, 'ny':ny}
+        values = wx_api('VilageFcstInfoService_2.0', 'getUltraSrtFcst' if forecast else 'getUltraSrtNcst',
+                        key, params, int(now.timestamp()//300))
+        if values:
+            # 다른 격자나 발표시각 자료를 잘못 표시하지 않습니다.
+            values = [v for v in values if str(v.get('nx'))==str(nx) and str(v.get('ny'))==str(ny)
+                      and str(v.get('baseDate'))==params['base_date'] and str(v.get('baseTime')).zfill(4)==params['base_time']]
+            if values:
+                return {'base':candidate.isoformat(), 'items':values}
+    raise WeatherAPIError('NO_DATA','최근 발표 자료가 아직 없거나 제공이 지연되고 있습니다. 잠시 후 다시 조회해주세요.')
+
+
+def wx_number(value):
+    try:
+        number = float(value)
+        return number if -100 < number < 10000 else None
+    except (ValueError, TypeError):
+        return None
+
+
+def wx_forecast_rows(items, now):
+    groups = {}
+    for item in items:
+        try:
+            when = datetime.datetime.strptime(str(item['fcstDate'])+str(item['fcstTime']).zfill(4),'%Y%m%d%H%M').replace(tzinfo=ZoneInfo('Asia/Seoul'))
+        except (ValueError, KeyError):
+            continue
+        if when <= now:
+            continue
+        groups.setdefault(when, {})[item.get('category')] = item.get('fcstValue')
+    sky = {'1':'맑음','3':'구름 많음','4':'흐림'}
+    rain = {'1':'비','2':'비/눈','3':'눈','5':'빗방울','6':'빗방울/눈날림','7':'눈날림'}
+    rows=[]
+    for when, values in sorted(groups.items())[:6]:
+        rows.append({'예보 시각':when.strftime('%m/%d %H:%M'),
+                     '날씨':rain.get(str(values.get('PTY')), sky.get(str(values.get('SKY')),'확인 불가')),
+                     '기온(℃)':wx_number(values.get('T1H')), '습도(%)':wx_number(values.get('REH')),
+                     '풍속(m/s)':wx_number(values.get('WSD')), '1시간 강수량':str(values.get('RN1','미제공'))})
+    return rows
+
+
+def render_weather_panel(dept, site):
+    with st.expander('🌤️ 현장 지역 날씨 · 기상특보', expanded=True):
+        st.caption('출처: 기상청 · 도시 대표 격자 기준입니다. 현장 실측이나 작업중지 판정을 대신하지 않습니다.')
+        key = str(st.secrets.get('public_api', {}).get('weather_service_key','')).strip()
+        site_key = hashlib.sha256((str(dept)+'|'+str(site)).encode()).hexdigest()[:12]
+        options = list(WX_CITIES) + ['현장 격자 직접 입력']
+        location = st.selectbox('날씨를 확인할 지역', options, key='wx_city_'+site_key,
+                               index=None, placeholder='서울·인천·경기 시군을 선택하세요')
+        if location is None:
+            st.info('점검 현장이 위치한 지역을 먼저 선택해주세요. 지역은 현장별로 현재 접속 중 기억합니다.')
+            return
+        if location == '현장 격자 직접 입력':
+            c1,c2=st.columns(2)
+            nx=int(c1.number_input('기상청 격자 X', min_value=1,max_value=149,value=60,key='wx_x_'+site_key))
+            ny=int(c2.number_input('기상청 격자 Y', min_value=1,max_value=253,value=127,key='wx_y_'+site_key))
+            st.caption('위도·경도가 아닌 기상청 격자 좌표입니다. 현장 주소의 공식 격자표를 확인해 입력하세요.')
+        else:
+            nx,ny=WX_CITIES[location]
+        st.caption(f'조회 위치: {location} · 격자 {nx}, {ny} · 선택한 점검 현장: {site}')
+        scope=hashlib.sha256((key+site_key+str((nx,ny))).encode()).hexdigest()
+        if st.session_state.get('wx_scope')!=scope:
+            st.session_state.wx_scope=scope
+            st.session_state.pop('wx_result',None)
+            st.session_state.pop('wx_warnings',None)
+        if not key:
+            st.info('날씨 인증키가 없습니다. Secrets의 기존 [public_api] 아래에 weather_service_key를 추가해주세요.')
+            return
+        now=datetime.datetime.now(ZoneInfo('Asia/Seoul'))
+        if st.button('날씨 조회 / 새로고침',key='wx_load'):
+            bundle={'fetched':now.isoformat(), 'errors':{}}
+            with st.spinner('기상청 자료를 조회하고 있습니다…'):
+                for part,forecast in [('실황',False),('예보',True)]:
+                    try:
+                        bundle[part]=wx_fetch_grid(key,nx,ny,now,forecast)
+                    except WeatherAPIError as exc:
+                        bundle['errors'][part]=str(exc)
+            st.session_state.wx_result=bundle
+        bundle=st.session_state.get('wx_result')
+        if bundle:
+            for part,error in bundle['errors'].items():
+                st.warning(part+' · '+error)
+            retrieved=datetime.datetime.fromisoformat(bundle['fetched'])
+            st.caption('조회 시각(한국): '+retrieved.strftime('%Y-%m-%d %H:%M')+' · 요청 결과 최대 5분 캐시')
+            if now-retrieved > datetime.timedelta(minutes=15):
+                st.warning('조회 후 15분 이상 경과했습니다. 새로고침하여 최신 자료를 확인하세요.')
+            observation=bundle.get('실황')
+            if observation:
+                base=datetime.datetime.fromisoformat(observation['base'])
+                st.markdown('**기상 실황 · '+base.strftime('%m/%d %H:%M')+' 기준**')
+                if now-base > datetime.timedelta(hours=2):
+                    st.warning('실황 기준 시각이 2시간 이상 지났습니다. 현재 날씨로 간주하지 마세요.')
+                values={v['category']:v.get('obsrValue') for v in observation['items']}
+                rows=[('기온','T1H','℃'),('습도','REH','%'),('풍속','WSD','m/s'),('1시간 강수량','RN1','mm')]
+                for i in (0,2):
+                    cols=st.columns(2)
+                    for col,(label,code,unit) in zip(cols,rows[i:i+2]):
+                        value=wx_number(values.get(code))
+                        col.metric(label, '미제공' if value is None else f'{value:g} {unit}')
+            forecast=bundle.get('예보')
+            if forecast:
+                st.markdown('**앞으로의 시간대별 예보**')
+                st.caption('발표 시각(한국): '+datetime.datetime.fromisoformat(forecast['base']).strftime('%m/%d %H:%M'))
+                table=wx_forecast_rows(forecast['items'],now)
+                if table:
+                    st.dataframe(pd.DataFrame(table),hide_index=True,width='stretch')
+                else:
+                    st.warning('현재 시각 이후의 예보가 없습니다. 새로고침해주세요.')
+        st.markdown('**기상특보 확인**')
+        st.caption('아래 목록은 전국의 최근 발표 이력입니다. 선택 지역의 현재 발효 여부는 공식 특보 현황에서 확인하세요.')
+        st.markdown('[기상청 현재 특보 현황 열기](https://www.weather.go.kr/w/special-report/overall.do)')
+        if st.button('최근 특보 발표 목록 조회',key='wx_warning_load'):
+            st.session_state.pop('wx_warnings',None)
+            try:
+                with st.spinner('기상특보 발표 목록 조회 중…'):
+                    items=wx_api('WthrWrnInfoService','getWthrWrnList',key,
+                        {'fromTmFc':(now-datetime.timedelta(days=2)).strftime('%Y%m%d'),
+                         'toTmFc':now.strftime('%Y%m%d')},int(now.timestamp()//300))
+                st.session_state.wx_warnings={'items':items,'fetched':now.isoformat()}
+            except WeatherAPIError as exc:
+                st.warning(str(exc))
+        warning=st.session_state.get('wx_warnings')
+        if warning:
+            st.caption('특보 목록 조회 시각(한국): '+datetime.datetime.fromisoformat(warning['fetched']).strftime('%Y-%m-%d %H:%M'))
+            if now-datetime.datetime.fromisoformat(warning['fetched'])>datetime.timedelta(minutes=15):
+                st.warning('특보 목록 조회 후 15분 이상 경과했습니다. 다시 조회해주세요.')
+            items=sorted(warning['items'],key=lambda v:str(v.get('tmFc','')),reverse=True)[:20]
+            if not items:
+                st.info('조회 기간에 반환된 발표 기록이 없습니다. 현재 특보가 없다는 뜻은 아닙니다.')
+            else:
+                st.caption('최근 발표 최대 20건 · 제목에 해제·변경 내용이 포함될 수 있습니다.')
+                st.dataframe(pd.DataFrame([{'발표 시각':str(v.get('tmFc','')), '발표 제목':str(v.get('title','')), '발표 지점':str(v.get('stnId',''))} for v in items]),hide_index=True,width='stretch')
+
+
 # --- 메인 탭 확장 ---
 if st.secrets.get('user_roles', {}).get(str(logged_user_id)) == 'contractor':
     # 외부 조치 계정은 기존 전체 이력/AI 가이드 화면에 진입하지 않음.
@@ -3028,6 +3259,8 @@ with main_tab1:
             📍 선택된 점검 대상: <strong>[{selected_dept}] - {selected_site}</strong> (작성자 사번: {logged_user_id})
         </div>
     """, unsafe_allow_html=True)
+
+    render_weather_panel(selected_dept, selected_site)
 
     st.subheader("📸 안전 점검 사진 등록 및 AI 위험 분석")
     st.caption("💡 각 항목마다 여러 장의 사진을 다중 선택하여 동시에 첨부할 수 있습니다.")
@@ -3359,7 +3592,10 @@ def render_inspection_dashboard():
     .keco-dash-hero{background:linear-gradient(115deg,#093d38,#087f69);border-radius:22px;padding:28px 30px;margin:4px 0 22px;box-shadow:0 10px 28px #093d3815}
     .keco-dash-hero .eyebrow{color:#a6e9ce!important;font-size:12px;font-weight:700;letter-spacing:1.5px;margin-bottom:9px}
     .keco-dash-hero h2{color:#fff!important;font-size:clamp(23px,3vw,32px)!important;margin:0!important;padding:0!important;line-height:1.35!important}
-    .keco-dash-hero p{color:#d8f3e9!important;font-size:14px;margin:10px 0 0!important}
+    /* 전역 문단/탭 글자색보다 우선 적용하여 어두운 배경에서도 선명하게 표시 */
+    #keco-dashboard-hero p,#keco-dashboard-hero p *{color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;opacity:1!important;font-size:15px!important;font-weight:600!important;line-height:1.7!important;margin:10px 0 0!important}
+    #keco-dashboard-hero h2,#keco-dashboard-hero h2 *{color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;opacity:1!important}
+    #keco-dashboard-hero .eyebrow{color:#BFF3DD!important;-webkit-text-fill-color:#BFF3DD!important;opacity:1!important}
     .keco-dash-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:16px 0 24px}
     .keco-dash-kpi{background:#fff;border:1px solid #dde7e4;border-radius:18px;padding:20px;border-top:4px solid var(--accent);box-shadow:0 4px 14px #123b3010}
     .keco-dash-kpi .label{font-size:13px;font-weight:700;color:#475569!important}
@@ -3368,7 +3604,7 @@ def render_inspection_dashboard():
     .keco-dash-summary{padding:16px 20px;border-left:4px solid #059669;border-radius:0 12px 12px 0;background:#ecfdf5;color:#164e3e!important;margin:0 0 22px;line-height:1.7;font-size:14px}
     @media(max-width:640px){.keco-dash-hero{padding:22px 19px;border-radius:17px}.keco-dash-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.keco-dash-kpi{padding:14px}.keco-dash-kpi .value{font-size:28px}}
     </style>''', unsafe_allow_html=True)
-    st.markdown('''<div class="keco-dash-hero"><div class="eyebrow">KECO · SAFETY OVERVIEW</div>
+    st.markdown('''<div id="keco-dashboard-hero" class="keco-dash-hero"><div class="eyebrow">KECO · SAFETY OVERVIEW</div>
     <h2>우리 현장 안전점검, 한눈에</h2><p>점검 활동과 반복해서 언급되는 위험요인을 확인하세요.</p></div>''', unsafe_allow_html=True)
     rows = get_google_sheet_records()
     if not rows or len(rows) < 2:
