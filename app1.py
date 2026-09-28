@@ -86,7 +86,7 @@ _NATIVE_CAMERA_HTML = r"""<!doctype html>
   </style>
 </head>
 <body>
-  <label class="camera-button" for="cameraFile">📷 고화질 카메라 촬영</label>
+  <label class="camera-button" for="cameraFile">📷 지금 사진 촬영</label>
   <input id="cameraFile" type="file" accept="image/*" capture="environment">
   <div id="status" class="status">휴대폰 기본 후면카메라로 촬영합니다.</div>
   <img id="preview" class="preview" alt="촬영 사진 미리보기">
@@ -2333,6 +2333,7 @@ def case_new_registration():
             del st.session_state[key]
     st.session_state.item_count = 1
     st.session_state.ai_results = {}
+    st.session_state.easy_reset_confirmed = False
 
 
 def case_db():
@@ -2562,9 +2563,11 @@ def case_export(owner, version_ids, include_photos=False):
 
 
 def render_case_workspace(actor):
-    st.subheader('📂 내 점검함 · 조치 결과 등록')
-    st.caption('등록 탭에서 저장된 점검을 이어서 작성합니다. 사진 추가만으로 완료 처리되지 않으며 감독관 확인이 필요합니다.')
-    st.caption('자동 저장은 입력이 서버에 전달된 시점에 동작합니다. 통신 단절·브라우저 종료 직전 미전송 입력은 복구되지 않습니다. 장기 보관은 REPORT_STORAGE_PATH를 영구 저장소로 설정해야 합니다.')
+    st.subheader('내 점검 이어하기')
+    st.info('① 점검 건 선택 → ② 조치 후 사진·내용 추가 → ③ 감독관에게 확인 요청 순서로 진행하세요.')
+    st.caption('입력 후 저장 안내를 확인하고 화면을 닫으세요. 인터넷이 끊기면 마지막 입력이 저장되지 않을 수 있습니다.')
+    with st.expander('자료 보관 안내'):
+        st.write('장기 보관 설정은 관리자에게 확인하세요. 기본 서버 저장소는 서버 교체 시 자료가 사라질 수 있습니다.')
     with st.expander('이전 버전에서 보관한 보고서 가져오기'):
         db = case_db()
         try:
@@ -2638,7 +2641,7 @@ def render_case_workspace(actor):
                 if editable:
                     new_payload[idx]['desc_after'] = st.text_area('조치 후 내용',item['desc_after'],key=prefix+idx+'after')
                     additions = st.file_uploader('조치 후 사진 추가',type=['jpg','jpeg','png'],accept_multiple_files=True,key=prefix+idx+'files')
-                    if st.checkbox('고화질 카메라 촬영 사용',key=prefix+idx+'usecamera'):
+                    if st.checkbox('지금 사진 촬영 사용',key=prefix+idx+'usecamera'):
                         captured = native_high_quality_camera('조치 후 사진 촬영',key=prefix+idx+'camera')
                         if captured is not None:
                             additions = list(additions or []) + [captured]
@@ -2658,7 +2661,7 @@ def render_case_workspace(actor):
             if assignee and assignee not in users:
                 users.append(assignee)
             assignee = st.selectbox('조치 담당자 로그인 사번 (미지정 시 감독관 직접 등록)',users,index=users.index(assignee),key=prefix+'assignee')
-            due = st.text_input('조치기한 (YYYY-MM-DD, 선택)',due,key=prefix+'due')
+            due = st.text_input('조치기한 (예: 2026-10-01, 선택)',due,key=prefix+'due')
         else:
             st.caption(f'조치 담당자: {assignee or "미지정"} / 조치기한: {due or "미지정"}')
         # 매 재실행마다 변경된 서버 입력만 저장. 키에 revision을 포함해 저장 후 업로드 중복 방지.
@@ -2673,7 +2676,7 @@ def render_case_workspace(actor):
                 payload[idx] = {'desc_before':'','desc_after':'','ai_analysis':'분석 미실행','before_files':[],'after_files':[]}
                 case_save(case_id,actor,row['revision'],payload)
                 st.rerun()
-            if owner and row['status']=='작성 중' and st.button('조치 요청으로 전환',key=prefix+'request'):
+            if owner and row['status']=='작성 중' and st.button('담당자에게 조치 요청하기',key=prefix+'request'):
                 case_save(case_id,actor,row['revision'],payload,status='조치 요청')
                 st.rerun()
             if row['status']=='조치 요청' and st.button('조치 결과 제출 · 감독관 확인 요청',key=prefix+'submit'):
@@ -2701,7 +2704,7 @@ def render_case_workspace(actor):
             finally:
                 db.close()
     st.divider()
-    st.subheader('📦 내부망 반입용 보고자료')
+    st.subheader('내부망으로 옮길 파일 받기')
     st.caption('확정한 최초·완료 보고서는 원본대로 보관됩니다. 이메일을 거치지 않고 내려받아 승인된 망간 자료전송 시스템으로 반입하세요.')
     db = case_db()
     try:
@@ -2714,7 +2717,7 @@ def render_case_workspace(actor):
     photos = st.checkbox('증빙 원본 사진도 포함',key='case_include_photos')
     if chosen:
         export_key = hashlib.sha256(json.dumps([str(actor),sorted(chosen),photos]).encode()).hexdigest()
-        if st.button('반입 자료 묶음 생성'):
+        if st.button('선택한 보고서 한 번에 묶기'):
             st.session_state.case_bundle = (export_key,case_export(actor,chosen,photos))
         bundle = st.session_state.get('case_bundle')
         if bundle and bundle[0]==export_key:
@@ -3126,7 +3129,7 @@ def wx_forecast_rows(items, now):
 
 
 def render_weather_panel(dept, site):
-    with st.expander('🌤️ 현장 지역 날씨 · 기상특보', expanded=True):
+    with st.expander('날씨 확인하기 (선택)', expanded=False):
         st.caption('출처: 기상청 · 도시 대표 격자 기준입니다. 현장 실측이나 작업중지 판정을 대신하지 않습니다.')
         key = str(st.secrets.get('public_api', {}).get('weather_service_key','')).strip()
         site_key = hashlib.sha256((str(dept)+'|'+str(site)).encode()).hexdigest()[:12]
@@ -3143,14 +3146,14 @@ def render_weather_panel(dept, site):
             st.caption('위도·경도가 아닌 기상청 격자 좌표입니다. 현장 주소의 공식 격자표를 확인해 입력하세요.')
         else:
             nx,ny=WX_CITIES[location]
-        st.caption(f'조회 위치: {location} · 격자 {nx}, {ny} · 선택한 점검 현장: {site}')
+        st.caption(f'날씨 조회 기준: {location} · 지역 대표 위치의 날씨입니다. 현장 주소와 자동 연결되지 않습니다.' if location != '현장 격자 직접 입력' else f'직접 지정한 위치 · 기상청 격자 {nx}, {ny}')
         scope=hashlib.sha256((key+site_key+str((nx,ny))).encode()).hexdigest()
         if st.session_state.get('wx_scope')!=scope:
             st.session_state.wx_scope=scope
             st.session_state.pop('wx_result',None)
             st.session_state.pop('wx_warnings',None)
         if not key:
-            st.info('날씨 인증키가 없습니다. Secrets의 기존 [public_api] 아래에 weather_service_key를 추가해주세요.')
+            st.info('날씨 서비스가 아직 연결되지 않았습니다. 앱 관리자에게 문의하세요.')
             return
         now=datetime.datetime.now(ZoneInfo('Asia/Seoul'))
         if st.button('날씨 조회 / 새로고침',key='wx_load'):
@@ -3167,7 +3170,7 @@ def render_weather_panel(dept, site):
             for part,error in bundle['errors'].items():
                 st.warning(part+' · '+error)
             retrieved=datetime.datetime.fromisoformat(bundle['fetched'])
-            st.caption('조회 시각(한국): '+retrieved.strftime('%Y-%m-%d %H:%M')+' · 요청 결과 최대 5분 캐시')
+            st.caption('조회 시각(한국): '+retrieved.strftime('%Y-%m-%d %H:%M')+' · 같은 자료가 최대 5분간 표시될 수 있습니다.')
             if now-retrieved > datetime.timedelta(minutes=15):
                 st.warning('조회 후 15분 이상 경과했습니다. 새로고침하여 최신 자료를 확인하세요.')
             observation=bundle.get('실황')
@@ -3227,24 +3230,50 @@ if st.secrets.get('user_roles', {}).get(str(logged_user_id)) == 'contractor':
         st.error(f'조치 등록 처리 실패: {exc}')
     st.stop()
 
+# 읽기 쉬운 업무 화면: 입력 상태는 기존 단일 화면에서 유지합니다.
+st.markdown("""
+<style>
+div.stTabs [data-baseweb="tab-list"] {display:flex!important;flex-wrap:wrap!important;gap:8px!important;height:auto!important;overflow:visible!important;}
+div.stTabs [data-baseweb="tab"] {flex:1 1 160px!important;min-height:54px!important;height:auto!important;padding:12px!important;border-radius:12px!important;background:#edf2f0!important;white-space:normal!important;}
+div.stTabs [data-baseweb="tab"], div.stTabs [data-baseweb="tab"] p, div.stTabs [data-baseweb="tab"] span {font-size:17px!important;font-weight:700!important;color:#203d35!important;-webkit-text-fill-color:#203d35!important;opacity:1!important;}
+div.stTabs [data-baseweb="tab"][aria-selected="true"] {background:#007A33!important;box-shadow:inset 0 -4px 0 #004b20!important;}
+div.stTabs [data-baseweb="tab"][aria-selected="true"], div.stTabs [data-baseweb="tab"][aria-selected="true"] p, div.stTabs [data-baseweb="tab"][aria-selected="true"] span {color:white!important;-webkit-text-fill-color:white!important;}
+div.stTabs [data-baseweb="tab-highlight"], div.stTabs [data-baseweb="tab-border"] {display:none!important;}
+[data-testid="stWidgetLabel"] p {font-size:17px!important;font-weight:600!important;color:#173b30!important;}
+[data-testid="stCaptionContainer"] p {font-size:15px!important;line-height:1.65!important;color:#475569!important;-webkit-text-fill-color:#475569!important;}
+[data-testid="stButton"] button, [data-testid="stDownloadButton"] button {min-height:50px!important;height:auto!important;white-space:normal!important;}
+[data-testid="stButton"] button p, [data-testid="stDownloadButton"] button p {font-size:17px!important;line-height:1.5!important;}
+[data-testid="stTextArea"] textarea, [data-testid="stTextInput"] input {font-size:17px!important;line-height:1.6!important;}
+[data-testid="stExpander"] summary p {font-size:17px!important;font-weight:600!important;}
+.keco-easy-intro {background:#eef7f2;border:1px solid #c8e3d3;border-radius:16px;padding:20px 24px;margin:12px 0 24px;}
+.keco-easy-intro h2,.keco-easy-intro p {color:#173b30!important;-webkit-text-fill-color:#173b30!important;margin:0 0 8px!important;line-height:1.65!important;}
+.keco-easy-intro p {font-size:17px!important;}
+@media(max-width:640px){div.stTabs [data-baseweb="tab"] {flex:1 1 calc(50% - 8px)!important;min-width:0!important;}.keco-easy-intro{padding:16px;}}
+</style>
+""", unsafe_allow_html=True)
+
 main_tab1, main_tab2, main_tab3, case_tab = st.tabs([
     "안전 점검 등록", 
-    "부서별 점검 이력 및 대시보드", 
-    "AI 안전 가이드",
-    "내 점검함 · 조치 등록 · 반입 자료"
+    "점검 기록 보기", 
+    "AI에게 물어보기",
+    "내 점검 이어하기"
 ])
 
 with main_tab1:
-    st.button('＋ 새 점검 작성 (이전 점검은 내 점검함에 보관)', on_click=case_new_registration, key='case_new_registration')
-    st.markdown("""
-        <div class="mascot-card">
-            <div>
-                <strong style="color:#EC4899;">[그루의 현장 안내]</strong><br>
-                <span style="font-size:0.92rem; color:#334155;">담당 부서와 현장을 선택하고 각 항목별 조치 내용과 사진을 등록하세요.</span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-    
+    st.markdown("""<div class="keco-easy-intro"><h2>사진과 내용을 입력하면 보고서가 만들어집니다</h2>
+    <p>① 현장 선택 → ② 사진·내용 입력 → ③ 보고서 만들기 → ④ 이메일 보내기</p></div>""", unsafe_allow_html=True)
+    with st.expander('처음 사용하시나요? 사용 방법 보기'):
+        st.markdown("""1. **담당 부서와 현장**을 선택하세요.
+2. **조치 전 사진**을 올리고, 어떤 문제가 있는지 적으세요.
+3. 필요하면 **사진의 위험요인 확인**을 눌러 AI의 도움을 받으세요.
+4. 조치했다면 **조치 후 사진과 내용**도 입력하세요. 아직 조치 전이면 나중에 ‘내 점검 이어하기’에서 추가할 수 있습니다.
+5. **보고서 만들기**를 누른 뒤, 내려받은 파일을 열어 확인하세요.
+6. 내용이 맞으면 **이메일 보내기**를 누르세요. 한글과 PDF가 함께 첨부됩니다.""")
+    with st.expander('작성 화면을 비우고 새 점검 시작하기'):
+        st.caption('내 점검 이어하기에서 현재 점검이 저장됐는지 먼저 확인하세요. 새로 시작하면 이 화면의 입력 내용은 비워집니다.')
+        reset_confirmed = st.checkbox('저장 여부를 확인했습니다. 새 점검을 시작합니다.', key='easy_reset_confirmed')
+        st.button('새 점검 시작', on_click=case_new_registration, key='case_new_registration', disabled=not reset_confirmed)
+    st.subheader('1. 어느 현장인가요?')
     col_dept, col_site = st.columns(2)
     with col_dept:
         selected_dept = st.selectbox("📌 담당 부서 선택", departments, key="selected_dept_box")
@@ -3262,181 +3291,175 @@ with main_tab1:
 
     render_weather_panel(selected_dept, selected_site)
 
-    st.subheader("📸 안전 점검 사진 등록 및 AI 위험 분석")
-    st.caption("💡 각 항목마다 여러 장의 사진을 다중 선택하여 동시에 첨부할 수 있습니다.")
+    st.subheader("2. 사진과 내용을 입력하세요")
+    st.caption("위험요소 한 곳을 점검 항목 하나로 작성하세요. 사진은 여러 장을 선택할 수 있습니다.")
 
     form_data = {}
 
     for idx in range(1, st.session_state.item_count + 1):
 
-        st.markdown(f"""
-            <div class="item-card">
-                <h4 style="margin-top:0; color:#007A33;">🔹 [점검 항목 #{idx}]</h4>
-        """, unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown(f"### 점검 항목 {idx}")
+            col_b, col_a = st.columns(2)
         
-# ✅ 아래 부분이 올바른 들여쓰기(스페이스 8칸)로 정렬되어야 합니다.
-        col_b, col_a = st.columns(2)
-        
-        with col_b:
-            st.markdown("##### 🔴 조치 전 (Before) - 다중 선택 또는 고화질 촬영")
+            with col_b:
+                st.markdown("##### 조치 전 · 발견한 문제")
             
-            input_mode_b = st.radio(
-                "조치 전 입력 방식 선택", 
-                ["파일 업로드(앨범/PC)", "고화질 카메라 촬영"], 
-                key=f"mode_b_{idx}",
-                horizontal=True
-            )
-            
-            before_img_files = []
-            
-            if input_mode_b == "파일 업로드(앨범/PC)":
-                uploaded_files = st.file_uploader(
-                    f"#{idx} 조치 전 사진 첨부",
-                    type=["jpg", "jpeg", "png"],
-                    accept_multiple_files=True,
-                    key=f"before_imgs_{idx}"
+                input_mode_b = st.radio(
+                    "조치 전 사진을 어떻게 넣을까요?", 
+                    ["저장된 사진 선택", "지금 사진 촬영"], 
+                    key=f"mode_b_{idx}",
+                    horizontal=True
                 )
-                if uploaded_files:
-                    before_img_files.extend(uploaded_files)
-            else:
-                st.caption("휴대폰 기본 후면카메라를 호출하여 원본 화질로 촬영합니다.")
-                cam_file = native_high_quality_camera(
-                    f"#{idx} 조치 전 고화질 촬영",
-                    key=f"before_cam_{idx}"
-                )
-                if cam_file is not None:
-                    before_img_files.append(cam_file)
             
-            photo_fingerprint = tuple(hashlib.sha256(inspection_file_bytes(f)).hexdigest() for f in before_img_files)
-            fingerprint_key = f"before_analysis_fingerprint_{idx}"
-            if st.session_state.get(fingerprint_key) != photo_fingerprint:
-                st.session_state.ai_results.pop(idx, None)
-                st.session_state[fingerprint_key] = photo_fingerprint
-            if before_img_files:
-                st.write(f"📷 첨부된 조치 전 사진: **{len(before_img_files)}장**")
-                cols = st.columns(2)
-                for img_i, img_f in enumerate(before_img_files):
-                    with cols[img_i % 2]:
-                        st.image(img_f, caption=f"조치 전 #{img_i+1}", width="stretch")
+                before_img_files = []
+            
+                if input_mode_b == "저장된 사진 선택":
+                    uploaded_files = st.file_uploader(
+                        f"#{idx} 조치 전 사진 첨부",
+                        type=["jpg", "jpeg", "png"],
+                        accept_multiple_files=True,
+                        key=f"before_imgs_{idx}"
+                    )
+                    if uploaded_files:
+                        before_img_files.extend(uploaded_files)
+                else:
+                    st.caption("휴대폰에서 촬영 버튼을 누르세요. 카메라가 열리지 않으면 기본 카메라로 찍은 뒤 ‘저장된 사진 선택’을 이용하세요.")
+                    cam_file = native_high_quality_camera(
+                        f"#{idx} 조치 전 고화질 촬영",
+                        key=f"before_cam_{idx}"
+                    )
+                    if cam_file is not None:
+                        before_img_files.append(cam_file)
+            
+                desc_before = st.text_area(
+                    f"항목 {idx} · 어떤 문제가 있었나요?",
+                    placeholder="예: 바닥 구멍 주변에 안전난간이 없습니다.",
+                    key=f"desc_before_{idx}", height=120)
+                photo_fingerprint = tuple(hashlib.sha256(inspection_file_bytes(f)).hexdigest() for f in before_img_files)
+                fingerprint_key = f"before_analysis_fingerprint_{idx}"
+                if st.session_state.get(fingerprint_key) != photo_fingerprint:
+                    st.session_state.ai_results.pop(idx, None)
+                    st.session_state[fingerprint_key] = photo_fingerprint
+                if before_img_files:
+                    st.write(f"📷 첨부된 조치 전 사진: **{len(before_img_files)}장**")
+                    cols = st.columns(2)
+                    for img_i, img_f in enumerate(before_img_files):
+                        with cols[img_i % 2]:
+                            st.image(img_f, caption=f"조치 전 #{img_i+1}", width="stretch")
                 
-                if st.button(f"🔍 [항목 #{idx}] 조치 전 사진 전체 AI 분석", key=f"btn_ai_{idx}", width="stretch"):
-                    with st.spinner("푸루 AI가 조치 전 사진들의 위험요인을 분석 중..."):
-                        if idx not in st.session_state.ai_results:
-                            st.session_state.ai_results[idx] = {}
+                    if st.button(f"사진의 위험요인 확인 (AI 도움)", key=f"btn_ai_{idx}", width="stretch"):
+                        with st.spinner("푸루 AI가 조치 전 사진들의 위험요인을 분석 중..."):
+                            if idx not in st.session_state.ai_results:
+                                st.session_state.ai_results[idx] = {}
                         
-                        for img_i, img_f in enumerate(before_img_files, start=1):
-                            try:
-                                result_text = analyze_hazard_auto(api_key, img_f)
-                                st.session_state.ai_results[idx][img_i] = result_text
-                            except Exception as e:
-                                st.session_state.ai_results[idx][img_i] = f"분석 오류: {e}"
+                            for img_i, img_f in enumerate(before_img_files, start=1):
+                                try:
+                                    result_text = analyze_hazard_auto(api_key, img_f)
+                                    st.session_state.ai_results[idx][img_i] = result_text
+                                except Exception as e:
+                                    st.session_state.ai_results[idx][img_i] = f"분석 오류: {e}"
 
-            if idx in st.session_state.ai_results and st.session_state.ai_results[idx]:
-                st.markdown("**🤖 AI 위험 분석 결과:**")
-                for img_i, res_text in st.session_state.ai_results[idx].items():
-                    st.markdown(f"""
-                        <div class="analysis-box">
-                            <strong>[사진 #{img_i}]</strong><br>
-                            {res_text.replace('\n', '<br>')}
-                        </div>
-                    """, unsafe_allow_html=True)
+                if idx in st.session_state.ai_results and st.session_state.ai_results[idx]:
+                    st.markdown("**사진에서 AI가 찾은 위험요인**")
+                    st.caption("AI 결과를 현장 상황과 비교해 확인하세요. 사진에 보이지 않는 사항은 판단할 수 없습니다.")
+                    for img_i, res_text in st.session_state.ai_results[idx].items():
+                        st.markdown(f"""
+                            <div class="analysis-box">
+                                <strong>[사진 #{img_i}]</strong><br>
+                                {res_text.replace('\n', '<br>')}
+                            </div>
+                        """, unsafe_allow_html=True)
 
-        with col_a:
-            st.markdown("##### 🟢 조치 후 (After) - 다중 선택 또는 고화질 촬영")
+            with col_a:
+                st.markdown("##### 조치 후 · 개선한 모습")
             
-            input_mode_a = st.radio(
-                "조치 후 입력 방식 선택", 
-                ["파일 업로드(앨범/PC)", "고화질 카메라 촬영"], 
-                key=f"mode_a_{idx}",
-                horizontal=True
-            )
-            
-            after_img_files = []
-            
-            if input_mode_a == "파일 업로드(앨범/PC)":
-                uploaded_after = st.file_uploader(
-                    f"#{idx} 조치 후 사진 첨부",
-                    type=["jpg", "jpeg", "png"],
-                    accept_multiple_files=True,
-                    key=f"after_imgs_{idx}"
+                input_mode_a = st.radio(
+                    "조치 후 사진을 어떻게 넣을까요?", 
+                    ["저장된 사진 선택", "지금 사진 촬영"], 
+                    key=f"mode_a_{idx}",
+                    horizontal=True
                 )
-                if uploaded_after:
-                    after_img_files.extend(uploaded_after)
-            else:
-                st.caption("휴대폰 기본 후면카메라를 호출하여 원본 화질로 촬영합니다.")
-                cam_file_after = native_high_quality_camera(
-                    f"#{idx} 조치 후 고화질 촬영",
-                    key=f"after_cam_{idx}"
-                )
-                if cam_file_after is not None:
-                    after_img_files.append(cam_file_after)
-
-            if after_img_files:
-                st.write(f"📷 첨부된 조치 후 사진: **{len(after_img_files)}장**")
-                cols = st.columns(2)
-                for img_i, img_f in enumerate(after_img_files):
-                    with cols[img_i % 2]:
-                        st.image(img_f, caption=f"조치 후 #{img_i+1}", width="stretch")
-
-# 조치 전 / 조치 후 입력을 위해 좌우로 2분할 
-        col_before, col_after = st.columns(2)
-        
-        with col_before:
-            desc_before = st.text_area(
-                f"✍️ [항목 #{idx}] 조치 전 내용", 
-                placeholder=f"예: 항목 #{idx} - 개구부 안전난간 미설치 상태 확인", 
-                key=f"desc_before_{idx}"
-            )
             
-        with col_after:
-            desc_after = st.text_area(
-                f"✍️ [항목 #{idx}] 조치 후 내용", 
-                placeholder=f"예: 항목 #{idx} - 안전난간 설치 및 추락방지망 고정 완료", 
-                key=f"desc_after_{idx}"
-            )
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        if before_img_files or after_img_files or desc_before.strip() or desc_after.strip():
-            ai_summary_list = []
-            if idx in st.session_state.ai_results:
-                for img_i, res_text in st.session_state.ai_results[idx].items():
-                    ai_summary_list.append(f"(사진#{img_i}) {res_text}")
+                after_img_files = []
             
-            form_data[idx] = {
-                "desc_before": desc_before.strip(),
-                "desc_after": desc_after.strip(),
-                "before_files": before_img_files if before_img_files else [],
-                "after_files": after_img_files if after_img_files else [],
-                "desc": (
-                    f"[조치 전] {desc_before.strip() or '내용 없음'}\n"
-                    f"[조치 후] {desc_after.strip() or '내용 없음'}"
-                ),
-                "ai_analysis": "\n".join(ai_summary_list) if ai_summary_list else "분석 미실행",
-            }
+                if input_mode_a == "저장된 사진 선택":
+                    uploaded_after = st.file_uploader(
+                        f"#{idx} 조치 후 사진 첨부",
+                        type=["jpg", "jpeg", "png"],
+                        accept_multiple_files=True,
+                        key=f"after_imgs_{idx}"
+                    )
+                    if uploaded_after:
+                        after_img_files.extend(uploaded_after)
+                else:
+                    st.caption("휴대폰에서 촬영 버튼을 누르세요. 카메라가 열리지 않으면 기본 카메라로 찍은 뒤 ‘저장된 사진 선택’을 이용하세요.")
+                    cam_file_after = native_high_quality_camera(
+                        f"#{idx} 조치 후 고화질 촬영",
+                        key=f"after_cam_{idx}"
+                    )
+                    if cam_file_after is not None:
+                        after_img_files.append(cam_file_after)
+
+                if after_img_files:
+                    st.write(f"📷 첨부된 조치 후 사진: **{len(after_img_files)}장**")
+                    cols = st.columns(2)
+                    for img_i, img_f in enumerate(after_img_files):
+                        with cols[img_i % 2]:
+                            st.image(img_f, caption=f"조치 후 #{img_i+1}", width="stretch")
+
+                desc_after = st.text_area(
+                    f"항목 {idx} · 어떻게 조치했나요?",
+                    placeholder="예: 안전난간을 설치하고 출입을 막았습니다. 아직 조치 전이면 비워두세요.",
+                    key=f"desc_after_{idx}", height=120)
+                st.caption('아직 조치 전이면 사진과 내용을 비워두어도 됩니다.')
+
+            if before_img_files or after_img_files or desc_before.strip() or desc_after.strip():
+                ai_summary_list = []
+                if idx in st.session_state.ai_results:
+                    for img_i, res_text in st.session_state.ai_results[idx].items():
+                        ai_summary_list.append(f"(사진#{img_i}) {res_text}")
+            
+                form_data[idx] = {
+                    "desc_before": desc_before.strip(),
+                    "desc_after": desc_after.strip(),
+                    "before_files": before_img_files if before_img_files else [],
+                    "after_files": after_img_files if after_img_files else [],
+                    "desc": (
+                        f"[조치 전] {desc_before.strip() or '내용 없음'}\n"
+                        f"[조치 후] {desc_after.strip() or '내용 없음'}"
+                    ),
+                    "ai_analysis": "\n".join(ai_summary_list) if ai_summary_list else "분석 미실행",
+                }
             
 # 1. '점검 항목 추가하기' 버튼을 상단에 가로로 꽉 차게 배치
-    if st.button("➕ 점검 항목 추가하기", width="stretch"):
+    if st.button("＋ 다른 위험요소 추가하기", width="stretch"):
         st.session_state.item_count += 1
         st.rerun()
 
     # 2. '마지막 항목 삭제' 버튼 (항목이 2개 이상일 때만 표시되며, 이 역시 가로로 꽉 차게 하거나 깔끔하게 배치)
     if st.session_state.item_count > 1:
-        if st.button("➖ 마지막 항목 삭제", width="stretch"):
+        with st.expander('마지막 점검 항목 지우기'):
             last_idx = st.session_state.item_count
-            if last_idx in st.session_state.ai_results:
-                del st.session_state.ai_results[last_idx]
-            st.session_state.item_count -= 1
-            st.rerun()
+            remove_confirmed = st.checkbox(f'항목 {last_idx}의 사진과 내용을 지웁니다.', key=f'easy_remove_{last_idx}')
+            if st.button('마지막 항목 지우기', disabled=not remove_confirmed):
+                st.session_state.ai_results.pop(last_idx, None)
+                for prefix in ('desc_before_', 'desc_after_', 'before_imgs_', 'after_imgs_',
+                               'before_cam_', 'after_cam_', 'mode_b_', 'mode_a_', 'before_analysis_fingerprint_'):
+                    st.session_state.pop(f'{prefix}{last_idx}', None)
+                st.session_state.pop(f'easy_remove_{last_idx}', None)
+                st.session_state.item_count -= 1
+                st.rerun()
 
     st.markdown("---")
 
-    st.subheader("📄 점검 결과 보고서 · 한글 / PDF")
-    st.caption("입력한 모든 항목의 조치 전·후 사진, 설명, AI 분석을 한글(HWPX) 파일로 만듭니다.")
+    st.subheader("3. 보고서를 만들고 확인하세요")
+    st.caption("사진·입력 내용·AI 분석을 한글 파일과 출력용 PDF로 정리합니다. 아래 버튼을 누르세요.")
+    st.write(f"현재 작성한 점검 항목: **{len(form_data)}개**")
     try:
         saved_case_id = case_autosave_registration(logged_user_id, selected_dept, selected_site, form_data)
         if saved_case_id:
-            st.caption(f"내 점검함 저장: {saved_case_id} · 이후 조치 사진은 내 점검함에서 추가하세요.")
+            st.caption("현재 입력 내용이 저장되었습니다. 나중에 ‘내 점검 이어하기’에서 조치 사진을 추가할 수 있습니다.")
     except Exception as exc:
         st.error(f"점검 임시저장 실패: {exc}")
 
@@ -3445,7 +3468,7 @@ with main_tab1:
         st.session_state.pop("inspection_report_bytes", None)
         st.session_state.pop("inspection_report_name", None)
         st.session_state.pop("inspection_pdf_bytes", None)
-    if st.button("📄 한글·PDF 보고서 생성 / 갱신", disabled=not form_data, width="stretch"):
+    if st.button("보고서 만들기 · 내용 수정 후 다시 만들기", type="primary", disabled=not form_data, width="stretch"):
         try:
             with st.spinner("사진과 분석 내용을 한글 보고서로 정리 중입니다..."):
                 report_data = generate_inspection_hwpx(selected_dept, selected_site, logged_user_id, form_data)
@@ -3463,21 +3486,25 @@ with main_tab1:
     report_name = st.session_state.get("inspection_report_name")
     pdf_bytes = st.session_state.get("inspection_pdf_bytes")
     if report_bytes:
-        st.download_button("📥 한글 보고서 다운로드 (.hwpx)", report_bytes,
+        st.download_button("한글 파일 받기 · 수정할 때", report_bytes,
                            file_name=report_name, mime="application/vnd.hancom.hwpx", width="stretch")
         if pdf_bytes:
-            st.download_button("🖨️ 출력용 PDF 다운로드", pdf_bytes, file_name=report_name.replace(".hwpx", ".pdf"), mime="application/pdf", width="stretch")
-        st.caption("저장·전송 시 한글 보고서와 출력용 PDF를 함께 첨부합니다.")
+            st.download_button("PDF 파일 받기 · 출력할 때", pdf_bytes, file_name=report_name.replace(".hwpx", ".pdf"), mime="application/pdf", width="stretch")
+        st.caption("파일을 내려받아 열어보세요. 내용이 맞으면 아래에서 이메일을 보내세요.")
     else:
-        st.info("저장·전송 전에 한글 보고서를 생성해 주세요. 내용을 변경하면 다시 생성해야 합니다.")
+        st.info("사진 또는 내용을 입력한 뒤 ‘보고서 만들기’를 누르세요. 입력 내용을 바꾸면 보고서를 다시 만들어야 합니다.")
 
+    st.subheader("4. 보고서를 이메일로 보내세요")
+    st.caption("한글 파일과 PDF가 함께 첨부됩니다. 파일을 내려받는 것만으로는 이메일이 전송되지 않습니다.")
     delivery_key = datetime.datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d") + ":" + current_report_key
     delivery_db = inspection_store()
     delivery_state = delivery_db.execute("SELECT status, detail FROM deliveries WHERE id=?", (delivery_key,)).fetchone()
     delivery_db.close()
     if delivery_state:
-        st.info(f"전송 상태: {delivery_state[0]} · {delivery_state[1]}")
-    if st.button(f"💾 [{selected_dept} {selected_site}] 전체 점검 내역 저장, 이메일 전송 및 완료", disabled=not (report_bytes and pdf_bytes) or bool(delivery_state), width="stretch"):
+        st.info('이 점검은 전송 이력이 있어 중복 전송을 막았습니다. 아래에서 처리 결과를 확인하세요.')
+        with st.expander('전송 처리 결과 보기'):
+            st.write(f'{delivery_state[0]} · {delivery_state[1]}')
+    if st.button("이메일 보내기 · 점검 내역 저장", type="primary", disabled=not (report_bytes and pdf_bytes) or bool(delivery_state), width="stretch"):
         if not form_data:
             st.warning("⚠️ 최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
         else:
@@ -3604,8 +3631,8 @@ def render_inspection_dashboard():
     .keco-dash-summary{padding:16px 20px;border-left:4px solid #059669;border-radius:0 12px 12px 0;background:#ecfdf5;color:#164e3e!important;margin:0 0 22px;line-height:1.7;font-size:14px}
     @media(max-width:640px){.keco-dash-hero{padding:22px 19px;border-radius:17px}.keco-dash-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.keco-dash-kpi{padding:14px}.keco-dash-kpi .value{font-size:28px}}
     </style>''', unsafe_allow_html=True)
-    st.markdown('''<div id="keco-dashboard-hero" class="keco-dash-hero"><div class="eyebrow">KECO · SAFETY OVERVIEW</div>
-    <h2>우리 현장 안전점검, 한눈에</h2><p>점검 활동과 반복해서 언급되는 위험요인을 확인하세요.</p></div>''', unsafe_allow_html=True)
+    st.markdown('''<div id="keco-dashboard-hero" class="keco-dash-hero"><div class="eyebrow">부서별 점검 현황</div>
+    <h2>우리 현장 안전점검, 한눈에</h2><p>점검한 현장과 자주 언급된 위험요인을 확인하세요.</p></div>''', unsafe_allow_html=True)
     rows = get_google_sheet_records()
     if not rows or len(rows) < 2:
         st.info('표시할 점검 기록이 없습니다. 안전 점검 등록에서 저장하거나 Google Sheets 연결 상태를 확인해주세요.')
@@ -3734,7 +3761,7 @@ def render_inspection_dashboard():
 with main_tab2:
     render_inspection_dashboard()
     st.markdown("---")
-    with st.expander("📚 여러 점검 건 일괄 보고서", expanded=False):
+    with st.expander("여러 점검을 보고서 하나로 모으기", expanded=False):
         st.caption("이번 버전부터 생성한 본인 보고서를 선택하여 사진·설명·AI 분석을 취합합니다. 기존 시트 요약 이력은 포함되지 않습니다.")
         st.caption("재배포 후에도 보관하려면 REPORT_STORAGE_PATH를 영구 저장 경로로 설정해야 합니다. 기본 로컬 저장소는 서버 교체 시 사라질 수 있습니다.")
         batch_db = inspection_store()
@@ -3866,7 +3893,7 @@ def law_filter(articles, keyword):
 
 
 def render_law_panel():
-    st.markdown('#### 현행법령 조회 · AI 참고 조문 선택')
+    st.markdown('#### 참고할 법령 찾기')
     st.caption('출처: 법제처 국가법령정보센터 · 조회 결과는 최대 1시간 캐시됩니다. 별표·부칙은 원문에서 확인하세요.')
     name = st.selectbox('법령 선택', LAW_CHOICES, index=6, key='law_selected_name')
     key = str(st.secrets.get('public_api', {}).get('law_oc', '')).strip()
@@ -3876,7 +3903,7 @@ def render_law_panel():
         st.session_state.pop('law_document', None)
     use_law = st.checkbox('선택한 조문을 AI 답변 근거로 사용', value=True, key='law_use')
     if not key:
-        st.info('Secrets의 [public_api] 아래에 law_oc를 등록한 뒤 법령을 조회해주세요.')
+        st.info('법령 서비스 연결은 관리자에게 문의하세요. 일반 질문은 근거 사용 체크를 해제한 뒤 입력할 수 있습니다.')
     if st.button('법령 조회 / 최신 내용 다시 조회', key='law_load', disabled=not bool(key)):
         st.session_state.pop('law_document', None)
         try:
@@ -3927,10 +3954,13 @@ def render_law_panel():
 
 # ---------------- Tab 3: AI 안전 가이드 Q&A (RAG) ----------------
 with main_tab3:
-    st.subheader("📖 AI 환경시설 안전 가이드 및 규정 Q&A")
-    st.markdown("환경시설 건설현장 안전에 관련된 모든것을 물어보세요.")
+    st.subheader("안전 업무, AI에게 물어보세요")
+    st.markdown("화면 아래 질문 칸에 궁금한 내용을 적고 보내세요.")
+    st.caption("예: 굴착 작업 전에 무엇을 확인해야 하나요? · 안전난간 점검 항목을 알려주세요.")
 
-    law_use, law_context, law_sources = render_law_panel()
+    with st.expander('법령을 찾아 답변에 참고하기', expanded=True):
+        st.caption('법령을 선택해 조회한 뒤 참고할 조문을 고르세요. 일반 질문만 하려면 아래 체크를 해제하세요.')
+        law_use, law_context, law_sources = render_law_panel()
 
     if "qa_messages" not in st.session_state:
         st.session_state.qa_messages = [
