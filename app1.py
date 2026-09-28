@@ -3252,11 +3252,187 @@ div.stTabs [data-baseweb="tab-highlight"], div.stTabs [data-baseweb="tab-border"
 </style>
 """, unsafe_allow_html=True)
 
-main_tab1, main_tab2, main_tab3, case_tab = st.tabs([
+# 안전자료실: 파일 내용은 실행하거나 외부 AI로 보내지 않습니다.
+DOC_CATEGORIES = ['안전지침·매뉴얼', '점검표·서식', '교육자료', '사고사례', '법령·기준', '기타']
+DOC_TYPES = {'pdf':'application/pdf', 'hwp':'application/x-hwp',
+             'hwpx':'application/vnd.hancom.hwpx',
+             'docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+             'jpg':'image/jpeg', 'jpeg':'image/jpeg', 'png':'image/png'}
+
+
+def safety_doc_identity(actor):
+    actor = str(actor)
+    if not st.session_state.get('password_correct') or str(st.session_state.get('logged_user', '')) != actor:
+        raise PermissionError('다시 로그인해 주세요.')
+    if st.secrets.get('user_roles', {}).get(actor) == 'contractor':
+        raise PermissionError('이 계정은 안전자료실을 이용할 수 없습니다.')
+    # 사용자가 선택한 현장/부서가 아닌 관리자의 계정 설정만 신뢰합니다.
+    dept = str(st.secrets.get('user_departments', {}).get(actor, '')).strip()
+    return actor, dept
+
+
+def safety_doc_db():
+    import sqlite3
+    folder = Path(st.secrets.get('REPORT_STORAGE_PATH', './KecoSafetyReports'))
+    folder.mkdir(parents=True, exist_ok=True)
+    db = sqlite3.connect(str(folder / 'safety_documents.sqlite3'), timeout=30)
+    db.row_factory = sqlite3.Row
+    db.execute('''CREATE TABLE IF NOT EXISTS safety_documents (
+        id TEXT PRIMARY KEY, owner TEXT NOT NULL, dept TEXT NOT NULL,
+        visibility TEXT NOT NULL, title TEXT NOT NULL, category TEXT NOT NULL,
+        note TEXT NOT NULL, filename TEXT NOT NULL, mime TEXT NOT NULL,
+        size INTEGER NOT NULL, digest TEXT NOT NULL, created TEXT NOT NULL,
+        content BLOB NOT NULL, UNIQUE(owner,digest))''')
+    db.commit()
+    return db
+
+
+def safety_doc_validate(filename, raw):
+    import zipfile
+    filename = re.split(r'[/\\]', str(filename))[-1]
+    filename = re.sub(r'[\x00-\x1f\x7f]', '', filename).strip()[:180]
+    ext = filename.rsplit('.', 1)[-1].lower()
+    if ext not in DOC_TYPES:
+        raise ValueError('PDF, HWP, HWPX, DOCX, JPG, PNG 파일만 올릴 수 있습니다.')
+    if not raw or len(raw) > 20 * 1024 * 1024:
+        raise ValueError('빈 파일은 저장할 수 없습니다. 파일 하나당 20MB 이하로 올려주세요.')
+    if ext == 'pdf' and not raw.startswith(b'%PDF-'):
+        raise ValueError('PDF 파일 형식을 확인해 주세요.')
+    if ext == 'hwp' and not raw.startswith(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'):
+        raise ValueError('한글 파일 형식을 확인해 주세요. HWPX 파일은 .hwpx로 올려주세요.')
+    if ext in ('hwpx', 'docx'):
+        try:
+            with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                entries = z.infolist()
+                marker = 'Contents/section0.xml' if ext == 'hwpx' else 'word/document.xml'
+                if marker not in z.namelist() or len(entries) > 10000 or sum(e.file_size for e in entries) > 100*1024*1024:
+                    raise ValueError('문서 구조 또는 압축 해제 크기를 확인해 주세요. PDF로 변환해 올릴 수도 있습니다.')
+        except zipfile.BadZipFile:
+            raise ValueError('문서 파일이 손상되었거나 확장자가 올바르지 않습니다.') from None
+    if ext in ('jpg', 'jpeg', 'png'):
+        try:
+            with Image.open(io.BytesIO(raw)) as im:
+                if im.format != ('PNG' if ext == 'png' else 'JPEG') or im.width*im.height > 40_000_000:
+                    raise ValueError('이미지 형식 또는 크기를 확인해 주세요.')
+                im.verify()
+        except Exception:
+            raise ValueError('사진을 읽을 수 없습니다. JPG 또는 PNG로 다시 저장해 주세요.') from None
+    return filename, DOC_TYPES[ext]
+
+
+def safety_doc_save(actor, uploaded, title, category, note, shared):
+    import uuid
+    actor, dept = safety_doc_identity(actor)
+    title, note = title.strip(), note.strip()
+    if not title or len(title) > 150 or len(note) > 1000 or category not in DOC_CATEGORIES:
+        raise ValueError('제목은 1~150자, 설명은 1,000자 이하로 입력하고 분류를 선택하세요.')
+    if shared and not dept:
+        raise PermissionError('소속 부서가 등록되지 않아 부서 공유를 할 수 없습니다.')
+    raw = uploaded.getvalue()
+    filename, mime = safety_doc_validate(uploaded.name, raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    db = safety_doc_db()
+    try:
+        with db:
+            doc_id = uuid.uuid4().hex
+            cursor = db.execute('''INSERT OR IGNORE INTO safety_documents
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                (doc_id, actor, dept if shared else '', 'department' if shared else 'private',
+                 title, category, note, filename, mime, len(raw), digest,
+                 datetime.datetime.now(ZoneInfo('Asia/Seoul')).strftime('%Y-%m-%d %H:%M'), raw))
+            if not cursor.rowcount:
+                return False
+        return True
+    finally:
+        db.close()
+
+
+def safety_doc_list(actor, keyword='', category='전체'):
+    actor, dept = safety_doc_identity(actor)
+    db = safety_doc_db()
+    try:
+        rows = db.execute('''SELECT id,owner,dept,visibility,title,category,note,filename,mime,size,created
+            FROM safety_documents WHERE owner=? OR (visibility='department' AND dept=? AND dept<>'')
+            ORDER BY created DESC, id DESC''', (actor, dept)).fetchall()
+        terms = keyword.casefold().split()
+        return [dict(r) for r in rows if (category == '전체' or r['category'] == category)
+                and all(t in (r['title']+' '+r['note']+' '+r['filename']).casefold() for t in terms)]
+    finally:
+        db.close()
+
+
+def safety_doc_get(actor, doc_id):
+    actor, dept = safety_doc_identity(actor)
+    db = safety_doc_db()
+    try:
+        row = db.execute('''SELECT * FROM safety_documents WHERE id=? AND
+            (owner=? OR (visibility='department' AND dept=? AND dept<>''))''', (doc_id, actor, dept)).fetchone()
+        if row is None:
+            raise PermissionError('자료가 없거나 열람 권한이 없습니다.')
+        return dict(row)
+    finally:
+        db.close()
+
+
+def render_safety_documents(actor):
+    _, dept = safety_doc_identity(actor)
+    st.subheader('안전자료실')
+    st.write('안전자료를 올려두고 필요할 때 찾아 내려받으세요.')
+    st.caption('이번 기능은 자료 보관·검색·다운로드입니다. 문서 본문 검색과 자료 기반 AI 질문은 아직 제공하지 않습니다.')
+    st.warning('원본도 별도로 보관하세요. 서버 교체·재배포 후에도 보관하려면 관리자가 영구 저장소를 연결해야 합니다. 폴더명 설정만으로 영구 보관되지는 않습니다.')
+    with st.expander('1. 새 자료 올리기', expanded=True):
+        with st.form('safety_doc_upload', clear_on_submit=False):
+            uploaded = st.file_uploader('파일 선택 (한 번에 1개, 20MB 이하)', type=list(DOC_TYPES), key='safety_doc_file')
+            title = st.text_input('자료 제목', max_chars=150, placeholder='예: 굴착 작업 안전점검 안내', key='safety_doc_title')
+            category = st.selectbox('자료 분류', DOC_CATEGORIES, key='safety_doc_category')
+            note = st.text_area('간단한 설명 (선택)', max_chars=1000, placeholder='발행기관, 작성 연도, 주요 내용 등을 적어주세요.', key='safety_doc_note')
+            shared = st.checkbox('내 부서에 공유하기', value=False, disabled=not bool(dept), key='safety_doc_shared')
+            st.caption(f'공유하면 {dept} 소속으로 등록된 사용자도 볼 수 있습니다.' if dept else '현재는 나만 보기로 저장됩니다. 부서 공유가 필요하면 관리자에게 소속 등록을 요청하세요.')
+            submitted = st.form_submit_button('자료 저장하기', type='primary', width='stretch')
+        if submitted:
+            if uploaded is None:
+                st.info('먼저 파일을 선택해 주세요.')
+            else:
+                try:
+                    if safety_doc_save(actor, uploaded, title, category, note, shared):
+                        st.success('저장했습니다. 아래 ‘저장한 자료 찾기’에서 확인하세요.')
+                    else:
+                        st.info('이미 올린 파일입니다. 중복 저장하지 않았습니다. 기존 제목과 공유 범위는 그대로 유지됩니다.')
+                except (ValueError, PermissionError) as exc:
+                    st.error(str(exc))
+                except Exception:
+                    st.error('저장하지 못했습니다. 잠시 후 다시 시도하거나 관리자에게 저장 공간을 확인해 달라고 요청하세요.')
+    st.subheader('2. 저장한 자료 찾기')
+    keyword = st.text_input('제목·설명·파일명으로 검색', placeholder='예: 굴착, 밀폐공간, 점검표', key='safety_doc_search')
+    category = st.selectbox('분류로 찾기', ['전체']+DOC_CATEGORIES, key='safety_doc_filter')
+    rows = safety_doc_list(actor, keyword, category)
+    st.caption(f'열람할 수 있는 자료 {len(rows)}개 · 나만 보기 자료와 내 부서 공유 자료만 표시합니다.')
+    if not rows:
+        st.info('표시할 자료가 없습니다. 자료를 올리거나 검색어·분류를 바꿔보세요.')
+        return
+    by_id = {r['id']:r for r in rows}
+    selected = st.selectbox('열어볼 자료 선택', list(by_id),
+        format_func=lambda i: f"{by_id[i]['title']} · {by_id[i]['category']} · {by_id[i]['created']}", key='safety_doc_selected')
+    doc = safety_doc_get(actor, selected)
+    with st.container(border=True):
+        st.write('**자료 제목**', doc['title'])
+        st.caption(f"{doc['category']} · 등록 {doc['created']} · {doc['size']/1024/1024:.2f}MB")
+        st.write('공유 범위: '+(doc['dept']+' 부서 공유' if doc['visibility']=='department' else '나만 보기'))
+        if doc['note']:
+            st.text(doc['note'])
+        st.download_button('원본 파일 받기', data=doc['content'], file_name=doc['filename'], mime=doc['mime'], key='safety_doc_download_'+doc['id'], width='stretch')
+        if doc['mime'].startswith('image/'):
+            st.image(doc['content'], caption=doc['filename'], width='stretch')
+        else:
+            st.caption('‘원본 파일 받기’를 눌러 휴대폰이나 PC의 PDF·한글·Word 앱에서 열어보세요.')
+
+
+main_tab1, main_tab2, main_tab3, case_tab, documents_tab = st.tabs([
     "안전 점검 등록", 
     "점검 기록 보기", 
     "AI에게 물어보기",
-    "내 점검 이어하기"
+    "내 점검 이어하기",
+    "안전자료실"
 ])
 
 with main_tab1:
@@ -4136,3 +4312,12 @@ with case_tab:
     except Exception as exc:
         st.error(f"점검함 처리 실패: {exc}")
         st.info("변경이 저장되지 않았을 수 있습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.")
+
+
+with documents_tab:
+    try:
+        render_safety_documents(logged_user_id)
+    except PermissionError as exc:
+        st.error(str(exc))
+    except Exception:
+        st.error("자료실을 열지 못했습니다. 잠시 후 다시 시도하거나 관리자에게 저장소 연결을 확인해 달라고 요청하세요.")
