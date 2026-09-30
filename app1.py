@@ -3434,11 +3434,240 @@ def render_safety_documents(actor):
     render_safety_doc_questions(actor, doc)
 
 
-main_tab1, main_tab2, main_tab3, documents_tab = st.tabs([
+# 공유 안전캘린더: Google Sheets에 변경 이력을 추가 기록합니다.
+CAL_HEADERS = ['기록ID','일정ID','작업','작성자','기록시각','기준버전','내용JSON']
+CAL_STATUSES = ['예정','완료','연기','취소']
+CAL_KINDS = ['안전점검','안전교육','회의·합동점검','보고기한','특이사항','기타']
+
+
+def safety_cal_actor(actor):
+    actor = str(actor)
+    if not st.session_state.get('password_correct') or str(st.session_state.get('logged_user','')) != actor:
+        raise ValueError('다시 로그인해 주세요.')
+    if st.secrets.get('user_roles',{}).get(actor) == 'contractor':
+        raise ValueError('외부 조치 계정은 처 공유 캘린더를 이용할 수 없습니다.')
+    return actor
+
+
+def safety_cal_sheet():
+    book = gspread.authorize(get_gcp_credentials()).open_by_key(st.secrets['SPREADSHEET_ID'])
+    try:
+        ws = book.worksheet('안전캘린더')
+    except gspread.WorksheetNotFound:
+        try:
+            ws = book.add_worksheet(title='안전캘린더', rows=1000, cols=len(CAL_HEADERS))
+        except Exception:
+            ws = book.worksheet('안전캘린더')
+    rows = ws.get_all_values()
+    if not rows:
+        ws.update(range_name='A1:G1', values=[CAL_HEADERS], value_input_option='RAW')
+        rows = [CAL_HEADERS]
+    if rows[0] != CAL_HEADERS:
+        raise ValueError('안전캘린더 시트의 열 구성이 다릅니다. 기존 자료를 백업하고 빈 안전캘린더 시트를 준비하세요. 앱은 기존 내용을 덮어쓰지 않습니다.')
+    return ws, rows
+
+
+def safety_cal_fold(rows):
+    events, seen, rejected = {}, set(), set()
+    for raw in rows[1:]:
+        if len(raw)<7:
+            continue
+        rid,eid,action,actor,stamp,base,body = raw[:7]
+        if rid in seen:
+            continue
+        seen.add(rid)
+        try:
+            data=json.loads(body)
+            if action=='create' and eid not in events:
+                datetime.date.fromisoformat(data['start']);datetime.date.fromisoformat(data['end'])
+                events[eid]={**data,'id':eid,'owner':actor,'version':rid,'notes':[], 'history':[(stamp,actor,'등록')], 'updated':stamp}
+            elif eid in events and action=='note':
+                events[eid]['notes'].append((stamp,actor,data['note']))
+            elif eid in events and action=='edit':
+                if base != events[eid]['version']:
+                    rejected.add(rid);continue
+                events[eid].update(data)
+                events[eid]['version']=rid
+                events[eid]['updated']=stamp
+                events[eid]['history'].append((stamp,actor,'일정·상태 변경'))
+        except (ValueError,KeyError,TypeError):
+            rejected.add(rid)
+    return events, seen, rejected
+
+
+def safety_cal_validate(data):
+    required=('title','start','end','dept','site','kind','status','detail','person')
+    if not isinstance(data,dict) or any(k not in data or not isinstance(data[k],str) for k in required):
+        raise ValueError('일정 입력 내용을 확인해주세요.')
+    clean={k:data[k].strip() for k in required}
+    if not clean['title'] or len(clean['title'])>120 or len(clean['detail'])>2000 or len(clean['person'])>100:
+        raise ValueError('제목은 1~120자, 설명은 2,000자, 담당자는 100자 이하로 입력해주세요.')
+    start=datetime.date.fromisoformat(clean['start']);end=datetime.date.fromisoformat(clean['end'])
+    if end<start:
+        raise ValueError('종료일은 시작일보다 빠를 수 없습니다.')
+    if clean['status'] not in CAL_STATUSES or clean['kind'] not in CAL_KINDS:
+        raise ValueError('분류와 상태를 확인해주세요.')
+    return clean
+
+
+def safety_cal_save(actor, action, eid, data, base=''):
+    actor=safety_cal_actor(actor)
+    if action not in ('create','edit','note'):
+        raise ValueError('지원하지 않는 작업입니다.')
+    if action=='note':
+        data={'note':str(data.get('note','')).strip()}
+        if not data['note'] or len(data['note'])>2000:
+            raise ValueError('특이사항을 1~2,000자로 입력하세요.')
+    else:
+        data=safety_cal_validate(data)
+    ws,rows=safety_cal_sheet()
+    events,seen,_=safety_cal_fold(rows)
+    # 같은 입력 재전송을 멱등 처리합니다. 쓰기 결과가 불명확해도 같은 요청을 재시도할 수 있습니다.
+    rid=hashlib.sha256(json.dumps([actor,action,eid,base,data],ensure_ascii=False,sort_keys=True).encode()).hexdigest()
+    if rid in seen:
+        if rid in safety_cal_fold(rows)[2]:
+            raise ValueError('다른 사용자가 먼저 변경했습니다. 새로고침 후 다시 수정하세요.')
+        return
+    if action!='create':
+        if eid not in events:
+            raise ValueError('일정을 찾을 수 없습니다. 새로고침해주세요.')
+        if action=='edit':
+            admins=st.secrets.get('calendar_admins',['admin'])
+            if isinstance(admins,str): admins=[admins]
+            if actor!=events[eid]['owner'] and actor not in admins:
+                raise ValueError('작성자 또는 캘린더 관리자만 일정을 수정할 수 있습니다.')
+            if base!=events[eid]['version']:
+                raise ValueError('일정이 변경되었습니다. 새로고침 후 다시 수정하세요.')
+    stamp=datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')
+    ws.append_row([rid,eid,action,actor,stamp,base,json.dumps(data,ensure_ascii=False)],value_input_option='RAW')
+    _,_,rejected=safety_cal_fold(ws.get_all_values())
+    if rid in rejected:
+        raise ValueError('동시 수정으로 이번 변경은 적용되지 않았습니다. 새로고침 후 다시 수정하세요.')
+
+
+def safety_cal_table(events):
+    return [{'시작일':e['start'],'종료일':e['end'],'일정':e['title'],'부서':e['dept'],'현장':e['site'],
+             '분류':e['kind'],'상태':e['status'],'담당자':e['person']} for e in sorted(events,key=lambda e:(e['start'],e['title']))]
+
+
+def safety_cal_month(year, month, events):
+    import calendar
+    from html import escape
+    colors={'예정':'#e8f1ff','완료':'#dcfce7','연기':'#fff1c2','취소':'#eceff3'}
+    cells=[]
+    today=datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
+    for week in calendar.Calendar(firstweekday=0).monthdatescalendar(year,month):
+        for day in week:
+            if day.month!=month:
+                cells.append('<div class="sc-day sc-out"></div>');continue
+            items=[e for e in events if e['start']<=day.isoformat()<=e['end']]
+            label='오늘 · ' if day==today else ''
+            content=''.join('<div class="sc-event" style="background:'+colors[e['status']]+'">'+escape('['+e['status']+'] '+e['title'])+'</div>' for e in items[:3])
+            if len(items)>3:content+=f'<small>외 {len(items)-3}건 · 아래 목록에서 확인</small>'
+            cells.append(f'<div class="sc-day"><b>{label}{day.day}</b>{content}</div>')
+    return '''<style>.sc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.sc-day{min-height:105px;padding:8px;background:white;border:1px solid #dbe4df;border-radius:8px;color:#173b30}.sc-out{background:#f3f5f4}.sc-event{font-size:13px;color:#172b24;padding:4px;margin-top:5px;border-radius:4px;overflow-wrap:anywhere}.sc-head{text-align:center;padding:6px;font-weight:bold;color:#173b30}@media(max-width:640px){.sc-grid{display:none}}</style><div class="sc-grid">'''+''.join('<div class="sc-head">'+d+'</div>' for d in ['월','화','수','목','금','토','일'])+''.join(cells)+'</div>'
+
+
+def render_safety_calendar(actor):
+    import uuid
+    actor=safety_cal_actor(actor)
+    st.subheader('우리 처 안전캘린더')
+    st.caption('처 공통·현장 일정을 함께 봅니다. 모든 내부 로그인 사용자가 열람하고 특이사항을 기록할 수 있습니다. 수정은 작성자와 관리자만 가능합니다.')
+    st.session_state.setdefault('safety_cal_loaded',False)
+    if st.button('일정 불러오기 / 새로고침',key='cal_refresh'):
+        st.session_state.safety_cal_loaded=True
+    if not st.session_state.safety_cal_loaded:
+        st.info('위 버튼을 눌러 공유 일정을 불러오세요.');return
+    try:
+        _,rows=safety_cal_sheet();events,_,rejected=safety_cal_fold(rows)
+    except ValueError as exc:
+        st.error(str(exc));return
+    except Exception:
+        st.error('캘린더 연결에 실패했습니다. SPREADSHEET_ID와 서비스 계정의 편집 권한을 확인해주세요.');return
+    if st.session_state.pop('cal_saved',False):st.success('공유 시트에 저장했습니다.')
+    st.caption('조회 시각: '+datetime.datetime.now(ZoneInfo('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')+' · 자동 알림은 제공하지 않습니다. 다른 사용자의 변경은 새로고침하면 반영됩니다.')
+    if rejected:st.caption(f'충돌 또는 형식 오류로 반영하지 않은 기록 {len(rejected)}건이 있습니다. 변경 이력은 시트에 남아 있습니다.')
+    today=datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
+    dept=st.selectbox('보고 싶은 부서',['전체']+sorted({e['dept'] for e in events.values()}),key='cal_filter_dept')
+    filtered=[e for e in events.values() if dept=='전체' or e['dept']==dept]
+    st.markdown('**이번 주 일정**')
+    monday=today-datetime.timedelta(days=today.weekday());sunday=monday+datetime.timedelta(days=6)
+    week=[e for e in filtered if e['start']<=sunday.isoformat() and e['end']>=monday.isoformat() and e['status']!='취소']
+    if week:st.dataframe(pd.DataFrame(safety_cal_table(week)),hide_index=True,width='stretch')
+    else:st.info('이번 주에 등록된 일정이 없습니다.')
+    c1,c2=st.columns(2)
+    year=int(c1.number_input('연도',min_value=2020,max_value=2100,value=today.year,key='cal_year'))
+    month=c2.selectbox('월',list(range(1,13)),index=today.month-1,key='cal_month')
+    mode=st.radio('보기 방식',['월간 달력·목록','연간 목록'],horizontal=True,key='cal_view')
+    start=datetime.date(year,month,1) if mode.startswith('월간') else datetime.date(year,1,1)
+    import calendar
+    end=datetime.date(year,month,calendar.monthrange(year,month)[1]) if mode.startswith('월간') else datetime.date(year,12,31)
+    shown=[e for e in filtered if e['start']<=end.isoformat() and e['end']>=start.isoformat()]
+    if mode.startswith('월간'):st.markdown(safety_cal_month(year,month,shown),unsafe_allow_html=True)
+    st.caption('휴대폰에서는 날짜순 목록으로 표시합니다. 자세한 내용은 아래에서 일정을 선택하세요.')
+    if shown:st.dataframe(pd.DataFrame(safety_cal_table(shown)),hide_index=True,width='stretch')
+    else:st.info('선택한 기간에 등록된 일정이 없습니다.')
+    with st.expander('새 일정 또는 특이사항 등록',expanded=False):
+        with st.form('cal_create'):
+            title=st.text_input('제목',max_chars=120)
+            a,b=st.columns(2);sd=a.date_input('시작일',today);ed=b.date_input('종료일',today)
+            dep=st.selectbox('대상 부서',['처 공통']+list(department_sites_map))
+            site=st.text_input('현장명 (처 공통이면 비워두세요)',max_chars=200)
+            kind=st.selectbox('분류',CAL_KINDS);person=st.text_input('담당자',max_chars=100)
+            detail=st.text_area('일정 내용 또는 특이사항',max_chars=2000)
+            submit=st.form_submit_button('공유 일정에 저장',type='primary')
+        if submit:
+            data=dict(title=title,start=sd.isoformat(),end=ed.isoformat(),dept=dep,site=site,kind=kind,person=person,detail=detail,status='예정')
+            eid=hashlib.sha256(json.dumps([actor,data],sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+            try:
+                safety_cal_save(actor,'create',eid,data);st.session_state.cal_saved=True;st.rerun()
+            except ValueError as exc:st.error(str(exc))
+            except Exception:st.error('저장 결과 확인이 필요합니다. 새로고침해 일정을 확인한 뒤 같은 내용으로 재시도하세요.')
+    if not shown:return
+    byid={e['id']:e for e in shown}
+    eid=st.selectbox('자세히 볼 일정',list(byid),format_func=lambda i:byid[i]['start']+' · '+byid[i]['title'],key='cal_detail')
+    e=byid[eid]
+    st.write('**'+e['title']+'**');st.text(e['detail'] or '등록된 설명이 없습니다.')
+    st.caption(f"작성자: {e['owner']} · 담당자: {e['person'] or '미지정'} · 상태: {e['status']}")
+    admins=st.secrets.get('calendar_admins',['admin']);admins=[admins] if isinstance(admins,str) else admins
+    if actor==e['owner'] or actor in admins:
+        with st.expander('일정·상태 수정'):
+            with st.form('cal_edit_'+eid+'_'+e['version']):
+                title=st.text_input('일정 제목',e['title'],max_chars=120)
+                sd=st.date_input('변경 시작일',datetime.date.fromisoformat(e['start']))
+                ed=st.date_input('변경 종료일',datetime.date.fromisoformat(e['end']))
+                status=st.selectbox('진행 상태',CAL_STATUSES,index=CAL_STATUSES.index(e['status']))
+                person=st.text_input('담당자 변경',e['person'],max_chars=100)
+                detail=st.text_area('내용 변경',e['detail'],max_chars=2000)
+                submit=st.form_submit_button('변경 저장')
+            if submit:
+                data={k:e[k] for k in ('title','start','end','dept','site','kind','status','detail','person')}
+                data.update(title=title,start=sd.isoformat(),end=ed.isoformat(),status=status,person=person,detail=detail)
+                try:
+                    safety_cal_save(actor,'edit',eid,data,e['version']);st.session_state.cal_saved=True;st.rerun()
+                except ValueError as exc:st.error(str(exc))
+                except Exception:st.error('저장 결과 확인이 필요합니다. 새로고침 후 다시 확인하세요.')
+    st.markdown('**특이사항 기록**')
+    for stamp,writer,note in e['notes']:
+        st.caption(stamp+' · '+writer);st.text(note)
+    with st.form('cal_note_'+eid):
+        note=st.text_area('새 특이사항',max_chars=2000,placeholder='예: 우천으로 점검 일정 변경 협의 중')
+        submit=st.form_submit_button('특이사항 남기기')
+    if submit:
+        try:
+            safety_cal_save(actor,'note',eid,{'note':note});st.session_state.cal_saved=True;st.rerun()
+        except ValueError as exc:st.error(str(exc))
+        except Exception:st.error('저장 결과 확인이 필요합니다. 새로고침 후 같은 내용으로 재시도하세요.')
+    with st.expander('일정 변경 이력'):
+        for stamp,writer,action in e['history']:st.text(stamp+' · '+writer+' · '+action)
+
+
+main_tab1, main_tab2, main_tab3, documents_tab, calendar_tab = st.tabs([
     "안전 점검 등록", 
     "점검 기록 보기", 
     "AI에게 물어보기",
-    "안전자료실"
+    "안전자료실",
+    "안전캘린더"
 ])
 
 with main_tab1:
@@ -4308,3 +4537,10 @@ with documents_tab:
         st.error(str(exc))
     except Exception:
         st.error("자료실을 열지 못했습니다. 잠시 후 다시 시도하거나 관리자에게 저장소 연결을 확인해 달라고 요청하세요.")
+
+
+with calendar_tab:
+    try:
+        render_safety_calendar(logged_user_id)
+    except Exception:
+        st.error("안전캘린더를 표시하지 못했습니다. 새로고침하거나 관리자에게 연결 상태를 확인해 달라고 요청하세요.")
