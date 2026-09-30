@@ -4745,10 +4745,8 @@ def ra_validate(meta, rows, final=False):
     errors=[]
     if not rows: errors.append('평가 항목을 한 개 이상 추가하세요.')
     if final:
-        for key,label in [('site','현장명'),('department','담당부서'),('evaluator','평가자'),('workers','참여 근로자'),('worker_rep','참여 근로자대표 또는 해당 현황'),('reviewer','검토자'),('opinions','근로자 의견 및 반영 내용')]:
+        for key,label in [('site','현장명'),('evaluator','평가자')]:
             if not str(meta.get(key,'')).strip(): errors.append(label+'을 입력하세요.')
-        if not meta.get('criteria_confirmed') or not meta.get('threshold') or not meta.get('criteria_name'): errors.append('공단 평가기준과 조치기준을 확인하세요.')
-        if not all(meta.get('frequency_labels',[])) or not all(meta.get('severity_labels',[])): errors.append('각 빈도·강도 점수의 판단기준을 입력하세요.')
         if not str(meta.get('sharing','')).strip(): errors.append('근로자 공유 내용·일자·후속계획을 입력하세요.')
         if not meta.get('review_confirmed'): errors.append('현장 확인 및 검토 여부를 확인하세요.')
     for i,r in enumerate(rows,1):
@@ -4788,13 +4786,9 @@ def ra_ai(kind, data, source):
 def ra_report_sections(meta, rows, final):
     status='검토본' if final else '초안 · 미확인 사항 포함'
     sections=[('평가 개요',[
-        ('보고서 상태',status),('현장 / 부서',meta['site']+' / '+meta['department']),
-        ('평가일 / 구분',meta['date']+' / '+meta['kind']),('평가자 / 검토자',meta['evaluator']+' / '+meta['reviewer']),
-        ('참여 근로자 / 근로자대표',meta['workers']+' / '+meta['worker_rep']),('근로자 의견 및 반영',meta['opinions']),
-        ('평가 대상 공종',' / '.join(meta['trades'])),('평가 기준',meta['criteria_name'] or '확인 필요'),
-        ('산식 / 조치 기준','빈도 × 강도 / '+(f'{meta["threshold"]}점 이상 개선조치' if meta['threshold'] else '확인 필요')),
-        ('빈도 판단기준','\n'.join(f'{i+1}점: {v or "확인 필요"}' for i,v in enumerate(meta['frequency_labels']))),
-        ('강도 판단기준','\n'.join(f'{i+1}점: {v or "확인 필요"}' for i,v in enumerate(meta['severity_labels']))),
+        ('보고서 상태',status),('현장명',meta['site']),
+        ('평가일 / 구분',meta['date']+' / '+meta['kind']),('평가자',meta['evaluator']),
+        ('평가 대상 공종',' / '.join(meta['trades'])),('위험성 산식','빈도 × 강도'),
         ('작성 범위','AI는 작성 보조입니다. 공단 지정 서식 일치 여부 확인 필요. 별표·부칙·현장 의무조치는 별도 확인합니다.')])]
     for i,r in enumerate(rows,1):
         before=r['frequency']*r['severity'];after=r['residual_f']*r['residual_s']
@@ -4885,43 +4879,24 @@ def render_risk_assessment(actor):
             if k.startswith('ra_'):del st.session_state[k]
         st.session_state.ra_actor=str(actor)
     st.subheader('위험성평가, 하나씩 선택해 작성하세요')
-    st.caption('① 현장·기준 → ② 공종·위험유형 → ③ 위험요인 → ④ 점수·개선대책 → ⑤ 보고서')
+    st.caption('① 현장 정보 → ② 공종·위험유형 → ③ 위험요인 → ④ 점수·개선대책 → ⑤ 보고서')
     st.info('AI는 검토할 후보를 제안합니다. 빈도·강도와 최종 대책은 근로자와 현장 담당자가 확인하여 결정합니다.')
     if 'ra_rows' not in st.session_state:st.session_state.ra_rows=[]
     rows=st.session_state.ra_rows
-    with st.expander('저장한 평가 불러오기'):
-        st.caption('현재 작성 내용은 이 접속 동안 유지됩니다. 아래 저장 버튼으로 보관하고 보고서도 내려받으세요. 서버 저장소의 영구 보관 여부는 관리자 확인이 필요합니다.')
-        try:
-            db=inspection_store()
-            db.execute('CREATE TABLE IF NOT EXISTS risk_assessments (id TEXT PRIMARY KEY, owner TEXT, created TEXT, site TEXT, payload TEXT)')
-            saved=db.execute('SELECT id,created,site,payload FROM risk_assessments WHERE owner=? ORDER BY created DESC LIMIT 100',(str(actor),)).fetchall();db.close()
-            if saved:
-                selected=st.selectbox('내가 저장한 평가',range(len(saved)),format_func=lambda i:saved[i][1][:16]+' · '+saved[i][2],key='ra_load_choice')
-                replace=st.checkbox('현재 작성 내용을 선택한 저장본으로 바꿉니다.',key='ra_load_confirm')
-                if st.button('선택한 평가 불러오기',disabled=not replace,key='ra_load'):
-                    data=json.loads(saved[selected][3])
-                    for k in list(st.session_state):
-                        if k.startswith('ra_') and k!='ra_actor':del st.session_state[k]
-                    st.session_state.ra_rows=data['rows'];st.session_state.ra_loaded=data['meta'];st.rerun()
-        except Exception:st.caption('저장 목록 연결 확인 필요. 작성과 파일 출력은 계속할 수 있습니다.')
-    defaults=st.session_state.get('ra_loaded',{})
+    defaults={}
     def text(label,key,default='',area=False):
         value=defaults.get(key,default)
         return (st.text_area if area else st.text_input)(label,value=str(value),key='ra_meta_'+key)
-    with st.expander('① 현장 정보와 평가기준',expanded=True):
-        meta={}
-        for key,label in [('site','현장명'),('department','담당부서'),('evaluator','평가자'),('reviewer','검토자'),('workers','참여 근로자 이름·직종'),('worker_rep','참여 근로자대표 / 해당 현황')]:meta[key]=text(label,key,str(actor) if key=='evaluator' else '')
-        meta['date']=str(st.date_input('평가일',value=datetime.date.fromisoformat(defaults.get('date',str(datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()))),key='ra_date'))
-        kinds=['최초평가','정기평가','수시평가','상시평가 기록'];meta['kind']=st.selectbox('평가 구분',kinds,index=kinds.index(defaults.get('kind',kinds[0])),key='ra_kind')
-        meta['opinions']=text('근로자가 제시한 위험·개선 의견 및 반영 내용','opinions',area=True)
-        meta['criteria_name']=text('공단 평가기준 문서명·개정일','criteria_name')
-        st.caption('아래 단계 수는 설정 예시입니다. 공단의 실제 빈도·강도 정의와 개선조치 점수를 입력하세요.')
-        meta['frequency_max']=st.selectbox('빈도 단계 수',[3,4,5],index=[3,4,5].index(defaults.get('frequency_max',5)),key='ra_fmax')
-        meta['severity_max']=st.selectbox('강도 단계 수',[3,4,5],index=[3,4,5].index(defaults.get('severity_max',4)),key='ra_smax')
-        meta['frequency_labels']=[st.text_input(f'빈도 {i+1}점 판단기준',value=(defaults.get('frequency_labels',[])+['']*5)[i],placeholder='공단 기준표의 설명을 입력',key=f'ra_fl_{i}') for i in range(meta['frequency_max'])]
-        meta['severity_labels']=[st.text_input(f'강도 {i+1}점 판단기준',value=(defaults.get('severity_labels',[])+['']*5)[i],placeholder='공단 기준표의 설명을 입력',key=f'ra_sl_{i}') for i in range(meta['severity_max'])]
-        meta['threshold']=st.number_input('이 점수 이상이면 개선조치 (0 = 미설정)',min_value=0,max_value=meta['frequency_max']*meta['severity_max'],value=min(defaults.get('threshold',0),meta['frequency_max']*meta['severity_max']),key=f'ra_threshold_{meta["frequency_max"]}_{meta["severity_max"]}')
-        meta['criteria_confirmed']=st.checkbox('공단 기준표와 위 설정이 일치함을 확인했습니다.',value=False,key='ra_criteria_'+ra_hash([meta['criteria_name'],meta['frequency_labels'],meta['severity_labels'],meta['threshold']])[:12])
+    with st.expander('① 현장 정보',expanded=True):
+        # Keep existing score-input ranges; no unverified company action threshold.
+        meta={'frequency_max':5,'severity_max':4,'frequency_labels':['']*5,
+              'severity_labels':['']*4,'threshold':0,'criteria_confirmed':False}
+        sites=list(dict.fromkeys(site for group in department_sites_map.values() for site in group))
+        meta['site']=st.selectbox('점검현장 선택',sites,key='ra_site_choice')
+        meta['evaluator']=text('평가자','evaluator',str(actor))
+        meta['date']=str(st.date_input('평가일',value=datetime.datetime.now(ZoneInfo('Asia/Seoul')).date(),key='ra_date'))
+        kinds=['최초평가','정기평가','수시평가','상시평가 기록']
+        meta['kind']=st.selectbox('평가 구분',kinds,key='ra_kind')
     st.markdown('#### ② 현장에 있는 공종을 모두 선택하세요')
     trades=[]
     for start in range(0,len(RA_TRADES),4):
@@ -5011,12 +4986,12 @@ def render_risk_assessment(actor):
             if st.button('항목 삭제',disabled=not delete,key=prefix+'delete'):st.session_state.ra_rows=[v for v in rows if v['id']!=r['id']];st.rerun()
     st.markdown('#### ⑤ 검토·저장·보고서 출력')
     meta['sharing']=text('근로자 공유 내용·공유일·후속 점검 계획','sharing',area=True)
-    meta['review_confirmed']=st.checkbox('근로자 참여 내용, 현장 위험요인, 점수 및 대책을 검토했습니다.',value=False,key='ra_review_'+ra_hash([rows,meta])[:12])
+    meta['review_confirmed']=st.checkbox('현장 위험요인, 점수 및 대책을 검토했습니다.',value=False,key='ra_review_'+ra_hash([rows,meta])[:12])
     mode=st.radio('보고서 구분',['초안','현장 검토본'],horizontal=True,key='ra_mode');final=mode=='현장 검토본'
     meta['trades']=list(dict.fromkeys(meta['trades']+[r['trade'] for r in rows]))
     payload={'meta':meta,'rows':rows,'final':final};sig=ra_hash(payload)
     if st.button('작성 내용 저장',disabled=not rows,key='ra_save'):
-        try:ra_archive(actor,payload);st.success('내 저장 목록에 보관했습니다. 장기 보관용 파일도 내려받으세요.')
+        try:ra_archive(actor,payload);st.success('작성 내용을 서버에 저장했습니다. 장기 보관용 파일도 내려받으세요.')
         except Exception:st.error('서버 저장 실패. 아래 JSON 백업과 보고서를 내려받으세요.')
     st.download_button('작성 내용 JSON 백업',json.dumps(payload,ensure_ascii=False,indent=2).encode(),'위험성평가_작성내용.json','application/json',key='ra_json')
     if st.button('📄 위험성평가 보고서 만들기',type='primary',key='ra_build'):
@@ -5035,7 +5010,7 @@ def render_risk_assessment(actor):
         if outputs.get('pdf'):st.download_button('🖨️ 출력용 PDF 다운로드',outputs['pdf'],'위험성평가_보고서.pdf','application/pdf',key='ra_pdf_download')
         if outputs.get('hwpx'):st.download_button('📝 편집용 한글 HWPX 다운로드',outputs['hwpx'],'위험성평가_보고서.hwpx','application/hwp+zip',key='ra_hwpx_download')
     elif outputs:st.caption('내용이 변경되었습니다. 보고서 만들기를 다시 눌러 최신 파일을 생성하세요.')
-    st.caption('공단 지정 서식·점수 기준을 확인하기 전까지 초안으로 사용하세요. 현장 검토본도 법정 의무 이행 또는 작업허가의 자동 승인을 뜻하지 않습니다.')
+    st.caption('현재 점수는 빈도 × 강도로 계산합니다. 개선조치 기준점수가 미설정되어 점수에 따른 자동 판정은 보류합니다.')
 
 
 with risk_tab:
