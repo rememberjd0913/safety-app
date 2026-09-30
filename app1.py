@@ -4707,7 +4707,46 @@ with calendar_tab:
 
 
 # ---------- 위험성평가: 선택형 작성 / 사람의 점수 판단 / 보고서 ----------
-RA_TRADES = ['🚜 토공·굴착','🏗️ 흙막이·가시설','🪜 비계·고소작업','🧱 철근·거푸집','🪨 콘크리트','🚧 관로·맨홀','💧 수처리·기계설비','⚡ 전기·계장','🔥 용접·절단','🏚️ 해체·철거','🚛 운반·양중','🧪 약품·토양정화','🛣️ 도로·포장','🌿 조경·부대공','🔧 유지보수·시운전','✍️ 기타']
+RA_TRADE_GROUPS = [
+('📐','현장 준비, 가설공사', ['현황측량·기준점 설치','지반조사·시추','지하매설물 탐사·시험굴착','수목 제거·벌목·뿌리 제거','현장 정리·장애물 제거','가설울타리·출입문 설치·해체','가설사무실·컨테이너 설치·철거','가설도로·장비 진입로 조성','가설전기·임시분전반 설치·철거','가설급수·배수시설 설치·철거']),
+('🚜','토공, 굴착, 지반공사', ['표토 제거·토사 절취','기초 터파기','관로 설치용 도랑 굴착','암반 천공·브레이커 파쇄','발파 작업','굴착토 상차·운반·하차','성토·되메우기','지반 다짐','사면 정리·보강','지반개량·그라우팅']),
+('🏗️','흙막이, 기초공사', ['흙막이 H파일 설치·인발','토류판 설치·해체','시트파일 설치·인발','띠장·버팀보 설치·해체','어스앵커 시공·긴장','주열식 흙막이벽 시공','지하연속벽 시공','웰포인트·딥웰 설치·운전','기성말뚝 항타·매입','현장타설말뚝 시공·두부 정리']),
+('🧱','철근, 거푸집, 콘크리트공사', ['철근 반입·하역·적재','철근 절단·절곡','철근 조립·결속','철근 이음·커플러 체결','일반 거푸집 설치·해체','시스템폼·갱폼 설치·해체','동바리 설치·해체','콘크리트 펌프카 설치·압송관 배치','콘크리트 타설·진동 다짐·표면 마감','콘크리트 양생·보온·열풍기 사용']),
+('🪜','철골, 비계, 고소작업', ['철골 부재 반입·적재','철골 기둥·보 세우기','철골 볼트 체결·접합','데크플레이트 설치','지붕재·채광창 설치·보수','강관비계 설치·해체','시스템비계 설치·해체','이동식비계 설치·이동·사용','고소작업대 사용','달비계·곤돌라 사용']),
+('🚧','관로, 맨홀, 도로공사', ['기존 도로 절단·포장 철거','관로 기초·받침 시공','상수·하수관 인양·부설','관 접합·융착·플랜지 체결','맨홀·집수정 설치','기존 관로 연결·절체','추진·압입 등 비개착 관로 시공','관로 수압·기밀·누수시험','관로 세척·준설·CCTV 조사','아스팔트·콘크리트 포장 및 복구']),
+('🏢','건축, 마감, 부대공사', ['벽돌·블록 쌓기','미장·견출','방수·방식·라이닝','도장·도료 취급','타일·석재 붙임','창호·유리 설치','금속패널·외장재 설치','천장·칸막이·내장재 설치','보온·단열재 시공','조경·식재·보도블록·경계석 시공']),
+('⚙️','환경시설, 기계설비공사', ['펌프·모터 설치·정렬','송풍기·압축기 설치','스크린·제진기·컨베이어 설치','교반기·수중기기·산기관 설치','침전지 수집기·농축기·탈수기 설치','탱크·저장조·압력용기 설치','약품주입·소독설비 설치','소각로·보일러·폐열회수설비 설치','집진기·탈취기·배출가스 처리설비 설치','기계배관·밸브·덕트 설치']),
+('⚡','전기, 계장, 시운전', ['수변전설비·변압기 설치','배전반·제어반·MCC 설치','전선관·케이블트레이 설치','케이블 포설·단말 처리','접지·피뢰설비 설치','조명·콘센트·전기기구 설치','계측기·센서·자동제어설비 설치','정전·전원 차단·복전 작업','절연·통전시험 및 전기설비 점검','단독·연동·부하 시운전']),
+('🔧','특수, 해체, 정비작업', ['용접·용단·불꽃 발생 연마','이동식크레인 등 중량물 인양·설치','맨홀·탱크·피트 등 내부 진입작업','구조물 해체·철거','석면 함유 자재 해체·제거','수중·잠수작업','설비 정비·막힘 제거·부품 교체','오염토양 굴착·선별·반출','토양세척·열처리·안정화 등 정화설비 작업','지하수 관정 설치·양수·정화설비 작업']),
+]
+
+
+def ra_custom_tasks(value):
+    return list(dict.fromkeys(v.strip() for v in re.split(r'[,\n]+',value) if v.strip()))
+
+
+def ra_select_tasks():
+    """All expanders render their widgets even while collapsed, preserving selections."""
+    selected=[]
+    st.caption('번호를 눌러 펼친 뒤 해당하는 세부작업을 모두 선택하세요. 여러 공종을 함께 선택할 수 있습니다.')
+    for group_index,(icon,group,tasks) in enumerate(RA_TRADE_GROUPS,1):
+        with st.expander(f'{group_index}. {icon} {group}'):
+            for task_index,task in enumerate(tasks,1):
+                if st.checkbox(f'{task_index}. {task}',key=f'ra_task_{group_index}_{task_index}'):
+                    selected.append(group+' / '+task)
+            custom=st.text_area('기타 직접 입력',placeholder='이 공종에 추가할 세부작업을 한 줄에 하나씩 입력하세요.',key=f'ra_custom_group_{group_index}')
+            selected.extend(group+' / '+task for task in ra_custom_tasks(custom) if task not in tasks or group+' / '+task not in selected)
+    with st.expander('11. ✍️ 기타 직접 입력'):
+        other=st.text_area('목록에 없는 공종·세부작업',placeholder='예: 특수공사 / 해당 세부작업\n한 줄에 하나씩 입력하세요.',key='ra_custom_group_11')
+        selected.extend('기타 / '+task for task in ra_custom_tasks(other))
+    selected=list(dict.fromkeys(selected))
+    st.caption(f'현재 선택한 세부작업: {len(selected)}개')
+    if selected:
+        with st.expander('선택한 작업 모아보기'):
+            for task in selected:st.write('• '+task)
+    return selected
+
+
 RA_HAZARDS = ['🪜 추락','⚙️ 끼임','🚶 넘어짐','🧱 맞음·낙하물','🚛 부딪힘·차량충돌','🏚️ 무너짐·매몰','⚡ 감전','🔥 화재','💥 폭발','🫁 질식·산소결핍','🧪 유해물질 노출','💧 빠짐·익사','🌡️ 폭염·한랭','🔊 소음·진동','🏋️ 근골격계 부담','🔪 베임·찔림','♨️ 화상','🦠 생물학적 위험','🌪️ 강풍·악천후','👥 혼재작업','✍️ 기타']
 RA_GUIDE = 'https://www.law.go.kr/lsLinkCommonInfo.do?lspttninfSeq=200111'
 
@@ -4898,19 +4937,15 @@ def render_risk_assessment(actor):
         kinds=['최초평가','정기평가','수시평가','상시평가 기록']
         meta['kind']=st.selectbox('평가 구분',kinds,key='ra_kind')
     st.markdown('#### ② 현장에 있는 공종을 모두 선택하세요')
-    trades=[]
-    for start in range(0,len(RA_TRADES),4):
-        cols=st.columns(4)
-        for j,t in enumerate(RA_TRADES[start:start+4]):
-            if cols[j].checkbox(t,value=t in defaults.get('trades',[]),key='ra_trade_'+str(start+j)):trades.append(t)
-    other=text('기타 공종 (쉼표로 구분)','other_trades')
-    trades=[t for t in trades if t!='✍️ 기타']+list(dict.fromkeys(t.strip() for t in other.split(',') if t.strip()))
-    meta['trades']=list(dict.fromkeys(trades+[r['trade'] for r in rows]));meta['other_trades']=other
+    trades=ra_select_tasks()
+    meta['trades']=list(dict.fromkeys(trades+[r['trade'] for r in rows]))
     if any(r['trade'] not in trades for r in rows):st.caption('선택 해제한 공종의 기존 평가 항목은 유지됩니다. 불필요한 항목은 아래에서 삭제하세요.')
     with st.expander('③ 위험요인 후보를 골라 평가 항목 추가',expanded=True):
         if not trades:st.caption('위에서 현장 공종을 먼저 선택하세요.')
         else:
-            trade=st.selectbox('이번에 평가할 공종',trades,key='ra_item_trade')
+            if st.session_state.get('ra_item_trade') not in trades:
+                st.session_state.ra_item_trade=trades[0]
+            trade=st.selectbox('이번에 평가할 세부작업',trades,key='ra_item_trade')
             work=st.text_input('세부작업·위치·장비·작업조건',placeholder='예: 3m 굴착구간 관로 설치, 굴착기와 근로자 동시작업',key='ra_work')
             hazards=[]
             for start in range(0,len(RA_HAZARDS),4):
