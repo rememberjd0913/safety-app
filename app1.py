@@ -3451,10 +3451,6 @@ with main_tab1:
 4. 조치했다면 **조치 후 사진과 내용**도 입력하세요. 아직 조치 전이면 비워둘 수 있습니다.
 5. **보고서 만들기**를 누른 뒤, 내려받은 파일을 열어 확인하세요.
 6. 내용이 맞으면 **이메일 보내기**를 누르세요. 한글과 PDF가 함께 첨부됩니다.""")
-    with st.expander('작성 화면을 비우고 새 점검 시작하기'):
-        st.caption('필요한 보고서를 먼저 만들어 내려받으세요. 새로 시작하면 이 화면의 입력 내용은 비워지며 이어서 작성할 수 없습니다.')
-        reset_confirmed = st.checkbox('보고서를 보관했습니다. 입력 내용을 비우고 새 점검을 시작합니다.', key='easy_reset_confirmed')
-        st.button('새 점검 시작', on_click=case_new_registration, key='case_new_registration', disabled=not reset_confirmed)
     st.subheader('1. 어느 현장인가요?')
     col_dept, col_site = st.columns(2)
     with col_dept:
