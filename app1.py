@@ -3449,21 +3449,57 @@ def safety_cal_actor(actor):
     return actor
 
 
+def safety_cal_normalize_rows(rows):
+    """헤더 공백·BOM·여분의 빈 열을 허용하되 다른 자료는 변경하지 않습니다."""
+    def clean(value):
+        return str(value).replace('\ufeff','').replace('\u200b','').strip()
+    if not rows or not any(clean(v) for row in rows for v in row):
+        return 'empty', []
+    header=[clean(v) for v in rows[0]]
+    while header and not header[-1]:
+        header.pop()
+    if header != CAL_HEADERS:
+        return 'different', rows
+    if any(clean(v) for row in rows for v in row[len(CAL_HEADERS):]):
+        return 'different', rows
+    return 'compatible', [CAL_HEADERS]+[list(row[:7]) for row in rows[1:]]
+
+
 def safety_cal_sheet():
     book = gspread.authorize(get_gcp_credentials()).open_by_key(st.secrets['SPREADSHEET_ID'])
-    try:
-        ws = book.worksheet('안전캘린더')
-    except gspread.WorksheetNotFound:
+    dedicated = '안전캘린더_앱전용'
+    def find(name):
         try:
-            ws = book.add_worksheet(title='안전캘린더', rows=1000, cols=len(CAL_HEADERS))
+            return book.worksheet(name)
+        except gspread.WorksheetNotFound:
+            return None
+    def create(name):
+        try:
+            return book.add_worksheet(title=name, rows=1000, cols=7)
         except Exception:
-            ws = book.worksheet('안전캘린더')
-    rows = ws.get_all_values()
-    if not rows:
+            # 다른 사용자가 동시에 생성했을 수 있으므로 같은 이름을 다시 확인합니다.
+            existing=find(name)
+            if existing is None:
+                raise
+            return existing
+    # 전용 시트를 한 번 사용했다면 이후에도 같은 저장소를 사용합니다.
+    ws=find(dedicated)
+    if ws is None:
+        ws=find('안전캘린더')
+        if ws is None:
+            ws=create('안전캘린더')
+    state,rows=safety_cal_normalize_rows(ws.get_all_values())
+    if state=='different' and ws.title != dedicated:
+        ws=find(dedicated)
+        if ws is None:
+            ws=create(dedicated)
+        state,rows=safety_cal_normalize_rows(ws.get_all_values())
+    if state=='different':
+        raise ValueError('앱 전용 시트에도 다른 양식의 내용이 있습니다. 안전캘린더_앱전용 시트의 첫 줄을 캡처해 관리자에게 전달해주세요. 기존 자료는 변경하지 않았습니다.')
+    if state=='empty':
         ws.update(range_name='A1:G1', values=[CAL_HEADERS], value_input_option='RAW')
-        rows = [CAL_HEADERS]
-    if rows[0] != CAL_HEADERS:
-        raise ValueError('안전캘린더 시트의 열 구성이 다릅니다. 기존 자료를 백업하고 빈 안전캘린더 시트를 준비하세요. 앱은 기존 내용을 덮어쓰지 않습니다.')
+        rows=[CAL_HEADERS]
+    st.session_state.cal_storage_sheet=ws.title
     return ws, rows
 
 
@@ -3539,7 +3575,7 @@ def safety_cal_save(actor, action, eid, data, base=''):
             if base!=events[eid]['version']:
                 raise ValueError('일정이 변경되었습니다. 새로고침 후 다시 수정하세요.')
     stamp=datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')
-    ws.append_row([rid,eid,action,actor,stamp,base,json.dumps(data,ensure_ascii=False)],value_input_option='RAW')
+    ws.append_row([rid,eid,action,actor,stamp,base,json.dumps(data,ensure_ascii=False)],value_input_option='RAW', table_range='A1:G')
     _,_,rejected=safety_cal_fold(ws.get_all_values())
     if rid in rejected:
         raise ValueError('동시 수정으로 이번 변경은 적용되지 않았습니다. 새로고침 후 다시 수정하세요.')
@@ -3607,6 +3643,9 @@ def render_safety_calendar(actor):
         st.error(str(exc));return
     except Exception:
         st.error('캘린더 연결에 실패했습니다. SPREADSHEET_ID와 서비스 계정의 편집 권한을 확인해주세요.');return
+    st.caption('캘린더 연결 버전 42 · 저장 시트: '+st.session_state.get('cal_storage_sheet','안전캘린더'))
+    if st.session_state.get('cal_storage_sheet')=='안전캘린더_앱전용':
+        st.info('기존 안전캘린더 시트는 보존하고 앱 전용 시트에 연결했습니다. 기존 시트의 일정은 자동으로 옮겨지지 않습니다.')
     if st.session_state.pop('cal_saved',False):st.success('공유 시트에 저장했습니다.')
     st.caption('조회 시각: '+datetime.datetime.now(ZoneInfo('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')+' · 자동 알림은 제공하지 않습니다. 다른 사용자의 변경은 새로고침하면 반영됩니다.')
     if rejected:st.caption(f'충돌 또는 형식 오류로 반영하지 않은 기록 {len(rejected)}건이 있습니다. 변경 이력은 시트에 남아 있습니다.')
