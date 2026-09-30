@@ -3730,13 +3730,45 @@ def render_safety_calendar(actor):
         for stamp,writer,action in e['history']:st.text(stamp+' · '+writer+' · '+action)
 
 
-main_tab1, main_tab2, main_tab3, documents_tab, calendar_tab = st.tabs([
-    "안전 점검 등록", 
-    "점검 기록 보기", 
-    "AI에게 물어보기",
-    "안전자료실",
-    "안전캘린더"
-])
+st.markdown("""<style>
+
+/* Main navigation only: scoped overrides beat legacy global tab styles. */
+.st-key-keco_main_menu {overflow:visible!important;}
+.st-key-keco_main_menu [role="tablist"] {display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:12px!important;padding:12px 5px 24px!important;height:auto!important;overflow:visible!important;background:transparent!important;border:0!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"] {position:relative!important;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:12px!important;width:100%!important;min-width:0!important;height:auto!important;min-height:100px!important;margin:0!important;padding:20px 12px!important;border:2px solid transparent!important;border-radius:16px!important;background:#008566!important;color:white!important;-webkit-text-fill-color:white!important;box-shadow:0 4px 10px rgba(0,85,62,.14)!important;transform:translateY(0) scale(1)!important;transition:transform 180ms ease,background-color 180ms ease,box-shadow 180ms ease,border-color 180ms ease!important;cursor:pointer!important;touch-action:manipulation;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"] p,.st-key-keco_main_menu [role="tablist"] [role="tab"] span {font-size:17px!important;line-height:1.45!important;font-weight:700!important;color:white!important;-webkit-text-fill-color:white!important;white-space:normal!important;word-break:keep-all!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]::before {content:""!important;display:block!important;width:32px!important;height:32px!important;flex:0 0 32px!important;background:transparent center/contain no-repeat!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]::after {content:none!important;animation:none!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"][aria-selected="true"] {background:#00543e!important;border-color:#a0e7c4!important;box-shadow:0 5px 14px rgba(0,66,45,.25),inset 0 -4px 0 #7edbb4!important;}
+@media(hover:hover) {
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:hover {transform:translateY(-6px) scale(1.015)!important;background:#009977!important;border-color:#b0f2d6!important;box-shadow:0 14px 24px rgba(0,93,64,.3)!important;}
+}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:active {transform:translateY(2px) scale(.96)!important;background:#004b39!important;box-shadow:0 1px 3px rgba(0,65,45,.25)!important;transition-duration:70ms!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:focus-visible {outline:3px solid #176cb5!important;outline-offset:4px!important;}
+.st-key-keco_main_menu [data-baseweb="tab-highlight"],.st-key-keco_main_menu [data-baseweb="tab-border"] {display:none!important;}
+@media(max-width:1100px) and (min-width:641px) { .st-key-keco_main_menu [role="tablist"] [role="tab"] {flex-direction:column!important;gap:10px!important;} }
+@media(max-width:640px) {
+.st-key-keco_main_menu [role="tablist"] {grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"] {min-height:78px!important;padding:14px 8px!important;border-radius:13px!important;gap:9px!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"] p,.st-key-keco_main_menu [role="tablist"] [role="tab"] span {font-size:16px!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]::before {width:27px!important;height:27px!important;flex-basis:27px!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(5) {grid-column:1 / -1;}
+}
+@media(prefers-reduced-motion:reduce) {
+.st-key-keco_main_menu [role="tablist"] [role="tab"],.st-key-keco_main_menu [role="tablist"] [role="tab"]:hover,.st-key-keco_main_menu [role="tablist"] [role="tab"]:active {transition:none!important;transform:none!important;}
+}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(1)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%226%22%20y%3D%224%22%20width%3D%2220%22%20height%3D%2225%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M12%204V2h8v2M11%2013l3%203%207-7M11%2022h10%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(2)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%203v26h25M11%2023v-7M18%2023V9M25%2023V5%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(3)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%224%22%20y%3D%227%22%20width%3D%2224%22%20height%3D%2220%22%20rx%3D%226%22%2F%3E%3Cpath%20d%3D%22M16%203v4M10%2014v3M22%2014v3M11%2022h10M1%2013v8M31%2013v8%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(4)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%208h10l3%204h13v16H3zM3%208V5h11l3%203h12v4%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(5)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%226%22%20width%3D%2226%22%20height%3D%2223%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M9%202v8M23%202v8M3%2014h26M9%2020h3M19%2020h3M9%2025h3%22%2F%3E%3C%2Fsvg%3E")!important;}
+
+</style>""", unsafe_allow_html=True)
+
+with st.container(key="keco_main_menu"):
+    main_tab1, main_tab2, main_tab3, documents_tab, calendar_tab = st.tabs([
+        "안전 점검 등록", "점검 기록 보기", "AI에게 물어보기", "안전자료실", "안전캘린더"
+    ])
 
 with main_tab1:
     st.markdown("""<div class="keco-easy-intro"><h2>사진과 내용을 입력하면 보고서가 만들어집니다</h2>
