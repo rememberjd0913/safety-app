@@ -3550,22 +3550,49 @@ def safety_cal_table(events):
              '분류':e['kind'],'상태':e['status'],'담당자':e['person']} for e in sorted(events,key=lambda e:(e['start'],e['title']))]
 
 
-def safety_cal_month(year, month, events):
+def safety_cal_pick_day(day):
+    st.session_state.cal_selected_day = day
+    st.session_state.cal_new_start = day
+    st.session_state.cal_new_end = day
+
+
+def safety_cal_clickable_month(year, month, events):
     import calendar
-    from html import escape
-    colors={'예정':'#e8f1ff','완료':'#dcfce7','연기':'#fff1c2','취소':'#eceff3'}
-    cells=[]
-    today=datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
-    for week in calendar.Calendar(firstweekday=0).monthdatescalendar(year,month):
-        for day in week:
-            if day.month!=month:
-                cells.append('<div class="sc-day sc-out"></div>');continue
-            items=[e for e in events if e['start']<=day.isoformat()<=e['end']]
-            label='오늘 · ' if day==today else ''
-            content=''.join('<div class="sc-event" style="background:'+colors[e['status']]+'">'+escape('['+e['status']+'] '+e['title'])+'</div>' for e in items[:3])
-            if len(items)>3:content+=f'<small>외 {len(items)-3}건 · 아래 목록에서 확인</small>'
-            cells.append(f'<div class="sc-day"><b>{label}{day.day}</b>{content}</div>')
-    return '''<style>.sc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.sc-day{min-height:105px;padding:8px;background:white;border:1px solid #dbe4df;border-radius:8px;color:#173b30}.sc-out{background:#f3f5f4}.sc-event{font-size:13px;color:#172b24;padding:4px;margin-top:5px;border-radius:4px;overflow-wrap:anywhere}.sc-head{text-align:center;padding:6px;font-weight:bold;color:#173b30}@media(max-width:640px){.sc-grid{display:none}}</style><div class="sc-grid">'''+''.join('<div class="sc-head">'+d+'</div>' for d in ['월','화','수','목','금','토','일'])+''.join(cells)+'</div>'
+    today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
+    selected = st.session_state.get('cal_selected_day', today)
+    if (selected.year, selected.month) != (year, month):
+        selected = today if (today.year, today.month)==(year, month) else datetime.date(year,month,1)
+        safety_cal_pick_day(selected)
+    st.session_state.setdefault('cal_selected_day', selected)
+    st.session_state.setdefault('cal_new_start', selected)
+    st.session_state.setdefault('cal_new_end', selected)
+    st.markdown("""<style>
+    .st-key-safety_month_grid [data-testid="stHorizontalBlock"] {flex-direction:row!important;flex-wrap:nowrap!important;gap:4px!important;}
+    .st-key-safety_month_grid [data-testid="stColumn"] {min-width:0!important;width:calc((100% - 24px)/7)!important;flex:1 1 0!important;}
+    .st-key-safety_month_grid [data-testid="stButton"] button {width:100%!important;min-height:64px!important;padding:4px!important;border:1px solid #b8cfc1!important;}
+    .st-key-safety_month_grid [data-testid="stButton"] button p {font-size:15px!important;line-height:1.3!important;white-space:normal!important;}
+    .st-key-safety_month_grid [data-testid="stCaptionContainer"] p {font-size:12px!important;line-height:1.4!important;overflow-wrap:anywhere!important;}
+    @media(max-width:640px){.st-key-safety_month_grid [data-testid="stButton"] button p{font-size:12px!important;}.st-key-safety_month_grid [data-testid="stButton"] button{min-height:52px!important;}}
+    </style>""", unsafe_allow_html=True)
+    st.markdown(f'### {year}년 {month}월')
+    st.caption('날짜를 누르면 아래에 해당 날짜의 일정과 입력란이 나타납니다. 숫자 옆의 건수는 등록된 일정 수입니다.')
+    with st.container(key='safety_month_grid', border=True):
+        for col, label in zip(st.columns(7), ['월','화','수','목','금','토','일']):
+            col.markdown('**'+label+'**')
+        for week in calendar.Calendar(firstweekday=0).monthdatescalendar(year, month):
+            for col, day in zip(st.columns(7), week):
+                with col:
+                    items=[e for e in events if e['start']<=day.isoformat()<=e['end']]
+                    active=day.month==month
+                    label=str(day.day)
+                    if active and items: label+=f' · {len(items)}건'
+                    if day==today: label+=' 오늘'
+                    st.button(label, key='cal_day_'+day.isoformat(), disabled=not active,
+                              type='primary' if day==selected else 'secondary',
+                              on_click=safety_cal_pick_day, args=(day,))
+                    if active and items:
+                        st.caption(items[0]['title'][:18]+('…' if len(items[0]['title'])>18 else ''))
+    return selected
 
 
 def render_safety_calendar(actor):
@@ -3573,11 +3600,7 @@ def render_safety_calendar(actor):
     actor=safety_cal_actor(actor)
     st.subheader('우리 처 안전캘린더')
     st.caption('처 공통·현장 일정을 함께 봅니다. 모든 내부 로그인 사용자가 열람하고 특이사항을 기록할 수 있습니다. 수정은 작성자와 관리자만 가능합니다.')
-    st.session_state.setdefault('safety_cal_loaded',False)
-    if st.button('일정 불러오기 / 새로고침',key='cal_refresh'):
-        st.session_state.safety_cal_loaded=True
-    if not st.session_state.safety_cal_loaded:
-        st.info('위 버튼을 눌러 공유 일정을 불러오세요.');return
+    st.button('공유 일정 새로고침',key='cal_refresh')
     try:
         _,rows=safety_cal_sheet();events,_,rejected=safety_cal_fold(rows)
     except ValueError as exc:
@@ -3603,14 +3626,20 @@ def render_safety_calendar(actor):
     import calendar
     end=datetime.date(year,month,calendar.monthrange(year,month)[1]) if mode.startswith('월간') else datetime.date(year,12,31)
     shown=[e for e in filtered if e['start']<=end.isoformat() and e['end']>=start.isoformat()]
-    if mode.startswith('월간'):st.markdown(safety_cal_month(year,month,shown),unsafe_allow_html=True)
-    st.caption('휴대폰에서는 날짜순 목록으로 표시합니다. 자세한 내용은 아래에서 일정을 선택하세요.')
+    if mode.startswith('월간'):
+        picked = safety_cal_clickable_month(year, month, shown)
+        shown = [e for e in shown if e['start']<=picked.isoformat()<=e['end']]
+        st.subheader(picked.strftime('%Y년 %m월 %d일')+' 일정')
+    else:
+        picked = st.date_input('새 일정을 등록할 날짜', value=today, key='cal_annual_day')
+        if st.session_state.get('cal_selected_day') != picked:
+            safety_cal_pick_day(picked)
     if shown:st.dataframe(pd.DataFrame(safety_cal_table(shown)),hide_index=True,width='stretch')
-    else:st.info('선택한 기간에 등록된 일정이 없습니다.')
-    with st.expander('새 일정 또는 특이사항 등록',expanded=False):
+    else:st.info('등록된 일정이 없습니다. 아래에서 새 일정을 입력하세요.')
+    with st.expander(picked.strftime('%m월 %d일')+'에 새 일정 또는 특이사항 등록',expanded=True):
         with st.form('cal_create'):
             title=st.text_input('제목',max_chars=120)
-            a,b=st.columns(2);sd=a.date_input('시작일',today);ed=b.date_input('종료일',today)
+            a,b=st.columns(2);sd=a.date_input('시작일',key='cal_new_start');ed=b.date_input('종료일',key='cal_new_end')
             dep=st.selectbox('대상 부서',['처 공통']+list(department_sites_map))
             site=st.text_input('현장명 (처 공통이면 비워두세요)',max_chars=200)
             kind=st.selectbox('분류',CAL_KINDS);person=st.text_input('담당자',max_chars=100)
