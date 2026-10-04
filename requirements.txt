@@ -13,3 +13,4 @@ streamlit-autorefresh
 fpdf2
 reportlab
 python-hwpx
+boto3>=1.36,<2
