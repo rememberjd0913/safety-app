@@ -29,6 +29,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from hwpx import HwpxDocument
+from nhn_storage import NhnObjectStorage, StorageError, PHOTO_REF, legacy_photo_bytes
 
 # --- 페이지 기본 설정 ---
 # 환경시설 안전점검 전용 아이콘: 안전모 + 잎사귀 (별도 이미지 파일 불필요).
@@ -2084,7 +2085,85 @@ if st.sidebar.button("🔓 로그아웃", width="stretch"):
     st.rerun()
 
 
-# --- 1. Google Sheets & 내부망 폴더 & 이메일 연동 설정 ---
+# --- NHN Object Storage: 사진·문서와 점검 기록의 영구 보관 ---
+@st.cache_resource
+def _nhn_storage_cached(region, bucket, access_key, secret_key, prefix):
+    return NhnObjectStorage(region=region, bucket=bucket, access_key=access_key,
+                            secret_key=secret_key, prefix=prefix)
+
+
+def nhn_storage_backend():
+    settings = st.secrets.get("nhn_storage", {})
+    if not settings or settings.get("enabled", True) is False:
+        return None
+    return _nhn_storage_cached(
+        str(settings.get("region", "")), str(settings.get("bucket", "")),
+        str(settings.get("access_key", "")), str(settings.get("secret_key", "")),
+        str(settings.get("prefix", "safety-app/v1")),
+    )
+
+
+def nhn_record_connection(filename):
+    storage = nhn_storage_backend()
+    if storage is not None:
+        return storage.connect(filename)
+    import sqlite3
+    folder = Path(st.secrets.get("REPORT_STORAGE_PATH", "./KecoSafetyReports"))
+    folder.mkdir(parents=True, exist_ok=True)
+    return sqlite3.connect(str(folder / filename), timeout=30)
+
+
+def inspection_photo_pack(file):
+    raw = inspection_file_bytes(file)
+    storage = nhn_storage_backend()
+    return storage.photo_pack(raw) if storage is not None else base64.b64encode(raw).decode("ascii")
+
+
+def inspection_photo_bytes(value):
+    storage = nhn_storage_backend()
+    if isinstance(value, str) and value.startswith(PHOTO_REF):
+        if storage is None:
+            raise StorageError("이 사진을 읽으려면 NHN 저장소 설정이 필요합니다.")
+        return storage.photo_bytes(value)
+    return legacy_photo_bytes(value)
+
+
+def inspection_photo_stream(value):
+    output = io.BytesIO(inspection_photo_bytes(value))
+    output.name = value.rsplit("/", 1)[-1] if str(value).startswith(PHOTO_REF) else "saved_photo.jpg"
+    return output
+
+
+def archive_generated_reports(owner, report_id, hwpx=None, pdf=None):
+    db = inspection_store()
+    try:
+        with db:
+            db.execute("""CREATE TABLE IF NOT EXISTS generated_reports (
+                id TEXT PRIMARY KEY, owner TEXT, created TEXT, hwpx BLOB, pdf BLOB)""")
+            db.execute("INSERT OR REPLACE INTO generated_reports VALUES (?,?,?,?,?)",
+                       (str(report_id), str(owner), case_now(), hwpx, pdf))
+    finally:
+        db.close()
+
+
+try:
+    _configured_storage = nhn_storage_backend()
+    if _configured_storage is not None:
+        with st.sidebar.expander("사진·보고서 보관 설정", expanded=False):
+            st.caption("NHN 저장소 보관 설정이 적용되어 있습니다.")
+            if st.button("저장소 연결 확인", key="nhn_storage_check", width="stretch"):
+                try:
+                    st.success(_configured_storage.check_connection())
+                except StorageError as exc:
+                    st.error(str(exc))
+    else:
+        st.sidebar.caption("보관 위치: 기존 로컬 폴더. NHN 저장소 연결은 아직 적용되지 않았습니다.")
+except StorageError as exc:
+    st.error(str(exc))
+    st.stop()
+
+
+# --- 1. Google Sheets & 사진 저장 & 이메일 연동 설정 ---
 @st.cache_resource
 def get_gcp_credentials():
     return Credentials.from_service_account_info(
@@ -2094,6 +2173,10 @@ def get_gcp_credentials():
 
 def save_image_to_internal_network(uploaded_file, folder_path, prefix):
     try:
+        storage = nhn_storage_backend()
+        if storage is not None:
+            key = storage.save_bytes(inspection_file_bytes(uploaded_file), category="images")
+            return f"nhn://{storage.bucket}/{storage.prefix}/{key}"
         if not os.path.exists(folder_path):
             os.makedirs(folder_path, exist_ok=True)
             
@@ -2107,7 +2190,7 @@ def save_image_to_internal_network(uploaded_file, folder_path, prefix):
             
         return full_path
     except Exception as e:
-        st.error(f"내부망 폴더 사진 저장 실패: {e}")
+        st.error(f"사진 저장 실패: {e}")
         return None
 
 def inspection_file_bytes(file):
@@ -2242,29 +2325,30 @@ def generate_inspection_hwpx(dept, site, inspector, items, report_title="현장 
 
 
 def inspection_store():
-    """공유 영구 디스크 경로를 지정하면 재시작 후에도 보관/전송 이력을 유지."""
-    import sqlite3
-    folder = Path(st.secrets.get("REPORT_STORAGE_PATH", "./KecoSafetyReports"))
-    folder.mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(str(folder / "reports.sqlite3"), timeout=30)
+    """NHN 연결 시 기록을 Object Storage에 보관하고 재시작 때 복원."""
+    db = nhn_record_connection("reports.sqlite3")
     db.execute("CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, owner TEXT, dept TEXT, site TEXT, created TEXT, payload TEXT)")
     db.execute("CREATE TABLE IF NOT EXISTS deliveries (id TEXT PRIMARY KEY, status TEXT, detail TEXT)")
     return db
 
 
-def archive_inspection(dept, site, owner, items):
+def archive_inspection(dept, site, owner, items, hwpx=None, pdf=None):
     day = datetime.datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
     key = day + ":" + inspection_report_key(dept, site, owner, items)
     payload = {}
     for idx, item in items.items():
         payload[str(idx)] = {k: str(item.get(k, "")) for k in ("desc_before", "desc_after", "ai_analysis")}
         for field in ("before_files", "after_files"):
-            payload[str(idx)][field] = [base64.b64encode(inspection_file_bytes(f)).decode("ascii") for f in item.get(field, [])]
+            payload[str(idx)][field] = [inspection_photo_pack(f) for f in item.get(field, [])]
     db = inspection_store()
     try:
         with db:
             db.execute("INSERT OR IGNORE INTO reports VALUES (?, ?, ?, ?, ?, ?)",
                        (key, str(owner), dept, site, day, json.dumps(payload, ensure_ascii=False)))
+            if hwpx is not None or pdf is not None:
+                db.execute("""CREATE TABLE IF NOT EXISTS report_files (
+                    id TEXT PRIMARY KEY, hwpx BLOB, pdf BLOB)""")
+                db.execute("INSERT OR REPLACE INTO report_files VALUES (?,?,?)", (key, hwpx, pdf))
     finally:
         db.close()
     return key
@@ -2372,7 +2456,7 @@ def case_pack(items):
     for idx, item in items.items():
         row = {key: str(item.get(key, '')) for key in ('desc_before','desc_after','ai_analysis')}
         for field in ('before_files','after_files'):
-            row[field] = [base64.b64encode(inspection_file_bytes(f)).decode('ascii') for f in item.get(field, [])]
+            row[field] = [inspection_photo_pack(f) for f in item.get(field, [])]
         result[str(idx)] = row
     return result
 
@@ -2381,7 +2465,7 @@ def case_unpack(payload):
     result = json.loads(payload) if isinstance(payload, str) else json.loads(json.dumps(payload))
     for row in result.values():
         for field in ('before_files','after_files'):
-            row[field] = [io.BytesIO(base64.b64decode(value)) for value in row.get(field, [])]
+            row[field] = [inspection_photo_stream(value) for value in row.get(field, [])]
     return result
 
 
@@ -2541,7 +2625,7 @@ def case_export(owner, version_ids, include_photos=False):
                 for idx,item in json.loads(row['payload']).items():
                     for field,label in [('before_files','조치전'),('after_files','조치후')]:
                         for n,value in enumerate(item.get(field,[]),1):
-                            raw = base64.b64decode(value)
+                            raw = inspection_photo_bytes(value)
                             with Image.open(io.BytesIO(raw)) as photo:
                                 ext = {'JPEG':'jpg','PNG':'png','WEBP':'webp'}.get(photo.format,'img')
                             bundle.writestr(f'{stem}_사진/항목{safe(idx)}_{label}_{n}.{ext}',raw)
@@ -3085,9 +3169,7 @@ def safety_doc_identity(actor):
 
 def safety_doc_db():
     import sqlite3
-    folder = Path(st.secrets.get('REPORT_STORAGE_PATH', './KecoSafetyReports'))
-    folder.mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(str(folder / 'safety_documents.sqlite3'), timeout=30)
+    db = nhn_record_connection('safety_documents.sqlite3')
     db.row_factory = sqlite3.Row
     db.execute('''CREATE TABLE IF NOT EXISTS safety_documents (
         id TEXT PRIMARY KEY, owner TEXT NOT NULL, dept TEXT NOT NULL,
@@ -3384,7 +3466,10 @@ def render_safety_documents(actor):
     st.subheader('안전자료실')
     st.write('안전자료를 올려두고 필요할 때 찾아 내려받으세요.')
     st.caption('자료를 선택한 뒤 아래 질문 칸에서 해당 자료를 근거로 AI에게 물어볼 수 있습니다.')
-    st.warning('원본도 별도로 보관하세요. 서버 교체·재배포 후에도 보관하려면 관리자가 영구 저장소를 연결해야 합니다. 폴더명 설정만으로 영구 보관되지는 않습니다.')
+    if nhn_storage_backend() is not None:
+        st.caption('저장한 자료는 NHN 저장소에 보관됩니다. 중요한 원본은 별도로 보관해 주세요.')
+    else:
+        st.warning('원본도 별도로 보관하세요. 서버 교체·재배포 후에도 보관하려면 관리자가 영구 저장소를 연결해야 합니다. 폴더명 설정만으로 영구 보관되지는 않습니다.')
     with st.expander('새 자료 올리기', expanded=True):
         with st.form('safety_doc_upload', clear_on_submit=False):
             uploaded = st.file_uploader('파일 선택 (한 번에 1개, 20MB 이하)', type=list(DOC_TYPES), key='safety_doc_file')
@@ -3975,7 +4060,7 @@ with main_tab1:
             with st.spinner("사진과 분석 내용을 한글 보고서로 정리 중입니다..."):
                 report_data = generate_inspection_hwpx(selected_dept, selected_site, logged_user_id, form_data)
                 pdf_data = generate_inspection_pdf(selected_dept, selected_site, logged_user_id, form_data)
-                archive_inspection(selected_dept, selected_site, logged_user_id, form_data)
+                archive_inspection(selected_dept, selected_site, logged_user_id, form_data, report_data, pdf_data)
                 safe_site = re.sub(r'[\\/:*?"<>|\r\n]', "_", str(selected_site))[:60]
                 report_name = f"안전점검_{safe_site}_{datetime.datetime.now(ZoneInfo('Asia/Seoul')):%Y%m%d_%H%M%S}.hwpx"
                 st.session_state.inspection_report_bytes = report_data
@@ -4265,7 +4350,7 @@ with main_tab2:
     st.markdown("---")
     with st.expander("여러 점검을 보고서 하나로 모으기", expanded=False):
         st.caption("이번 버전부터 생성한 본인 보고서를 선택하여 사진·설명·AI 분석을 취합합니다. 기존 시트 요약 이력은 포함되지 않습니다.")
-        st.caption("재배포 후에도 보관하려면 REPORT_STORAGE_PATH를 영구 저장 경로로 설정해야 합니다. 기본 로컬 저장소는 서버 교체 시 사라질 수 있습니다.")
+        st.caption("저장한 점검의 사진과 내용을 다시 불러와 보고서를 만듭니다." if nhn_storage_backend() is not None else "재배포 후에도 보관하려면 영구 저장소를 연결해야 합니다. 기본 로컬 저장소는 서버 교체 시 사라질 수 있습니다.")
         batch_db = inspection_store()
         archived = batch_db.execute("SELECT id, dept, site, created, payload FROM reports WHERE owner=? ORDER BY created DESC, rowid DESC", (str(logged_user_id),)).fetchall()
         batch_db.close()
@@ -4281,11 +4366,12 @@ with main_tab2:
                     _, dept, site, day, payload = records[report_id]
                     for idx, item in json.loads(payload).items():
                         for field in ("before_files", "after_files"):
-                            item[field] = [io.BytesIO(base64.b64decode(value)) for value in item[field]]
+                            item[field] = [inspection_photo_stream(value) for value in item[field]]
                         label = f"{len(combined)+1} ({day} / {dept} / {site} / 원항목 {idx})"
                         combined[label] = item
                 hwpx = generate_inspection_hwpx("선택 점검 건 취합", f"{len(selected_reports)}건", logged_user_id, combined)
                 pdf = generate_inspection_pdf("선택 점검 건 취합", f"{len(selected_reports)}건", logged_user_id, combined)
+                archive_generated_reports(logged_user_id, "batch:" + str(logged_user_id) + ":" + batch_key, hwpx, pdf)
                 st.session_state.batch_output = (hwpx, pdf, combined)
                 st.session_state.batch_key = batch_key
             except Exception as exc:
@@ -5039,6 +5125,12 @@ def render_risk_assessment(actor):
             except Exception:st.error('PDF 생성 실패. 글꼴·문서 라이브러리 확인 필요.')
             try:outputs['hwpx']=ra_hwpx(meta,rows,final)
             except Exception:st.error('한글 생성 실패. HWPX 라이브러리 확인 필요.')
+            if outputs.get('hwpx') or outputs.get('pdf'):
+                try:
+                    ra_archive(actor,payload)
+                    archive_generated_reports(actor,'risk:'+str(actor)+':'+sig,outputs.get('hwpx'),outputs.get('pdf'))
+                except Exception:
+                    st.warning('보고서는 만들었으나 저장소 보관을 확인하지 못했습니다. 파일을 내려받아 보관하고 저장소 연결을 확인하세요.')
             st.session_state.ra_output=outputs
     outputs=st.session_state.get('ra_output',{})
     if outputs.get('sig')==sig:
