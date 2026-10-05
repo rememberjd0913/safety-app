@@ -2,8 +2,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
 from google import genai
-import gspread
-from google.oauth2.service_account import Credentials
 import datetime
 from zoneinfo import ZoneInfo
 import base64
@@ -2167,13 +2165,7 @@ except StorageError as exc:
     st.stop()
 
 
-# --- 1. Google Sheets & 사진 저장 & 이메일 연동 설정 ---
-@st.cache_resource
-def get_gcp_credentials():
-    return Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=["https://www.googleapis.com/auth/spreadsheets"]
-    )
+# --- 1. 사진 저장 & 이메일 연동 설정 ---
 
 def save_image_to_internal_network(uploaded_file, folder_path, prefix):
     try:
@@ -2337,7 +2329,8 @@ def inspection_store():
 
 
 def archive_inspection(dept, site, owner, items, hwpx=None, pdf=None):
-    day = datetime.datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
+    now = datetime.datetime.now(ZoneInfo("Asia/Seoul"))
+    day = now.strftime("%Y-%m-%d")
     key = day + ":" + inspection_report_key(dept, site, owner, items)
     payload = {}
     for idx, item in items.items():
@@ -2348,7 +2341,7 @@ def archive_inspection(dept, site, owner, items, hwpx=None, pdf=None):
     try:
         with db:
             db.execute("INSERT OR IGNORE INTO reports VALUES (?, ?, ?, ?, ?, ?)",
-                       (key, str(owner), dept, site, day, json.dumps(payload, ensure_ascii=False)))
+                       (key, str(owner), dept, site, now.isoformat(timespec="seconds"), json.dumps(payload, ensure_ascii=False)))
             if hwpx is not None or pdf is not None:
                 db.execute("""CREATE TABLE IF NOT EXISTS report_files (
                     id TEXT PRIMARY KEY, hwpx BLOB, pdf BLOB)""")
@@ -2715,6 +2708,7 @@ def render_report_history(owner):
     owner = report_history_identity(owner)
     st.subheader("내 리포트")
     st.caption("로그인한 본인이 저장한 리포트를 조회하고 PDF·한글 파일을 다시 내려받습니다.")
+    st.button("리포트 목록 새로고침",key="report_history_refresh:"+owner,width="stretch")
     notice = st.session_state.pop("report_history_notice:" + owner, None)
     if notice:
         st.success(notice)
@@ -2726,7 +2720,7 @@ def render_report_history(owner):
         return
     if not records:
         st.info("아직 조회할 리포트가 없습니다. 보고서를 만들거나 위의 ‘예전에 만든 리포트 가져오기’를 이용해 주세요.")
-        st.caption("예전 점검의 시트 요약은 ‘점검 현황’에서 확인할 수 있습니다. 요약만 남아 있으면 원본 사진과 보고서 파일은 별도로 가져와야 합니다.")
+        st.caption("예전 시트 요약은 CSV로 가져온 뒤 ‘점검 현황 → 기존 시트 요약’에서 확인할 수 있습니다. 요약만 남아 있으면 원본 사진과 보고서 파일은 별도로 가져와야 합니다.")
         return
     left,right = st.columns(2)
     search = left.text_input("리포트 검색", placeholder="현장명·리포트 제목", key="report_history_search:" + owner).strip().casefold()
@@ -3139,30 +3133,186 @@ def _send_inspection_email_once(dept_name, site_name, inspector_id, form_data, r
     except Exception as e:
         return False, ("전송 결과 확인 필요: 보낸메일 확인 후 관리자에게 문의하세요. " if smtp_started else "") + str(e)
 
-def save_to_google_sheet(dept_name, site_name, set_count, analysis_summary, summary_detail, inspector_id, photo_info_str):
+def storage_csv_rows(raw):
+    """Read legacy CSV bytes locally; never request Google credentials."""
+    import csv
+    raw = bytes(raw)
+    if not raw or len(raw) > 10 * 1024 * 1024 or b'\x00' in raw:
+        raise ValueError('CSV 파일(10MB 이하)을 선택해 주세요.')
+    text = None
+    for encoding in ('utf-8-sig', 'cp949'):
+        try:
+            text = raw.decode(encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+    if text is None:
+        raise ValueError('CSV 문자 인코딩을 확인해 주세요. UTF-8 또는 CP949를 지원합니다.')
     try:
-        creds = get_gcp_credentials()
-        client = gspread.authorize(creds)
-        sheet_id = st.secrets["SPREADSHEET_ID"]
-        sheet = client.open_by_key(sheet_id).sheet1
-        
-        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sheet.append_row([now_str, dept_name, site_name, f"{set_count}개 항목", analysis_summary, summary_detail, inspector_id, photo_info_str])
-        return True
-    except Exception as e:
-        st.error(f"구글 시트 저장 중 오류: {e}")
-        return False
+        rows = []
+        for row in csv.reader(io.StringIO(text, newline=''), strict=True):
+            if not any(value.strip() for value in row):
+                continue
+            rows.append(row)
+            if len(rows) > 20001:
+                raise ValueError('한 번에 20,000개 이하의 기록을 가져와 주세요.')
+        if not rows:
+            raise ValueError('CSV에 가져올 기록이 없습니다.')
+        return rows
+    except csv.Error:
+        raise ValueError('CSV 형식을 확인해 주세요. 쉼표·줄바꿈이 있는 내용은 따옴표로 감싸야 합니다.') from None
 
-def get_google_sheet_records():
+
+def inspection_history_actor(actor):
+    actor = report_history_identity(actor)
+    if st.secrets.get('user_roles', {}).get(actor) == 'contractor':
+        raise PermissionError('외부 조치 계정은 내부 점검 현황을 이용할 수 없습니다.')
+    return actor
+
+
+def inspection_history_admin(actor):
+    admins = st.secrets.get('history_admins', ['admin'])
+    if isinstance(admins, str):
+        admins = [admins]
+    return actor in admins or st.secrets.get('user_roles', {}).get(actor) == 'admin'
+
+
+def inspection_history_item_count(value):
+    match = re.fullmatch(r'(\d+)\s*(?:(?:개|건)\s*(?:항목|세트)?)?', str(value).strip())
+    return int(match.group(1)) if match and int(match.group(1)) <= 100000 else None
+
+
+def inspection_history_record(rid, owner, dept, site, created, encoded):
+    record = {'기록ID': str(rid), '날짜': str(created or ''), '점검 부서': str(dept or ''),
+              '점검 현장': str(site or ''), '작성자': str(owner or ''), '항목수': '',
+              'AI분석': '', '지적 분류': '', '사진경로': '', '자료 출처': '원본 점검', '자료 상태': ''}
     try:
-        creds = get_gcp_credentials()
-        client = gspread.authorize(creds)
-        sheet_id = st.secrets["SPREADSHEET_ID"]
-        sheet = client.open_by_key(sheet_id).sheet1
-        return sheet.get_all_values()
-    except Exception as e:
-        st.error(f"구글 시트 불러오기 오류: {e}")
-        return []
+        payload = json.loads(encoded)
+        if not isinstance(payload, dict) or any(not isinstance(v, dict) for v in payload.values()):
+            raise ValueError()
+        analyses, details, photos = [], [], []
+        for idx, item in payload.items():
+            before, after = item.get('before_files', []), item.get('after_files', [])
+            if not isinstance(before, list) or not isinstance(after, list):
+                raise ValueError()
+            analysis = str(item.get('ai_analysis', '')).strip()
+            if analysis and analysis not in ('분석 미실행', '조치 전 AI 분석 미실행', '없음', 'nan'):
+                analyses.append(f'[항목 #{idx}]:\n{analysis}')
+            details.append(f"[항목 #{idx}] 조치 전: {item.get('desc_before', '') or '미기재'} / 조치 후: {item.get('desc_after', '') or '미기재'}")
+            photos.append(f'[항목 #{idx}] 전:{len(before)}장, 후:{len(after)}장')
+        record.update({'항목수': f'{len(payload)}개 항목',
+                       'AI분석': '\n\n'.join(analyses) or '조치 전 AI 분석 미실행',
+                       '지적 분류': '\n'.join(details), '사진경로': ' | '.join(photos)})
+    except (ValueError, TypeError, KeyError):
+        record['자료 상태'] = '점검 내용 형식 확인 필요'
+        record['지적 분류'] = '저장된 점검 내용의 형식 확인이 필요합니다. 원본 백업을 확인해 주세요.'
+    return record
+
+
+def get_nhn_inspection_records(actor, source='원본 점검'):
+    """Aggregate saved metadata without fetching photos or document blobs."""
+    inspection_history_actor(actor)
+    if source not in ('원본 점검', '기존 시트 요약'):
+        raise ValueError('조회할 자료 출처를 확인해 주세요.')
+    db = inspection_store()
+    try:
+        if source == '원본 점검':
+            return [inspection_history_record(*row) for row in db.execute(
+                'SELECT id,owner,dept,site,created,payload FROM reports ORDER BY created DESC,rowid DESC').fetchall()]
+        if 'inspection_legacy_summaries' not in report_history_tables(db):
+            return []
+        rows = db.execute('''SELECT id,owner,dept,site,created,item_count,analysis,summary,photo_info
+            FROM inspection_legacy_summaries ORDER BY created DESC,rowid DESC''').fetchall()
+        return [{'기록ID': rid, '작성자': owner, '점검 부서': dept, '점검 현장': site, '날짜': created,
+                 '항목수': count, 'AI분석': analysis, '지적 분류': summary, '사진경로': photos,
+                 '자료 출처': '기존 시트 요약', '자료 상태': ''} for rid,owner,dept,site,created,count,analysis,summary,photos in rows]
+    finally:
+        db.close()
+
+
+def inspection_history_import_csv(actor, raw, include_all=False):
+    actor = inspection_history_actor(actor)
+    if include_all and not inspection_history_admin(actor):
+        raise PermissionError('다른 작성자의 기록은 점검 이력 관리자만 가져올 수 있습니다.')
+    if nhn_storage_backend() is None:
+        raise ValueError('NHN 저장소를 연결한 뒤 가져와 주세요.')
+    rows = storage_csv_rows(raw)
+    clean_header = lambda value: re.sub(r'[\s·_]+', '', str(value).replace('\ufeff', '')).lower()
+    header = [clean_header(v) for v in rows[0]]
+    aliases = [
+        ('날짜', '일시', '작성일시', '점검일시', '저장일시', '생성시간', 'timestamp', 'date'),
+        ('점검부서', '부서'), ('점검현장', '현장', '현장명'),
+        ('항목수', '점검항목수', '세트수'), ('ai분석', 'ai분석결과', '분석결과', '분석내용'),
+        ('지적분류', '상세내용', '점검내용', '요약', '내용요약'),
+        ('작성자', '작성자사번', '사번', '점검자', '점검자사번'), ('사진경로', '사진정보', '저장경로')]
+    mapped = [next((i for i,v in enumerate(header) if v in names), None) for names in aliases]
+    positional_header = bool(header and header[0] in aliases[0])
+    if all(i is not None for i in mapped[:7]):
+        positions = mapped
+        rows = rows[1:]
+    elif positional_header:
+        positions = list(range(8))
+        rows = rows[1:]
+    else:
+        positions = list(range(8))
+        first_date = pd.to_datetime(str(rows[0][0]), errors='coerce')
+        if len(rows[0]) < 7 or pd.isna(first_date):
+            raise ValueError('점검 기록 CSV가 아닙니다. 날짜·부서·현장·항목수·AI분석·상세내용·작성자 순서를 확인해 주세요.')
+    if len(rows) > 20000:
+        raise ValueError('한 번에 20,000개 이하의 기록을 가져와 주세요.')
+    prepared = []
+    skipped = invalid = 0
+    for row in rows:
+        if any(pos is not None and pos >= len(row) for pos in positions[:7]):
+            invalid += 1
+            continue
+        values = [str(row[pos]).strip() if pos is not None and pos < len(row) else '' for pos in positions]
+        created, dept, site, count, analysis, summary, owner, photos = values
+        if not owner:
+            invalid += 1
+            continue
+        if not include_all and owner != actor:
+            skipped += 1
+            continue
+        if len(owner) > 180 or len(dept) > 200 or len(site) > 300 or len(created) > 100:
+            invalid += 1
+            continue
+        rid = 'legacy-csv:' + hashlib.sha256(json.dumps(values, ensure_ascii=False).encode()).hexdigest()
+        prepared.append((rid,owner,dept,site,created,count,analysis,summary,photos,actor))
+    imported = duplicates = 0
+    db = inspection_store()
+    try:
+        with db:
+            db.execute('''CREATE TABLE IF NOT EXISTS inspection_legacy_summaries (
+                id TEXT PRIMARY KEY, owner TEXT, dept TEXT, site TEXT, created TEXT,
+                item_count TEXT, analysis TEXT, summary TEXT, photo_info TEXT, imported_by TEXT)''')
+            for row in prepared:
+                added = db.execute('INSERT OR IGNORE INTO inspection_legacy_summaries VALUES (?,?,?,?,?,?,?,?,?,?)', row)
+                if added.rowcount:
+                    imported += 1
+                else:
+                    duplicates += 1
+        return {'imported': imported, 'duplicates': duplicates, 'skipped': skipped, 'invalid': invalid}
+    finally:
+        db.close()
+
+
+def render_inspection_history_import(actor):
+    with st.expander('예전 스프레드시트 점검 기록 가져오기', expanded=False):
+        st.caption('기존 점검 시트를 CSV로 내려받아 한 번 가져옵니다. 기본적으로 로그인한 본인의 사번과 같은 기록만 추가합니다.')
+        st.caption('가져온 자료는 ‘기존 시트 요약’에서 별도로 조회합니다. 원본 점검과 합산하지 않아 중복 집계를 방지합니다. 사진·보고서 원본은 CSV만으로 복원되지 않습니다.')
+        uploaded = st.file_uploader('기존 점검 기록 CSV (10MB 이하)', type=['csv'], key='inspection_legacy_csv:'+actor)
+        include_all = False
+        if inspection_history_admin(actor):
+            include_all = st.checkbox('다른 작성자의 점검 기록도 함께 가져오기', key='inspection_import_all:'+actor)
+        if st.button('과거 점검 요약 가져오기', disabled=uploaded is None, key='inspection_legacy_import:'+actor):
+            try:
+                result = inspection_history_import_csv(actor, uploaded.getvalue(), include_all)
+                st.success(f"추가 {result['imported']}건 · 기존 기록 유지 {result['duplicates']}건 · 다른 작성자 제외 {result['skipped']}건 · 형식 확인 필요 {result['invalid']}건")
+                st.session_state.dash_source = '기존 시트 요약'
+            except (ValueError, PermissionError, StorageError) as exc:
+                st.error(str(exc))
+
 
 
 # --- 2. AI 위험 분석 함수 ---
@@ -3911,7 +4061,7 @@ def render_safety_documents(actor):
     render_safety_doc_questions(actor, doc)
 
 
-# 공유 안전캘린더: Google Sheets에 변경 이력을 추가 기록합니다.
+# 공유 안전캘린더: NHN 저장소에 변경 이력을 보관합니다.
 CAL_HEADERS = ['기록ID','일정ID','작업','작성자','기록시각','기준버전','내용JSON']
 CAL_STATUSES = ['예정','완료','연기','취소']
 CAL_KINDS = ['안전점검','안전교육','회의·합동점검','보고기한','특이사항','기타']
@@ -3942,70 +4092,181 @@ def safety_cal_normalize_rows(rows):
     return 'compatible', [CAL_HEADERS]+[list(row[:7]) for row in rows[1:]]
 
 
-def safety_cal_sheet():
-    book = gspread.authorize(get_gcp_credentials()).open_by_key(st.secrets['SPREADSHEET_ID'])
-    dedicated = '안전캘린더_앱전용'
-    def find(name):
-        try:
-            return book.worksheet(name)
-        except gspread.WorksheetNotFound:
-            return None
-    def create(name):
-        try:
-            return book.add_worksheet(title=name, rows=1000, cols=7)
-        except Exception:
-            # 다른 사용자가 동시에 생성했을 수 있으므로 같은 이름을 다시 확인합니다.
-            existing=find(name)
-            if existing is None:
-                raise
-            return existing
-    # 전용 시트를 한 번 사용했다면 이후에도 같은 저장소를 사용합니다.
-    ws=find(dedicated)
-    if ws is None:
-        ws=find('안전캘린더')
-        if ws is None:
-            ws=create('안전캘린더')
-    state,rows=safety_cal_normalize_rows(ws.get_all_values())
-    if state=='different' and ws.title != dedicated:
-        ws=find(dedicated)
-        if ws is None:
-            ws=create(dedicated)
-        state,rows=safety_cal_normalize_rows(ws.get_all_values())
-    if state=='different':
-        raise ValueError('앱 전용 시트에도 다른 양식의 내용이 있습니다. 안전캘린더_앱전용 시트의 첫 줄을 캡처해 관리자에게 전달해주세요. 기존 자료는 변경하지 않았습니다.')
-    if state=='empty':
-        ws.update(range_name='A1:G1', values=[CAL_HEADERS], value_input_option='RAW')
-        rows=[CAL_HEADERS]
-    st.session_state.cal_storage_sheet=ws.title
-    return ws, rows
+def safety_cal_admin(actor):
+    admins = st.secrets.get('calendar_admins', ['admin'])
+    if isinstance(admins, str):
+        admins = [admins]
+    return actor in admins
+
+
+def safety_cal_db():
+    db = nhn_record_connection('safety_calendar.sqlite3')
+    db.execute('''CREATE TABLE IF NOT EXISTS calendar_events (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, record_id TEXT NOT NULL UNIQUE,
+        event_id TEXT NOT NULL, action TEXT NOT NULL, actor TEXT NOT NULL,
+        stamp TEXT NOT NULL, base TEXT NOT NULL, payload TEXT NOT NULL)''')
+    return db
+
+
+def safety_cal_rows(db=None):
+    owned = db is None
+    if owned:
+        db = safety_cal_db()
+    try:
+        return [CAL_HEADERS] + [list(row) for row in db.execute('''SELECT record_id,event_id,action,actor,stamp,base,payload
+            FROM calendar_events ORDER BY seq''').fetchall()]
+    finally:
+        if owned:
+            db.close()
+
+
+def safety_cal_apply_row(events, seen, rejected, raw):
+    if len(raw) < 7:
+        return False
+    rid,eid,action,actor,stamp,base,body = raw[:7]
+    if rid in seen:
+        return rid not in rejected
+    seen.add(rid)
+    try:
+        if not rid or not eid or not actor:
+            raise ValueError()
+        data = json.loads(body)
+        if action == 'create' and eid not in events:
+            data = safety_cal_validate(data)
+            events[eid] = {**data,'id':eid,'owner':actor,'version':rid,'notes':[],
+                           'history':[(stamp,actor,'등록')],'updated':stamp}
+        elif action == 'note' and eid in events:
+            note = data['note']
+            if not isinstance(note, str) or not note.strip() or len(note) > 2000:
+                raise ValueError()
+            events[eid]['notes'].append((stamp,actor,note))
+        elif action == 'edit' and eid in events and base == events[eid]['version']:
+            data = safety_cal_validate(data)
+            events[eid].update(data)
+            events[eid]['version'] = rid
+            events[eid]['updated'] = stamp
+            events[eid]['history'].append((stamp,actor,'일정·상태 변경'))
+        else:
+            raise ValueError()
+        return True
+    except (ValueError, KeyError, TypeError):
+        rejected.add(rid)
+        return False
 
 
 def safety_cal_fold(rows):
     events, seen, rejected = {}, set(), set()
     for raw in rows[1:]:
-        if len(raw)<7:
-            continue
-        rid,eid,action,actor,stamp,base,body = raw[:7]
-        if rid in seen:
-            continue
-        seen.add(rid)
-        try:
-            data=json.loads(body)
-            if action=='create' and eid not in events:
-                datetime.date.fromisoformat(data['start']);datetime.date.fromisoformat(data['end'])
-                events[eid]={**data,'id':eid,'owner':actor,'version':rid,'notes':[], 'history':[(stamp,actor,'등록')], 'updated':stamp}
-            elif eid in events and action=='note':
-                events[eid]['notes'].append((stamp,actor,data['note']))
-            elif eid in events and action=='edit':
-                if base != events[eid]['version']:
-                    rejected.add(rid);continue
-                events[eid].update(data)
-                events[eid]['version']=rid
-                events[eid]['updated']=stamp
-                events[eid]['history'].append((stamp,actor,'일정·상태 변경'))
-        except (ValueError,KeyError,TypeError):
-            rejected.add(rid)
+        safety_cal_apply_row(events, seen, rejected, raw)
     return events, seen, rejected
+
+
+def safety_cal_save(actor, action, eid, data, base=''):
+    actor = safety_cal_actor(actor)
+    if action not in ('create','edit','note'):
+        raise ValueError('지원하지 않는 작업입니다.')
+    if not isinstance(eid, str) or not eid or len(eid) > 200:
+        raise ValueError('일정 번호를 확인해 주세요.')
+    if action == 'note':
+        data = {'note':str(data.get('note','')).strip()}
+        if not data['note'] or len(data['note']) > 2000:
+            raise ValueError('특이사항을 1~2,000자로 입력하세요.')
+    else:
+        data = safety_cal_validate(data)
+    rid = hashlib.sha256(json.dumps([actor,action,eid,base,data],ensure_ascii=False,sort_keys=True).encode()).hexdigest()
+    db = safety_cal_db()
+    try:
+        with db:
+            db.execute('BEGIN IMMEDIATE')
+            events, seen, rejected = safety_cal_fold(safety_cal_rows(db))
+            if rid in seen:
+                if rid in rejected:
+                    raise ValueError('다른 사용자가 먼저 변경했습니다. 새로고침 후 다시 수정하세요.')
+                return
+            if action == 'create' and eid in events:
+                raise ValueError('같은 번호의 일정이 이미 있습니다. 새로고침해 확인해 주세요.')
+            if action != 'create':
+                if eid not in events:
+                    raise ValueError('일정을 찾을 수 없습니다. 새로고침해 주세요.')
+                if action == 'edit':
+                    if actor != events[eid]['owner'] and not safety_cal_admin(actor):
+                        raise ValueError('작성자 또는 캘린더 관리자만 일정을 수정할 수 있습니다.')
+                    if base != events[eid]['version']:
+                        raise ValueError('일정이 변경되었습니다. 새로고침 후 다시 수정하세요.')
+            stamp = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')
+            row = [rid,eid,action,actor,stamp,base,json.dumps(data,ensure_ascii=False)]
+            if not safety_cal_apply_row(events,seen,rejected,row):
+                raise ValueError('일정 입력 내용과 기준 버전을 확인해 주세요.')
+            db.execute('''INSERT INTO calendar_events(record_id,event_id,action,actor,stamp,base,payload)
+                VALUES (?,?,?,?,?,?,?)''', row)
+    finally:
+        db.close()
+
+
+def safety_cal_import_csv(actor, raw, include_all=False):
+    actor = safety_cal_actor(actor)
+    if include_all and not safety_cal_admin(actor):
+        raise ValueError('다른 작성자의 일정은 캘린더 관리자만 가져올 수 있습니다.')
+    if nhn_storage_backend() is None:
+        raise ValueError('NHN 저장소를 연결한 뒤 가져와 주세요.')
+    state, rows = safety_cal_normalize_rows(storage_csv_rows(raw))
+    if state != 'compatible':
+        raise ValueError('앱에서 사용한 안전캘린더 CSV가 아닙니다. 기록ID·일정ID·작업·작성자·기록시각·기준버전·내용JSON 열을 확인해 주세요.')
+    imported = duplicates = skipped = invalid = 0
+    db = safety_cal_db()
+    try:
+        with db:
+            db.execute('BEGIN IMMEDIATE')
+            existing = safety_cal_rows(db)
+            events,seen,rejected = safety_cal_fold(existing)
+            saved = {row[0]:row for row in existing[1:]}
+            for raw_row in rows[1:]:
+                if len(raw_row) != 7:
+                    invalid += 1
+                    continue
+                rid,eid,action,writer,stamp,base,body = row = list(raw_row)
+                if not include_all and writer != actor:
+                    skipped += 1
+                    continue
+                if any(len(value) > 200 for value in (rid,eid,writer,stamp,base)):
+                    invalid += 1
+                    continue
+                if rid in saved:
+                    if saved[rid] == row:
+                        duplicates += 1
+                    else:
+                        invalid += 1
+                    continue
+                if action == 'edit' and eid in events and writer != events[eid]['owner'] and not safety_cal_admin(writer):
+                    invalid += 1
+                    continue
+                if not safety_cal_apply_row(events,seen,rejected,row):
+                    invalid += 1
+                    continue
+                db.execute('''INSERT INTO calendar_events(record_id,event_id,action,actor,stamp,base,payload)
+                    VALUES (?,?,?,?,?,?,?)''', row)
+                saved[rid] = row
+                imported += 1
+        return {'imported':imported,'duplicates':duplicates,'skipped':skipped,'invalid':invalid}
+    finally:
+        db.close()
+
+
+def render_safety_calendar_import(actor):
+    with st.expander('예전 안전캘린더 가져오기', expanded=False):
+        st.caption('기존 ‘안전캘린더’ 또는 ‘안전캘린더_앱전용’ 시트를 CSV로 내려받아 가져옵니다. 기본적으로 본인이 작성한 이력만 추가하며 이미 저장한 일정은 유지합니다.')
+        uploaded = st.file_uploader('안전캘린더 CSV (10MB 이하)', type=['csv'], key='calendar_legacy_csv:'+actor)
+        include_all = False
+        if safety_cal_admin(actor):
+            include_all = st.checkbox('다른 작성자의 일정 이력도 함께 가져오기', key='calendar_import_all:'+actor)
+        if st.button('과거 안전캘린더 가져오기', disabled=uploaded is None, key='calendar_legacy_import:'+actor):
+            try:
+                result = safety_cal_import_csv(actor,uploaded.getvalue(),include_all)
+                st.success(f"추가 이력 {result['imported']}건 · 기존 이력 유지 {result['duplicates']}건 · 다른 작성자 제외 {result['skipped']}건 · 충돌·형식 확인 필요 {result['invalid']}건")
+            except (ValueError,StorageError) as exc:
+                st.error(str(exc))
+
+
 
 
 def safety_cal_validate(data):
@@ -4023,39 +4284,6 @@ def safety_cal_validate(data):
     return clean
 
 
-def safety_cal_save(actor, action, eid, data, base=''):
-    actor=safety_cal_actor(actor)
-    if action not in ('create','edit','note'):
-        raise ValueError('지원하지 않는 작업입니다.')
-    if action=='note':
-        data={'note':str(data.get('note','')).strip()}
-        if not data['note'] or len(data['note'])>2000:
-            raise ValueError('특이사항을 1~2,000자로 입력하세요.')
-    else:
-        data=safety_cal_validate(data)
-    ws,rows=safety_cal_sheet()
-    events,seen,_=safety_cal_fold(rows)
-    # 같은 입력 재전송을 멱등 처리합니다. 쓰기 결과가 불명확해도 같은 요청을 재시도할 수 있습니다.
-    rid=hashlib.sha256(json.dumps([actor,action,eid,base,data],ensure_ascii=False,sort_keys=True).encode()).hexdigest()
-    if rid in seen:
-        if rid in safety_cal_fold(rows)[2]:
-            raise ValueError('다른 사용자가 먼저 변경했습니다. 새로고침 후 다시 수정하세요.')
-        return
-    if action!='create':
-        if eid not in events:
-            raise ValueError('일정을 찾을 수 없습니다. 새로고침해주세요.')
-        if action=='edit':
-            admins=st.secrets.get('calendar_admins',['admin'])
-            if isinstance(admins,str): admins=[admins]
-            if actor!=events[eid]['owner'] and actor not in admins:
-                raise ValueError('작성자 또는 캘린더 관리자만 일정을 수정할 수 있습니다.')
-            if base!=events[eid]['version']:
-                raise ValueError('일정이 변경되었습니다. 새로고침 후 다시 수정하세요.')
-    stamp=datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')
-    ws.append_row([rid,eid,action,actor,stamp,base,json.dumps(data,ensure_ascii=False)],value_input_option='RAW', table_range='A1:G')
-    _,_,rejected=safety_cal_fold(ws.get_all_values())
-    if rid in rejected:
-        raise ValueError('동시 수정으로 이번 변경은 적용되지 않았습니다. 새로고침 후 다시 수정하세요.')
 
 
 def safety_cal_table(events):
@@ -4114,18 +4342,19 @@ def render_safety_calendar(actor):
     st.subheader('우리 처 안전캘린더')
     st.caption('처 공통·현장 일정을 함께 봅니다. 모든 내부 로그인 사용자가 열람하고 특이사항을 기록할 수 있습니다. 수정은 작성자와 관리자만 가능합니다.')
     st.button('공유 일정 새로고침',key='cal_refresh')
+    render_safety_calendar_import(actor)
     try:
-        _,rows=safety_cal_sheet();events,_,rejected=safety_cal_fold(rows)
+        rows=safety_cal_rows();events,_,rejected=safety_cal_fold(rows)
     except ValueError as exc:
         st.error(str(exc));return
+    except StorageError as exc:
+        st.error(str(exc));return
     except Exception:
-        st.error('캘린더 연결에 실패했습니다. SPREADSHEET_ID와 서비스 계정의 편집 권한을 확인해주세요.');return
-    st.caption('캘린더 연결 버전 42 · 저장 시트: '+st.session_state.get('cal_storage_sheet','안전캘린더'))
-    if st.session_state.get('cal_storage_sheet')=='안전캘린더_앱전용':
-        st.info('기존 안전캘린더 시트는 보존하고 앱 전용 시트에 연결했습니다. 기존 시트의 일정은 자동으로 옮겨지지 않습니다.')
-    if st.session_state.pop('cal_saved',False):st.success('공유 시트에 저장했습니다.')
+        st.error('공유 일정 조회에 실패했습니다. 저장소 연결을 확인해 주세요.');return
+    st.caption('공유 일정 저장 위치: '+('NHN Cloud' if nhn_storage_backend() is not None else '로컬 폴더 · NHN 연결 확인 필요'))
+    if st.session_state.pop('cal_saved',False):st.success('공유 일정을 저장했습니다.')
     st.caption('조회 시각: '+datetime.datetime.now(ZoneInfo('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')+' · 자동 알림은 제공하지 않습니다. 다른 사용자의 변경은 새로고침하면 반영됩니다.')
-    if rejected:st.caption(f'충돌 또는 형식 오류로 반영하지 않은 기록 {len(rejected)}건이 있습니다. 변경 이력은 시트에 남아 있습니다.')
+    if rejected:st.caption(f'충돌 또는 형식 오류로 반영하지 않은 기록 {len(rejected)}건이 있습니다. 변경 이력은 저장소에 남아 있습니다.')
     today=datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
     dept=st.selectbox('보고 싶은 부서',['전체']+sorted({e['dept'] for e in events.values()}),key='cal_filter_dept')
     filtered=[e for e in events.values() if dept=='전체' or e['dept']==dept]
@@ -4484,70 +4713,32 @@ with main_tab1:
         st.info('이 점검은 전송 이력이 있어 중복 전송을 막았습니다. 아래에서 처리 결과를 확인하세요.')
         with st.expander('전송 처리 결과 보기'):
             st.write(f'{delivery_state[0]} · {delivery_state[1]}')
-    if st.button("이메일 보내기 · 점검 내역 저장", type="primary", disabled=not (report_bytes and pdf_bytes) or bool(delivery_state), width="stretch"):
+    if st.button("이메일 보내기", type="primary", disabled=not (report_bytes and pdf_bytes) or bool(delivery_state), width="stretch"):
         if not form_data:
-            st.warning("⚠️ 최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
+            st.warning("최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
         else:
-            internal_folder = st.secrets.get("INTERNAL_FOLDER_PATH", "./KecoSafetyImages")
-            
-            with st.spinner("🔄 구글 시트 동기화 및 이메일 전송 중입니다..."):
-                all_ai_summaries = []
-                details = []
-                all_photo_paths = []
-                
-                for k, v in form_data.items():
-                    if v['ai_analysis'] != "분석 미실행":
-                        all_ai_summaries.append(f"[항목 #{k}]:\n{v['ai_analysis']}")
-                    
-                    b_paths = []
-                    for img_f in v['before_files']:
-                        saved_path = save_image_to_internal_network(img_f, internal_folder, f"Before_{selected_dept}_{selected_site}_Item{k}")
-                        if saved_path: 
-                            b_paths.append(saved_path)
-                    
-                    a_paths = []
-                    for img_f in v['after_files']:
-                        saved_path = save_image_to_internal_network(img_f, internal_folder, f"After_{selected_dept}_{selected_site}_Item{k}")
-                        if saved_path: 
-                            a_paths.append(saved_path)
-
-                    path_text = f"[항목#{k}] 전:{len(b_paths)}장, 후:{len(a_paths)}장"
-                    if b_paths or a_paths: 
-                        combined_files_path = b_paths + a_paths
-                        path_text += f" (경로: {', '.join(combined_files_path)})"
-                    
-                    all_photo_paths.append(path_text)
-                    details.append(f"[항목 #{k}] 전:{len(v['before_files'])}장, 후:{len(v['after_files'])}장 ({v['desc'][:10]})")
-                
-                combined_ai = "\n\n".join(all_ai_summaries) if all_ai_summaries else "조치 전 AI 분석 미실행"
-                combined_detail = " | ".join(details)
-                combined_paths_str = " || ".join(all_photo_paths)
-                
-                sheet_success = save_to_google_sheet(selected_dept, selected_site, len(form_data), combined_ai, combined_detail, logged_user_id, combined_paths_str)
-                email_success, email_msg = send_inspection_email(selected_dept, selected_site, logged_user_id, form_data, report_bytes, report_name, pdf_bytes, delivery_key)
-                
-                if sheet_success and email_success:
-                    st.success(f"🎉 [{selected_dept} {selected_site}] 구글 시트 기록 완료. 담당자 메일({mapped_email}) 발송을 메일 서버가 접수했습니다.")
-                elif sheet_success:
-                    st.warning(f"⚠️ 저장 및 구글 시트는 완료되었으나 이메일 전송에 실패했습니다. (사유: {email_msg})")
-                elif email_success:
-                    st.warning("⚠️ 메일 서버는 발송을 접수했으나 구글 시트 기록에 실패했습니다.")
+            with st.spinner("보고서 첨부·이메일 전송 중입니다…"):
+                try:
+                    email_success,email_msg=send_inspection_email(selected_dept,selected_site,logged_user_id,form_data,report_bytes,report_name,pdf_bytes,delivery_key)
+                except StorageError as exc:
+                    st.error("이메일 처리 결과 확인 필요: "+str(exc))
                 else:
-                    st.error(f"❌ 저장 및 전송 과정에서 오류가 발생했습니다. 이메일: {email_msg}")
-                if email_success:
-                    st.info(email_msg)
-                    st.caption("수신 메일에 위 첨부파일이 보이지 않으면 발신 계정의 보낸메일에서도 첨부파일이 있는지 확인해 주세요.")
+                    if email_success:
+                        st.success(f"[{selected_dept} {selected_site}] 담당자 메일({mapped_email}) 발송을 메일 서버가 접수했습니다.")
+                        st.info(email_msg)
+                        st.caption("수신 메일에 첨부파일이 보이지 않으면 발신 계정의 보낸메일에서도 확인해 주세요.")
+                    else:
+                        st.warning("보고서는 저장되어 있습니다. 이메일 처리 결과: "+email_msg)
 
-# 대시보드 집계는 Google Sheets에 저장된 점검 기록을 기준으로 합니다.
+
+# 대시보드 집계는 NHN 저장소의 점검 기록을 기준으로 합니다.
 from html import escape as dashboard_escape
 
 
-def dashboard_frame(rows):
-    columns = ['날짜', '점검 부서', '점검 현장', '항목수', 'AI분석', '지적 분류', '작성자', '사진경로']
-    # 저장 함수의 고정 열 순서와 호환하며 짧은 기존 행도 처리합니다.
-    values = [list(r[:8]) + [''] * max(0, 8-len(r)) for r in rows[1:] if any(str(v).strip() for v in r)]
-    df = pd.DataFrame(values, columns=columns).fillna('')
-    df['기록번호'] = range(2, len(df)+2)
+def dashboard_frame(records):
+    columns = ['기록ID','날짜','점검 부서','점검 현장','항목수','AI분석','지적 분류','작성자','사진경로','자료 출처','자료 상태']
+    df = pd.DataFrame(records, columns=columns).fillna('')
+    df['기록번호'] = range(1,len(df)+1)
     def parse_day(value):
         try:
             ts = pd.to_datetime(str(value), errors='coerce')
@@ -4559,13 +4750,10 @@ def dashboard_frame(rows):
         except (ValueError, TypeError):
             return pd.NaT
     df['일시'] = pd.to_datetime(df['날짜'].map(parse_day))
-    df['점검항목수'] = pd.to_numeric(df['항목수'].astype(str).str.extract(r'(\d+)')[0], errors='coerce')
-    for c in ['점검 부서', '점검 현장', '작성자']:
-        df[c] = df[c].astype(str).str.strip().replace('', '미기재')
-    def analyzed(value):
-        v = str(value).strip()
-        return bool(v) and v not in ('분석 미실행', '조치 전 AI 분석 미실행', '없음', 'nan')
-    df['분석여부'] = df['AI분석'].map(analyzed)
+    df['점검항목수'] = pd.to_numeric(df['항목수'].map(inspection_history_item_count), errors='coerce')
+    for field in ['점검 부서','점검 현장','작성자']:
+        df[field] = df[field].astype(str).str.strip().replace('', '미기재')
+    df['분석여부'] = df['AI분석'].map(lambda value: bool(str(value).strip()) and str(value).strip() not in ('분석 미실행','조치 전 AI 분석 미실행','없음','nan'))
     return df
 
 
@@ -4613,11 +4801,19 @@ def render_inspection_dashboard():
     </style>''', unsafe_allow_html=True)
     st.markdown('''<div id="keco-dashboard-hero" class="keco-dash-hero"><div class="eyebrow">부서별 점검 현황</div>
     <h2>우리 현장 안전점검, 한눈에</h2><p>점검한 현장과 자주 언급된 위험요인을 확인하세요.</p></div>''', unsafe_allow_html=True)
-    rows = get_google_sheet_records()
-    if not rows or len(rows) < 2:
-        st.info('표시할 점검 기록이 없습니다. 안전 점검 등록에서 저장하거나 Google Sheets 연결 상태를 확인해주세요.')
+    try:
+        actor=inspection_history_actor(st.session_state.get('logged_user',''))
+        render_inspection_history_import(actor)
+        st.button('점검 이력 새로고침',key='dash_refresh',width='stretch')
+        source=st.selectbox('자료 출처',['원본 점검','기존 시트 요약'],key='dash_source')
+        records=get_nhn_inspection_records(actor,source)
+    except (PermissionError,StorageError,ValueError) as exc:
+        st.error(str(exc));return
+    st.caption('조회 저장소: '+('NHN Cloud' if nhn_storage_backend() is not None else '로컬 폴더 · NHN 연결 확인 필요'))
+    if not records:
+        st.info('아직 저장한 점검 기록이 없습니다. 안전 점검 등록에서 보고서를 만들면 이력에 반영됩니다.' if source=='원본 점검' else '가져온 과거 요약이 없습니다. 위의 CSV 가져오기를 이용해 주세요.')
         return
-    df = dashboard_frame(rows)
+    df = dashboard_frame(records)
     if df.empty:
         st.info('표시할 점검 기록이 없습니다.')
         return
@@ -4651,7 +4847,7 @@ def render_inspection_dashboard():
         if search.strip():
             haystack = view[['점검 현장', '작성자', '지적 분류', 'AI분석']].astype(str).agg(' '.join, axis=1)
             view = view[haystack.str.contains(search.strip(), case=False, regex=False)]
-        st.caption('모든 수치와 차트는 위 조회 조건을 따릅니다. 집계 단위는 시트에 저장된 점검 기록이며 실제 사고 건수가 아닙니다.')
+        st.caption('모든 수치와 차트는 위 조회 조건을 따릅니다. 집계 단위는 현재 선택한 출처의 저장된 점검 기록이며 실제 사고 건수가 아닙니다.')
     if view.empty:
         st.info('조회 조건에 맞는 기록이 없습니다. 기간이나 검색어를 변경해주세요.')
         return
@@ -4675,7 +4871,7 @@ def render_inspection_dashboard():
     left, right = st.columns(2)
     with left:
         with st.container(border=True):
-            st.markdown('#### 점검 활동 추이')
+            st.markdown('#### 점검 기록 저장 추이')
             valid = view.dropna(subset=['일시'])
             if valid.empty:
                 st.info('날짜가 확인되는 기록이 없습니다.')
@@ -4720,7 +4916,11 @@ def render_inspection_dashboard():
     ordered = view.sort_values('일시', ascending=False, na_position='last').copy()
     ordered['AI 분석'] = ordered['분석여부'].map({True:'분석 기록 있음',False:'분석 기록 없음'})
     ordered['점검 일시'] = ordered['일시'].dt.strftime('%Y-%m-%d %H:%M').fillna('날짜 확인 필요')
-    visible = ordered[['기록번호','점검 일시','점검 부서','점검 현장','항목수','작성자','AI 분석']]
+    date_only=ordered['날짜'].astype(str).str.fullmatch(r'\d{4}-\d{2}-\d{2}')
+    ordered.loc[date_only,'점검 일시']=ordered.loc[date_only,'날짜']+' (시간 미기록)'
+    visible = ordered[['기록번호','점검 일시','점검 부서','점검 현장','항목수','작성자','AI 분석','자료 상태']]
+    visible=visible.rename(columns={'점검 일시':'기록 저장 일시'})
+    st.caption('원본 점검은 보고서를 저장한 날짜 기준입니다. 저장한 시각이 없는 예전 기록은 시간을 임의로 표시하지 않습니다.')
     st.dataframe(visible, hide_index=True, width='stretch')
     options = ordered.index.tolist()
     record_index = st.selectbox('자세히 볼 점검 기록', options,
@@ -4732,6 +4932,8 @@ def render_inspection_dashboard():
         st.markdown('**AI 분석 원문**')
         st.text(str(record['AI분석']) or '기록된 분석이 없습니다.')
         st.caption('조치 완료 여부는 이 기록의 요약만으로 판단할 수 없습니다. 보고서와 현장 조치 결과를 확인하세요.')
+    content_issues=int(df['자료 상태'].astype(str).str.len().gt(0).sum())
+    if content_issues:st.caption(f'점검 내용 형식 확인 필요 {content_issues}건: 해당 기록의 원본 백업을 확인해 주세요.')
     issues = int(df['일시'].isna().sum())
     if issues:
         st.caption(f'전체 원본 중 날짜 미확인 {issues}건: 전체 기간에서는 표시되며 기간 필터·추이 집계에서는 제외됩니다.')
@@ -5209,25 +5411,29 @@ def ra_custom_tasks(value):
 
 
 def ra_select_tasks():
-    """All expanders render their widgets even while collapsed, preserving selections."""
+    """Submit all task selections together and retain the applied list."""
     selected=[]
-    st.caption('번호를 눌러 펼친 뒤 해당하는 세부작업을 모두 선택하세요. 여러 공종을 함께 선택할 수 있습니다.')
-    for group_index,(icon,group,tasks) in enumerate(RA_TRADE_GROUPS,1):
-        with st.expander(f'{group_index}. {icon} {group}'):
-            for task_index,task in enumerate(tasks,1):
-                if st.checkbox(f'{task_index}. {task}',key=f'ra_task_{group_index}_{task_index}'):
-                    selected.append(group+' / '+task)
-            custom=st.text_area('기타 직접 입력',placeholder='이 공종에 추가할 세부작업을 한 줄에 하나씩 입력하세요.',key=f'ra_custom_group_{group_index}')
-            selected.extend(group+' / '+task for task in ra_custom_tasks(custom) if task not in tasks or group+' / '+task not in selected)
-    with st.expander('11. ✍️ 기타 직접 입력'):
-        other=st.text_area('목록에 없는 공종·세부작업',placeholder='예: 특수공사 / 해당 세부작업\n한 줄에 하나씩 입력하세요.',key='ra_custom_group_11')
-        selected.extend('기타 / '+task for task in ra_custom_tasks(other))
-    selected=list(dict.fromkeys(selected))
-    st.caption(f'현재 선택한 세부작업: {len(selected)}개')
-    if selected:
+    st.caption('해당 작업을 모두 체크한 뒤 아래 ‘선택한 작업 적용’을 한 번 누르세요.')
+    with st.form('ra_task_selection_form',clear_on_submit=False):
+        for group_index,(icon,group,tasks) in enumerate(RA_TRADE_GROUPS,1):
+            with st.expander(f'{group_index}. {icon} {group}'):
+                for task_index,task in enumerate(tasks,1):
+                    if st.checkbox(f'{task_index}. {task}',key=f'ra_task_{group_index}_{task_index}'):
+                        selected.append(group+' / '+task)
+                custom=st.text_area('기타 직접 입력',placeholder='이 공종에 추가할 세부작업을 한 줄에 하나씩 입력하세요.',key=f'ra_custom_group_{group_index}')
+                selected.extend(group+' / '+task for task in ra_custom_tasks(custom) if task not in tasks or group+' / '+task not in selected)
+        with st.expander('11. ✍️ 기타 직접 입력'):
+            other=st.text_area('목록에 없는 공종·세부작업',placeholder='예: 특수공사 / 해당 세부작업\n한 줄에 하나씩 입력하세요.',key='ra_custom_group_11')
+            selected.extend('기타 / '+task for task in ra_custom_tasks(other))
+        submitted=st.form_submit_button('선택한 작업 적용',type='primary')
+    if submitted:
+        st.session_state.ra_applied_tasks=list(dict.fromkeys(selected))
+    applied=list(st.session_state.get('ra_applied_tasks',[]))
+    st.caption(f'적용된 세부작업: {len(applied)}개 · 선택을 바꾼 뒤 적용 버튼을 눌러주세요.')
+    if applied:
         with st.expander('선택한 작업 모아보기'):
-            for task in selected:st.write('• '+task)
-    return selected
+            for task in applied:st.write('• '+task)
+    return applied
 
 
 RA_HAZARDS = ['🪜 추락','⚙️ 끼임','🚶 넘어짐','🧱 맞음·낙하물','🚛 부딪힘·차량충돌','🏚️ 무너짐·매몰','⚡ 감전','🔥 화재','💥 폭발','🫁 질식·산소결핍','🧪 유해물질 노출','💧 빠짐·익사','🌡️ 폭염·한랭','🔊 소음·진동','🏋️ 근골격계 부담','🔪 베임·찔림','♨️ 화상','🦠 생물학적 위험','🌪️ 강풍·악천후','👥 혼재작업','✍️ 기타']
@@ -5394,6 +5600,12 @@ def ra_archive(owner,payload):
     finally:db.close()
 
 
+def ra_delete_row(row_id):
+    if st.session_state.get('password_correct'):
+        st.session_state.ra_rows=[row for row in st.session_state.get('ra_rows',[]) if row['id']!=row_id]
+
+
+@st.fragment
 def render_risk_assessment(actor):
     if not actor or not st.session_state.get('password_correct'):return
     if st.session_state.get('ra_actor')!=str(actor):
@@ -5424,7 +5636,7 @@ def render_risk_assessment(actor):
     meta['trades']=list(dict.fromkeys(trades+[r['trade'] for r in rows]))
     if any(r['trade'] not in trades for r in rows):st.caption('선택 해제한 공종의 기존 평가 항목은 유지됩니다. 불필요한 항목은 아래에서 삭제하세요.')
     with st.expander('③ 위험요인 후보를 골라 평가 항목 추가',expanded=True):
-        if not trades:st.caption('위에서 현장 공종을 먼저 선택하세요.')
+        if not trades:st.caption('위에서 세부작업을 체크하고 ‘선택한 작업 적용’을 눌러주세요.')
         else:
             if st.session_state.get('ra_item_trade') not in trades:
                 st.session_state.ra_item_trade=trades[0]
@@ -5501,7 +5713,7 @@ def render_risk_assessment(actor):
             edit('완료 확인자','verified_by');edit('완료 확인일 (YYYY-MM-DD)','verified_date');edit('이행 증빙·잔여 위험 및 조치 후 점수 판단 사유','evidence',True)
             if r['residual_f'] and r['residual_s'] and meta['threshold'] and r['residual_f']*r['residual_s']>=meta['threshold']:st.warning('조치 후에도 기준 이상입니다. 추가 개선대책을 검토하세요.')
             delete=st.checkbox('이 항목 삭제 확인',key=prefix+'delete_confirm')
-            if st.button('항목 삭제',disabled=not delete,key=prefix+'delete'):st.session_state.ra_rows=[v for v in rows if v['id']!=r['id']];st.rerun()
+            st.button('항목 삭제',disabled=not delete,key=prefix+'delete',on_click=ra_delete_row,args=(r['id'],))
     st.markdown('#### ⑤ 검토·저장·보고서 출력')
     meta['sharing']=text('근로자 공유 내용·공유일·후속 점검 계획','sharing',area=True)
     meta['review_confirmed']=st.checkbox('현장 위험요인, 점수 및 대책을 검토했습니다.',value=False,key='ra_review_'+ra_hash([rows,meta])[:12])
@@ -5511,7 +5723,7 @@ def render_risk_assessment(actor):
     if st.button('작성 내용 저장',disabled=not rows,key='ra_save'):
         try:ra_archive(actor,payload);st.success('작성 내용을 서버에 저장했습니다. 장기 보관용 파일도 내려받으세요.')
         except Exception:st.error('서버 저장 실패. 아래 JSON 백업과 보고서를 내려받으세요.')
-    st.download_button('작성 내용 JSON 백업',json.dumps(payload,ensure_ascii=False,indent=2).encode(),'위험성평가_작성내용.json','application/json',key='ra_json')
+    st.download_button('작성 내용 JSON 백업',json.dumps(payload,ensure_ascii=False,indent=2).encode(),'위험성평가_작성내용.json','application/json',key='ra_json',on_click='ignore')
     if st.button('📄 위험성평가 보고서 만들기',type='primary',key='ra_build'):
         errors=ra_validate(meta,rows,final)
         if errors:
@@ -5531,8 +5743,8 @@ def render_risk_assessment(actor):
             st.session_state.ra_output=outputs
     outputs=st.session_state.get('ra_output',{})
     if outputs.get('sig')==sig:
-        if outputs.get('pdf'):st.download_button('🖨️ 출력용 PDF 다운로드',outputs['pdf'],'위험성평가_보고서.pdf','application/pdf',key='ra_pdf_download')
-        if outputs.get('hwpx'):st.download_button('📝 편집용 한글 HWPX 다운로드',outputs['hwpx'],'위험성평가_보고서.hwpx','application/hwp+zip',key='ra_hwpx_download')
+        if outputs.get('pdf'):st.download_button('🖨️ 출력용 PDF 다운로드',outputs['pdf'],'위험성평가_보고서.pdf','application/pdf',key='ra_pdf_download',on_click='ignore')
+        if outputs.get('hwpx'):st.download_button('📝 편집용 한글 HWPX 다운로드',outputs['hwpx'],'위험성평가_보고서.hwpx','application/hwp+zip',key='ra_hwpx_download',on_click='ignore')
     elif outputs:st.caption('내용이 변경되었습니다. 보고서 만들기를 다시 눌러 최신 파일을 생성하세요.')
     st.caption('현재 점수는 빈도 × 강도로 계산합니다. 개선조치 기준점수가 미설정되어 점수에 따른 자동 판정은 보류합니다.')
 
