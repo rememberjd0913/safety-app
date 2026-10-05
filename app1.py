@@ -4291,10 +4291,168 @@ def safety_cal_table(events):
              '분류':e['kind'],'상태':e['status'],'담당자':e['person']} for e in sorted(events,key=lambda e:(e['start'],e['title']))]
 
 
+CAL_COLORS = {
+    '안전점검': ('#E0F2E9', '#318A63'),
+    '안전교육': ('#FFF0DB', '#CC904B'),
+    '회의·합동점검': ('#EAE5FC', '#8D7DC4'),
+    '보고기한': ('#E4EFFC', '#6A99D0'),
+    '특이사항': ('#FBE6E8', '#C57982'),
+    '기타': ('#EEF0F3', '#99A2B0'),
+}
+
+CAL_CSS = r'''<style>
+.st-key-safety_calendar_ui {background:#fff;border:1px solid #edf0f3;border-radius:16px;padding:24px 22px 16px;}
+.st-key-safety_calendar_ui > [data-testid="stVerticalBlock"] {gap:14px;}
+.st-key-cal_month_toolbar [data-testid="stHorizontalBlock"],
+.st-key-cal_tools [data-testid="stHorizontalBlock"],
+.st-key-cal_day_heading [data-testid="stHorizontalBlock"] {flex-direction:row!important;flex-wrap:nowrap!important;gap:8px!important;align-items:center!important;}
+.st-key-cal_month_toolbar [data-testid="stColumn"],
+.st-key-cal_tools [data-testid="stColumn"],
+.st-key-cal_day_heading [data-testid="stColumn"] {min-width:0!important;}
+.st-key-cal_month_toolbar [data-testid="stColumn"]:first-child {flex:1 1 auto!important;width:auto!important;}
+.st-key-cal_tools [data-testid="stColumn"]:first-child {flex:1 1 auto!important;width:auto!important;}
+.st-key-cal_tools [data-testid="stColumn"]:nth-child(2) {flex:0 0 98px!important;width:98px!important;}
+.st-key-cal_tools [data-testid="stColumn"]:last-child {flex:0 0 38px!important;width:38px!important;}
+.st-key-cal_month_toolbar [data-testid="stColumn"]:nth-child(2),
+.st-key-cal_month_toolbar [data-testid="stColumn"]:nth-child(4) {flex:0 0 40px!important;width:40px!important;}
+.st-key-cal_month_toolbar [data-testid="stColumn"]:nth-child(3) {flex:0 0 54px!important;width:54px!important;}
+.st-key-cal_month_toolbar [data-testid="stButton"] button,
+.st-key-cal_tools [data-testid="stButton"] button,
+.st-key-cal_tools [data-testid="stPopover"] button {min-height:38px!important;height:38px!important;border:1px solid #e7ebf0!important;background:#fff!important;color:#536272!important;border-radius:9px!important;box-shadow:none!important;padding:0 9px!important;}
+.st-key-cal_month_toolbar [data-testid="stButton"] button p,
+.st-key-cal_tools [data-testid="stButton"] button p,
+.st-key-cal_tools [data-testid="stPopover"] button p {font-size:13px!important;font-weight:500!important;white-space:nowrap!important;color:#536272!important;-webkit-text-fill-color:#536272!important;}
+.st-key-cal_prev [data-testid="stButton"] button p,.st-key-cal_next [data-testid="stButton"] button p {font-size:25px!important;line-height:1!important;}
+.cal-month-title {margin:0!important;font-size:26px!important;font-weight:700!important;line-height:1.4!important;letter-spacing:-.8px!important;color:#20252b!important;white-space:nowrap!important;}
+.cal-view-label {margin:0!important;color:#86909a!important;font-size:13px!important;line-height:1.6!important;}
+.cal-day-title {font-size:20px!important;font-weight:700!important;letter-spacing:-.4px!important;color:#252e38!important;margin:0!important;}
+.cal-day-title small {font-size:13px!important;color:#8b96a3!important;font-weight:400!important;margin-left:8px;}
+.st-key-safety_month_grid {border-top:1px solid #eef0f3;border-left:1px solid #eef0f3;border-radius:0!important;overflow:hidden;background:#fff;}
+.st-key-safety_month_grid [data-testid="stVerticalBlock"] {gap:0!important;}
+.st-key-safety_month_grid [data-testid="stHorizontalBlock"] {flex-direction:row!important;flex-wrap:nowrap!important;gap:0!important;align-items:stretch!important;}
+.st-key-safety_month_grid [data-testid="stColumn"] {min-width:0!important;width:calc(100% / 7)!important;flex:1 1 0!important;}
+.cal-weekday {height:36px;display:flex;align-items:center;justify-content:center;border-right:1px solid #eef0f3;border-bottom:1px solid #eef0f3;color:#7e8790;font-size:13px;}
+.cal-weekday.sun {color:#c78686;}.cal-weekday.sat {color:#7896b0;}
+.st-key-safety_month_grid [class*="st-key-cal_cell_"] {height:132px!important;min-height:132px!important;overflow:hidden;border-right:1px solid #eef0f3;border-bottom:1px solid #eef0f3;padding:0!important;gap:0!important;background:#fff;}
+.st-key-safety_month_grid [class*="st-key-cal_cell_"] [data-testid="stElementContainer"] {margin:0!important;}
+.st-key-safety_month_grid [data-testid="stButton"] button {width:100%!important;height:44px!important;min-height:44px!important;padding:6px 0 3px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;transform:none!important;color:#313943!important;}
+.st-key-safety_month_grid [data-testid="stButton"] button p {width:30px!important;height:30px!important;min-width:30px!important;margin:0!important;border-radius:50%!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:17px!important;font-weight:400!important;line-height:30px!important;color:inherit!important;-webkit-text-fill-color:currentColor!important;white-space:nowrap!important;}
+.st-key-safety_month_grid [data-testid="stButton"] button:hover {background:#f6f9fc!important;}
+.st-key-safety_month_grid [data-testid="stButton"] button:focus-visible {outline:2px solid #36a4ec!important;outline-offset:-3px!important;}
+.cal-events {display:flex;flex-direction:column;gap:3px;margin:0;padding:0 1px;}
+.cal-event-bar {height:24px;min-height:24px;line-height:24px!important;padding:0 5px;border-left:3px solid var(--event-accent);background:var(--event-bg);overflow:hidden;white-space:nowrap!important;word-break:normal!important;text-overflow:ellipsis;border-radius:0;font-size:12px!important;font-weight:500!important;color:#303942!important;}
+.cal-event-bar.cancelled {text-decoration:line-through;opacity:.6;}
+.cal-event-bar.outside {opacity:.5;}
+.cal-more {font-size:10px!important;line-height:16px!important;color:#85919f!important;padding:0 5px;}
+.cal-more-mobile {display:none;}
+.cal-legend {display:flex;flex-wrap:wrap;gap:6px 14px;padding:5px 0 0;font-size:11px;color:#87929e;}
+.cal-legend span {display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+.cal-legend i {display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--legend-color);}
+.cal-agenda-title {font-size:15px!important;line-height:1.6!important;font-weight:600!important;color:#303a45!important;margin:0 0 2px!important;}
+.cal-agenda-meta {font-size:12px!important;line-height:1.6!important;color:#8a96a3!important;margin:0!important;}
+.st-key-cal_selected_events [class*="st-key-cal_event_"] {border:1px solid #edf0f3;border-radius:10px;padding:10px 13px;margin:0;}
+.st-key-cal_selected_events [data-testid="stHorizontalBlock"] {flex-direction:row!important;flex-wrap:nowrap!important;gap:10px!important;align-items:center!important;}
+.st-key-cal_selected_events [data-testid="stColumn"] {min-width:0!important;}
+.st-key-cal_selected_events [data-testid="stColumn"]:last-child {flex:0 0 55px!important;width:55px!important;}
+.st-key-cal_selected_events [data-testid="stButton"] button {height:34px!important;min-height:34px!important;padding:0 10px!important;background:#fff!important;border:1px solid #e8edf2!important;color:#667787!important;box-shadow:none!important;border-radius:7px!important;}
+.st-key-cal_selected_events [data-testid="stButton"] button p {font-size:12px!important;color:#667787!important;-webkit-text-fill-color:#667787!important;}
+.st-key-cal_add [data-testid="stButton"] button {position:fixed!important;right:max(22px,calc((100vw - 1180px)/2 + 22px))!important;bottom:86px!important;z-index:50!important;width:58px!important;min-width:58px!important;height:58px!important;min-height:58px!important;padding:0!important;border:0!important;border-radius:50%!important;background:#0aa6f5!important;box-shadow:0 4px 12px rgba(0,147,224,.25)!important;}
+.st-key-cal_add [data-testid="stButton"] button p {font-size:0!important;color:white!important;-webkit-text-fill-color:white!important;}
+.st-key-cal_add [data-testid="stButton"] button p::after {content:"+";font-family:Arial,sans-serif;font-size:35px!important;font-weight:400!important;line-height:1!important;color:#fff!important;-webkit-text-fill-color:#fff!important;}
+.st-key-cal_add [data-testid="stButton"] button:hover {background:#008de0!important;transform:none!important;}
+.st-key-cal_add [data-testid="stButton"] button:focus-visible {outline:3px solid #0062a0!important;outline-offset:4px!important;}
+@media(max-width:640px) {
+ .st-key-safety_calendar_ui {padding:16px 9px 12px;border-radius:12px;}
+ .cal-month-title {font-size:22px!important;letter-spacing:-.6px!important;}
+ .cal-weekday {height:30px;font-size:12px;}
+ .st-key-safety_month_grid [class*="st-key-cal_cell_"] {height:116px!important;min-height:116px!important;}
+ .st-key-safety_month_grid [data-testid="stButton"] button {height:41px!important;min-height:41px!important;padding-top:5px!important;}
+ .st-key-safety_month_grid [data-testid="stButton"] button p {width:27px!important;height:27px!important;min-width:27px!important;font-size:16px!important;line-height:27px!important;}
+ .cal-events {gap:3px;padding:0;}
+ .cal-event-bar {font-size:10px!important;height:21px;min-height:21px;line-height:21px!important;padding:0 3px;border-left-width:2px;}
+ .cal-event-bar.third {display:none;}
+ .cal-more-desktop {display:none;}.cal-more-mobile {display:block;}
+ .cal-legend {gap:5px 9px;font-size:10px;}
+ .cal-day-title {font-size:18px!important;}
+ .cal-day-title small {font-size:12px!important;margin-left:5px;}
+ .st-key-cal_add [data-testid="stButton"] button {width:54px!important;min-width:54px!important;height:54px!important;min-height:54px!important;right:20px!important;bottom:84px!important;}
+}
+</style>'''
+
+
 def safety_cal_pick_day(day):
+    if not isinstance(day, datetime.date):
+        return
     st.session_state.cal_selected_day = day
     st.session_state.cal_new_start = day
     st.session_state.cal_new_end = day
+    st.session_state.cal_jump_day = day
+    st.session_state.cal_year = day.year
+    st.session_state.cal_month = day.month
+    st.session_state.cal_detail = ''
+
+
+def safety_cal_move_month(step):
+    import calendar
+    today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
+    year = int(st.session_state.get('cal_year', today.year))
+    month = int(st.session_state.get('cal_month', today.month))
+    index = year * 12 + month - 1 + int(step)
+    target_year, target_month = divmod(index, 12)
+    target_month += 1
+    if not 2020 <= target_year <= 2100:
+        return
+    chosen = st.session_state.get('cal_selected_day', today)
+    day = min(chosen.day, calendar.monthrange(target_year, target_month)[1])
+    safety_cal_pick_day(datetime.date(target_year, target_month, day))
+
+
+def safety_cal_go_today():
+    safety_cal_pick_day(datetime.datetime.now(ZoneInfo('Asia/Seoul')).date())
+
+
+def safety_cal_jump_day():
+    day = st.session_state.get('cal_jump_day')
+    if isinstance(day, datetime.date) and 2020 <= day.year <= 2100:
+        safety_cal_pick_day(day)
+
+
+def safety_cal_open_create():
+    st.session_state.cal_form_open = True
+
+
+def safety_cal_close_create():
+    st.session_state.cal_form_open = False
+
+
+def safety_cal_pick_event(event_id):
+    st.session_state.cal_detail = str(event_id)
+
+
+def safety_cal_day_bars(day, month, events):
+    from html import escape
+    items = sorted(
+        (e for e in events if e['start'] <= day.isoformat() <= e['end']),
+        key=lambda e: (e['status'] == '취소', e['start'], e['title'], e['id']),
+    )
+    bars = []
+    for index, event in enumerate(items[:3]):
+        background, accent = CAL_COLORS.get(event['kind'], CAL_COLORS['기타'])
+        classes = 'cal-event-bar'
+        if index == 2:
+            classes += ' third'
+        if day.month != month:
+            classes += ' outside'
+        if event['status'] == '취소':
+            classes += ' cancelled'
+        tooltip = ' · '.join((event['title'], event['dept'], event['status']))
+        bars.append(f'<div class="{classes}" style="--event-bg:{background};--event-accent:{accent}" '
+                    f'title="{escape(tooltip, quote=True)}">{escape(event["title"])}</div>')
+    if len(items) > 3:
+        bars.append(f'<div class="cal-more cal-more-desktop">+{len(items)-3}개 더</div>')
+    if len(items) > 2:
+        bars.append(f'<div class="cal-more cal-more-mobile">+{len(items)-2}개 더</div>')
+    return '<div class="cal-events">' + ''.join(bars) + '</div>'
 
 
 def safety_cal_clickable_month(year, month, events):
@@ -4302,138 +4460,200 @@ def safety_cal_clickable_month(year, month, events):
     today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
     selected = st.session_state.get('cal_selected_day', today)
     if (selected.year, selected.month) != (year, month):
-        selected = today if (today.year, today.month)==(year, month) else datetime.date(year,month,1)
+        selected = today if (today.year, today.month) == (year, month) else datetime.date(year, month, 1)
         safety_cal_pick_day(selected)
-    st.session_state.setdefault('cal_selected_day', selected)
-    st.session_state.setdefault('cal_new_start', selected)
-    st.session_state.setdefault('cal_new_end', selected)
-    st.markdown("""<style>
-    .st-key-safety_month_grid [data-testid="stHorizontalBlock"] {flex-direction:row!important;flex-wrap:nowrap!important;gap:4px!important;}
-    .st-key-safety_month_grid [data-testid="stColumn"] {min-width:0!important;width:calc((100% - 24px)/7)!important;flex:1 1 0!important;}
-    .st-key-safety_month_grid [data-testid="stButton"] button {width:100%!important;min-height:64px!important;padding:4px!important;border:1px solid #b8cfc1!important;}
-    .st-key-safety_month_grid [data-testid="stButton"] button p {font-size:15px!important;line-height:1.3!important;white-space:normal!important;}
-    .st-key-safety_month_grid [data-testid="stCaptionContainer"] p {font-size:12px!important;line-height:1.4!important;overflow-wrap:anywhere!important;}
-    @media(max-width:640px){.st-key-safety_month_grid [data-testid="stButton"] button p{font-size:12px!important;}.st-key-safety_month_grid [data-testid="stButton"] button{min-height:52px!important;}}
-    </style>""", unsafe_allow_html=True)
-    st.markdown(f'### {year}년 {month}월')
-    st.caption('날짜를 누르면 아래에 해당 날짜의 일정과 입력란이 나타납니다. 숫자 옆의 건수는 등록된 일정 수입니다.')
-    with st.container(key='safety_month_grid', border=True):
-        for col, label in zip(st.columns(7), ['월','화','수','목','금','토','일']):
-            col.markdown('**'+label+'**')
-        for week in calendar.Calendar(firstweekday=0).monthdatescalendar(year, month):
-            for col, day in zip(st.columns(7), week):
-                with col:
-                    items=[e for e in events if e['start']<=day.isoformat()<=e['end']]
-                    active=day.month==month
-                    label=str(day.day)
-                    if active and items: label+=f' · {len(items)}건'
-                    if day==today: label+=' 오늘'
-                    st.button(label, key='cal_day_'+day.isoformat(), disabled=not active,
-                              type='primary' if day==selected else 'secondary',
-                              on_click=safety_cal_pick_day, args=(day,))
-                    if active and items:
-                        st.caption(items[0]['title'][:18]+('…' if len(items[0]['title'])>18 else ''))
+    with st.container(key='safety_month_grid'):
+        for index, (column, label) in enumerate(zip(st.columns(7, gap=None), ['일','월','화','수','목','금','토'])):
+            classes = 'cal-weekday' + (' sun' if index == 0 else ' sat' if index == 6 else '')
+            column.markdown(f'<div class="{classes}">{label}</div>', unsafe_allow_html=True)
+        for week in calendar.Calendar(firstweekday=6).monthdatescalendar(year, month):
+            for column, day in zip(st.columns(7, gap=None), week):
+                with column, st.container(key='cal_cell_' + day.strftime('%Y%m%d')):
+                    number_color = '#a8afb7' if day.month != month else '#b97979' if day.weekday() == 6 else '#7196b6' if day.weekday() == 5 else '#313943'
+                    styles = f'.st-key-safety_month_grid .st-key-cal_cell_{day:%Y%m%d} button p{{color:{number_color}!important;}}'
+                    if day == selected:
+                        styles += f'.st-key-safety_month_grid .st-key-cal_cell_{day:%Y%m%d}{{background:#f4f9ff!important;}}'
+                        styles += f'.st-key-safety_month_grid .st-key-cal_cell_{day:%Y%m%d} button p{{box-shadow:inset 0 0 0 1.5px #38a5ed!important;}}'
+                    if day == today:
+                        styles += f'.st-key-safety_month_grid .st-key-cal_cell_{day:%Y%m%d} button p{{background:#0aa6f5!important;color:white!important;-webkit-text-fill-color:white!important;box-shadow:none!important;}}'
+                    st.markdown('<style>' + styles + '</style>', unsafe_allow_html=True)
+                    st.button(str(day.day), key='cal_day_' + day.isoformat(),
+                              disabled=not 2020 <= day.year <= 2100,
+                              on_click=safety_cal_pick_day, args=(day,), width='stretch')
+                    st.markdown(safety_cal_day_bars(day, month, events), unsafe_allow_html=True)
+    legend = ''.join(f'<span><i style="--legend-color:{color[1]}"></i>{kind}</span>' for kind, color in CAL_COLORS.items())
+    st.markdown('<div class="cal-legend">' + legend + '</div>', unsafe_allow_html=True)
     return selected
 
 
-def render_safety_calendar(actor):
-    import uuid
-    actor=safety_cal_actor(actor)
-    st.subheader('우리 처 안전캘린더')
-    st.caption('처 공통·현장 일정을 함께 봅니다. 모든 내부 로그인 사용자가 열람하고 특이사항을 기록할 수 있습니다. 수정은 작성자와 관리자만 가능합니다.')
-    st.button('공유 일정 새로고침',key='cal_refresh')
-    render_safety_calendar_import(actor)
-    try:
-        rows=safety_cal_rows();events,_,rejected=safety_cal_fold(rows)
-    except ValueError as exc:
-        st.error(str(exc));return
-    except StorageError as exc:
-        st.error(str(exc));return
-    except Exception:
-        st.error('공유 일정 조회에 실패했습니다. 저장소 연결을 확인해 주세요.');return
-    st.caption('공유 일정 저장 위치: '+('NHN Cloud' if nhn_storage_backend() is not None else '로컬 폴더 · NHN 연결 확인 필요'))
-    if st.session_state.pop('cal_saved',False):st.success('공유 일정을 저장했습니다.')
-    st.caption('조회 시각: '+datetime.datetime.now(ZoneInfo('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')+' · 자동 알림은 제공하지 않습니다. 다른 사용자의 변경은 새로고침하면 반영됩니다.')
-    if rejected:st.caption(f'충돌 또는 형식 오류로 반영하지 않은 기록 {len(rejected)}건이 있습니다. 변경 이력은 저장소에 남아 있습니다.')
-    today=datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
-    dept=st.selectbox('보고 싶은 부서',['전체']+sorted({e['dept'] for e in events.values()}),key='cal_filter_dept')
-    filtered=[e for e in events.values() if dept=='전체' or e['dept']==dept]
-    st.markdown('**이번 주 일정**')
-    monday=today-datetime.timedelta(days=today.weekday());sunday=monday+datetime.timedelta(days=6)
-    week=[e for e in filtered if e['start']<=sunday.isoformat() and e['end']>=monday.isoformat() and e['status']!='취소']
-    if week:st.dataframe(pd.DataFrame(safety_cal_table(week)),hide_index=True,width='stretch')
-    else:st.info('이번 주에 등록된 일정이 없습니다.')
-    c1,c2=st.columns(2)
-    year=int(c1.number_input('연도',min_value=2020,max_value=2100,value=today.year,key='cal_year'))
-    month=c2.selectbox('월',list(range(1,13)),index=today.month-1,key='cal_month')
-    mode=st.radio('보기 방식',['월간 달력·목록','연간 목록'],horizontal=True,key='cal_view')
-    start=datetime.date(year,month,1) if mode.startswith('월간') else datetime.date(year,1,1)
-    import calendar
-    end=datetime.date(year,month,calendar.monthrange(year,month)[1]) if mode.startswith('월간') else datetime.date(year,12,31)
-    shown=[e for e in filtered if e['start']<=end.isoformat() and e['end']>=start.isoformat()]
-    if mode.startswith('월간'):
-        picked = safety_cal_clickable_month(year, month, shown)
-        shown = [e for e in shown if e['start']<=picked.isoformat()<=e['end']]
-        st.subheader(picked.strftime('%Y년 %m월 %d일')+' 일정')
-    else:
-        picked = st.date_input('새 일정을 등록할 날짜', value=today, key='cal_annual_day')
-        if st.session_state.get('cal_selected_day') != picked:
-            safety_cal_pick_day(picked)
-    if shown:st.dataframe(pd.DataFrame(safety_cal_table(shown)),hide_index=True,width='stretch')
-    else:st.info('등록된 일정이 없습니다. 아래에서 새 일정을 입력하세요.')
-    with st.expander(picked.strftime('%m월 %d일')+'에 새 일정 또는 특이사항 등록',expanded=True):
-        with st.form('cal_create'):
-            title=st.text_input('제목',max_chars=120)
-            a,b=st.columns(2);sd=a.date_input('시작일',key='cal_new_start');ed=b.date_input('종료일',key='cal_new_end')
-            dep=st.selectbox('대상 부서',['처 공통']+list(department_sites_map))
-            site=st.text_input('현장명 (처 공통이면 비워두세요)',max_chars=200)
-            kind=st.selectbox('분류',CAL_KINDS);person=st.text_input('담당자',max_chars=100)
-            detail=st.text_area('일정 내용 또는 특이사항',max_chars=2000)
-            submit=st.form_submit_button('공유 일정에 저장',type='primary')
-        if submit:
-            data=dict(title=title,start=sd.isoformat(),end=ed.isoformat(),dept=dep,site=site,kind=kind,person=person,detail=detail,status='예정')
-            eid=hashlib.sha256(json.dumps([actor,data],sort_keys=True,ensure_ascii=False).encode()).hexdigest()
-            try:
-                safety_cal_save(actor,'create',eid,data);st.session_state.cal_saved=True;st.rerun()
-            except ValueError as exc:st.error(str(exc))
-            except Exception:st.error('저장 결과 확인이 필요합니다. 새로고침해 일정을 확인한 뒤 같은 내용으로 재시도하세요.')
-    if not shown:return
-    byid={e['id']:e for e in shown}
-    eid=st.selectbox('자세히 볼 일정',list(byid),format_func=lambda i:byid[i]['start']+' · '+byid[i]['title'],key='cal_detail')
-    e=byid[eid]
-    st.write('**'+e['title']+'**');st.text(e['detail'] or '등록된 설명이 없습니다.')
-    st.caption(f"작성자: {e['owner']} · 담당자: {e['person'] or '미지정'} · 상태: {e['status']}")
-    admins=st.secrets.get('calendar_admins',['admin']);admins=[admins] if isinstance(admins,str) else admins
-    if actor==e['owner'] or actor in admins:
-        with st.expander('일정·상태 수정'):
-            with st.form('cal_edit_'+eid+'_'+e['version']):
-                title=st.text_input('일정 제목',e['title'],max_chars=120)
-                sd=st.date_input('변경 시작일',datetime.date.fromisoformat(e['start']))
-                ed=st.date_input('변경 종료일',datetime.date.fromisoformat(e['end']))
-                status=st.selectbox('진행 상태',CAL_STATUSES,index=CAL_STATUSES.index(e['status']))
-                person=st.text_input('담당자 변경',e['person'],max_chars=100)
-                detail=st.text_area('내용 변경',e['detail'],max_chars=2000)
-                submit=st.form_submit_button('변경 저장')
-            if submit:
-                data={k:e[k] for k in ('title','start','end','dept','site','kind','status','detail','person')}
-                data.update(title=title,start=sd.isoformat(),end=ed.isoformat(),status=status,person=person,detail=detail)
-                try:
-                    safety_cal_save(actor,'edit',eid,data,e['version']);st.session_state.cal_saved=True;st.rerun()
-                except ValueError as exc:st.error(str(exc))
-                except Exception:st.error('저장 결과 확인이 필요합니다. 새로고침 후 다시 확인하세요.')
-    st.markdown('**특이사항 기록**')
-    for stamp,writer,note in e['notes']:
-        st.caption(stamp+' · '+writer);st.text(note)
-    with st.form('cal_note_'+eid):
-        note=st.text_area('새 특이사항',max_chars=2000,placeholder='예: 우천으로 점검 일정 변경 협의 중')
-        submit=st.form_submit_button('특이사항 남기기')
+@st.dialog('일정 추가', on_dismiss=safety_cal_close_create)
+def render_safety_calendar_create(actor):
+    actor = safety_cal_actor(actor)
+    picked = st.session_state.get('cal_selected_day', datetime.datetime.now(ZoneInfo('Asia/Seoul')).date())
+    st.caption(f'{picked.month}월 {picked.day}일 · 우리 처 공유 일정')
+    with st.form('cal_create'):
+        title = st.text_input('제목', max_chars=120, placeholder='예: 현장 안전점검')
+        a, b = st.columns(2)
+        sd = a.date_input('시작일', key='cal_new_start')
+        ed = b.date_input('종료일', key='cal_new_end')
+        dep = st.selectbox('대상 부서', ['처 공통'] + list(department_sites_map))
+        site = st.text_input('현장명 (처 공통이면 비워두세요)', max_chars=200)
+        kind = st.selectbox('분류', CAL_KINDS)
+        person = st.text_input('담당자', max_chars=100)
+        detail = st.text_area('일정 내용 또는 특이사항', max_chars=2000)
+        submit = st.form_submit_button('공유 일정에 저장', type='primary', width='stretch')
     if submit:
+        data = dict(title=title, start=sd.isoformat(), end=ed.isoformat(), dept=dep,
+                    site=site, kind=kind, person=person, detail=detail, status='예정')
+        event_id = hashlib.sha256(json.dumps([actor, data], sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         try:
-            safety_cal_save(actor,'note',eid,{'note':note});st.session_state.cal_saved=True;st.rerun()
-        except ValueError as exc:st.error(str(exc))
-        except Exception:st.error('저장 결과 확인이 필요합니다. 새로고침 후 같은 내용으로 재시도하세요.')
-    with st.expander('일정 변경 이력'):
-        for stamp,writer,action in e['history']:st.text(stamp+' · '+writer+' · '+action)
+            safety_cal_save(actor, 'create', event_id, data)
+            st.session_state.cal_saved = True
+            safety_cal_close_create()
+            st.rerun()
+        except ValueError as exc:
+            st.error(str(exc))
+        except Exception:
+            st.error('저장 결과 확인이 필요합니다. 새로고침해 일정을 확인한 뒤 같은 내용으로 재시도하세요.')
+    if st.button('닫기', key='cal_create_cancel', width='stretch'):
+        safety_cal_close_create()
+        st.rerun()
+
+
+@st.fragment
+def render_safety_calendar(actor):
+    from html import escape
+    actor = safety_cal_actor(actor)
+    today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
+    if 'cal_selected_day' not in st.session_state:
+        safety_cal_pick_day(today)
+    st.session_state.setdefault('cal_year', st.session_state.cal_selected_day.year)
+    st.session_state.setdefault('cal_month', st.session_state.cal_selected_day.month)
+    st.session_state.setdefault('cal_new_start', st.session_state.cal_selected_day)
+    st.session_state.setdefault('cal_new_end', st.session_state.cal_selected_day)
+    st.session_state.setdefault('cal_jump_day', st.session_state.cal_selected_day)
+    st.markdown(CAL_CSS, unsafe_allow_html=True)
+    try:
+        rows = safety_cal_rows()
+        events, _, rejected = safety_cal_fold(rows)
+    except (ValueError, StorageError) as exc:
+        st.error(str(exc))
+        return
+    except Exception:
+        st.error('공유 일정 조회에 실패했습니다. 저장소 연결을 확인해 주세요.')
+        return
+    if st.session_state.pop('cal_saved', False):
+        st.success('공유 일정을 저장했습니다.')
+    year, month = int(st.session_state.cal_year), int(st.session_state.cal_month)
+    with st.container(key='safety_calendar_ui'):
+        with st.container(key='cal_month_toolbar'):
+            title, previous, now, following = st.columns([7, 1, 1.3, 1])
+            title.markdown(f'<p class="cal-month-title">{year}년 {month}월</p>', unsafe_allow_html=True)
+            previous.button('‹', help='이전 달', key='cal_prev',
+                            disabled=(year, month) == (2020, 1), on_click=safety_cal_move_month, args=(-1,), width='stretch')
+            now.button('오늘', key='cal_today', on_click=safety_cal_go_today, width='stretch')
+            following.button('›', help='다음 달', key='cal_next',
+                             disabled=(year, month) == (2100, 12), on_click=safety_cal_move_month, args=(1,), width='stretch')
+        with st.container(key='cal_tools'):
+            label, options, refresh = st.columns([5, 2, 1])
+            label.markdown('<p class="cal-view-label">우리 처 안전캘린더</p>', unsafe_allow_html=True)
+            with options.popover('보기 설정', width='stretch'):
+                depts = ['전체'] + sorted({e['dept'] for e in events.values()})
+                if st.session_state.get('cal_filter_dept') not in depts:
+                    st.session_state.cal_filter_dept = '전체'
+                dept = st.selectbox('보고 싶은 부서', depts, key='cal_filter_dept')
+                mode = st.radio('보기 방식', ['월간 달력', '연간 목록'], key='cal_view')
+                st.date_input('날짜로 이동', min_value=datetime.date(2020, 1, 1),
+                              max_value=datetime.date(2100, 12, 31), key='cal_jump_day', on_change=safety_cal_jump_day)
+            refresh.button('↻', help='공유 일정 새로고침', key='cal_refresh', width='stretch')
+        filtered = [e for e in events.values() if dept == '전체' or e['dept'] == dept]
+        if mode == '월간 달력':
+            picked = safety_cal_clickable_month(year, month, filtered)
+            shown = sorted((e for e in filtered if e['start'] <= picked.isoformat() <= e['end']),
+                           key=lambda e: (e['status'] == '취소', e['start'], e['title'], e['id']))
+        else:
+            picked = st.session_state.cal_selected_day
+            shown = sorted((e for e in filtered if e['start'] <= f'{year}-12-31' and e['end'] >= f'{year}-01-01'),
+                           key=lambda e: (e['start'], e['title'], e['id']))
+            if shown:
+                st.dataframe(pd.DataFrame(safety_cal_table(shown)), hide_index=True, width='stretch')
+            else:
+                st.info('이 해에 등록된 일정이 없습니다.')
+        with st.container(key='cal_day_heading'):
+            weekdays = ['월', '화', '수', '목', '금', '토', '일']
+            heading = f'{picked.month}월 {picked.day}일 ({weekdays[picked.weekday()]})' if mode == '월간 달력' else f'{year}년 일정'
+            st.markdown(f'<p class="cal-day-title">{heading}<small>{len(shown)}개 일정</small></p>', unsafe_allow_html=True)
+        if not shown and mode == '월간 달력':
+            st.caption('등록된 일정이 없습니다. 오른쪽 아래 ＋ 버튼으로 추가하세요.')
+        with st.container(key='cal_selected_events'):
+            for event in shown:
+                background, accent = CAL_COLORS.get(event['kind'], CAL_COLORS['기타'])
+                with st.container(key='cal_event_' + event['id']):
+                    left, right = st.columns([8, 1])
+                    left.markdown(f'<p class="cal-agenda-title"><span style="color:{accent}">●</span> {escape(event["title"])}</p>', unsafe_allow_html=True)
+                    meta = ' · '.join(str(x) for x in (event['dept'], event['site'], event['status'], event['person']) if x)
+                    left.markdown('<p class="cal-agenda-meta">' + escape(meta) + '</p>', unsafe_allow_html=True)
+                    right.button('상세', key='cal_show_' + event['id'], on_click=safety_cal_pick_event, args=(event['id'],), width='stretch')
+        st.button('일정 추가', key='cal_add', on_click=safety_cal_open_create)
+        if shown:
+            by_id = {e['id']: e for e in shown}
+            chosen = st.session_state.get('cal_detail')
+            if chosen in by_id:
+                e = by_id[chosen]
+                with st.container(border=True):
+                    st.markdown('**' + escape(e['title']) + '**')
+                    st.text(e['detail'] or '등록된 설명이 없습니다.')
+                    st.caption(f"{e['start']} ~ {e['end']} · 작성자 {e['owner']} · 담당자 {e['person'] or '미지정'} · {e['status']}")
+                    if actor == e['owner'] or safety_cal_admin(actor):
+                        with st.expander('일정·상태 수정'):
+                            with st.form('cal_edit_' + chosen + '_' + e['version']):
+                                title = st.text_input('일정 제목', e['title'], max_chars=120)
+                                sd = st.date_input('변경 시작일', datetime.date.fromisoformat(e['start']))
+                                ed = st.date_input('변경 종료일', datetime.date.fromisoformat(e['end']))
+                                status = st.selectbox('진행 상태', CAL_STATUSES, index=CAL_STATUSES.index(e['status']))
+                                person = st.text_input('담당자 변경', e['person'], max_chars=100)
+                                detail = st.text_area('내용 변경', e['detail'], max_chars=2000)
+                                submit = st.form_submit_button('변경 저장')
+                            if submit:
+                                data = {k: e[k] for k in ('title','start','end','dept','site','kind','status','detail','person')}
+                                data.update(title=title, start=sd.isoformat(), end=ed.isoformat(), status=status, person=person, detail=detail)
+                                try:
+                                    safety_cal_save(actor, 'edit', chosen, data, e['version'])
+                                    st.session_state.cal_saved = True
+                                    st.rerun()
+                                except ValueError as exc:
+                                    st.error(str(exc))
+                                except Exception:
+                                    st.error('저장 결과 확인이 필요합니다. 새로고침 후 다시 확인하세요.')
+                    with st.expander('특이사항 기록', expanded=bool(e['notes'])):
+                        for stamp, writer, note in e['notes']:
+                            st.caption(stamp + ' · ' + writer)
+                            st.text(note)
+                        with st.form('cal_note_' + chosen):
+                            note = st.text_area('새 특이사항', max_chars=2000, placeholder='예: 우천으로 점검 일정 변경 협의 중')
+                            submit = st.form_submit_button('특이사항 남기기')
+                        if submit:
+                            try:
+                                safety_cal_save(actor, 'note', chosen, {'note': note})
+                                st.session_state.cal_saved = True
+                                st.rerun()
+                            except ValueError as exc:
+                                st.error(str(exc))
+                            except Exception:
+                                st.error('저장 결과 확인이 필요합니다. 새로고침 후 같은 내용으로 재시도하세요.')
+                    with st.expander('일정 변경 이력'):
+                        for stamp, writer, action in e['history']:
+                            st.text(stamp + ' · ' + writer + ' · ' + action)
+    with st.expander('일정 관리·과거 자료 가져오기'):
+        st.caption('공유 일정 저장 위치: ' + ('NHN Cloud' if nhn_storage_backend() is not None else '로컬 폴더 · NHN 연결 확인 필요'))
+        st.caption('작성자·관리자는 수정할 수 있고, 내부 사용자는 열람과 특이사항 기록을 할 수 있습니다.')
+        st.caption('조회 시각: ' + datetime.datetime.now(ZoneInfo('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S') + ' · 다른 사용자의 변경은 ↻ 버튼을 누르면 반영됩니다. 자동 알림은 제공하지 않습니다.')
+        if rejected:
+            st.caption(f'충돌 또는 형식 오류로 반영하지 않은 기록 {len(rejected)}건이 있습니다. 변경 이력은 저장소에 남아 있습니다.')
+        render_safety_calendar_import(actor)
+    if st.session_state.get('cal_form_open'):
+        render_safety_calendar_create(actor)
+
 
 
 st.markdown("""<style>
@@ -5392,6 +5612,10 @@ with calendar_tab:
 
 
 # ---------- 위험성평가: 선택형 작성 / 사람의 점수 판단 / 보고서 ----------
+RA_CONSTRUCTION_TYPES = [
+    '하수관로', '하수처리', '도시침수', '상수도', '소각/자원회수', '매립',
+    '바이오', '가축분뇨', '생태하천', '완충저류/비점오염', '폐수처리', '기타',
+]
 RA_TRADE_GROUPS = [
 ('📐','현장 준비, 가설공사', ['현황측량·기준점 설치','지반조사·시추','지하매설물 탐사·시험굴착','수목 제거·벌목·뿌리 제거','현장 정리·장애물 제거','가설울타리·출입문 설치·해체','가설사무실·컨테이너 설치·철거','가설도로·장비 진입로 조성','가설전기·임시분전반 설치·철거','가설급수·배수시설 설치·철거']),
 ('🚜','토공, 굴착, 지반공사', ['표토 제거·토사 절취','기초 터파기','관로 설치용 도랑 굴착','암반 천공·브레이커 파쇄','발파 작업','굴착토 상차·운반·하차','성토·되메우기','지반 다짐','사면 정리·보강','지반개량·그라우팅']),
@@ -5514,7 +5738,7 @@ def ra_ai(kind, data, source):
 def ra_report_sections(meta, rows, final):
     status='검토본' if final else '초안 · 미확인 사항 포함'
     sections=[('평가 개요',[
-        ('보고서 상태',status),('현장명',meta['site']),
+        ('보고서 상태',status),('공사종류',meta.get('construction_type') or '확인 필요'),('현장명',meta['site']),
         ('평가일 / 구분',meta['date']+' / '+meta['kind']),('평가자',meta['evaluator']),
         ('평가 대상 공종',' / '.join(meta['trades'])),('위험성 산식','빈도 × 강도'),
         ('작성 범위','AI는 작성 보조입니다. 공단 지정 서식 일치 여부 확인 필요. 별표·부칙·현장 의무조치는 별도 확인합니다.')])]
@@ -5613,7 +5837,13 @@ def render_risk_assessment(actor):
             if k.startswith('ra_'):del st.session_state[k]
         st.session_state.ra_actor=str(actor)
     st.subheader('위험성평가, 하나씩 선택해 작성하세요')
-    st.caption('① 현장 정보 → ② 공종·위험유형 → ③ 위험요인 → ④ 점수·개선대책 → ⑤ 보고서')
+    st.caption('① 공사종류 → ② 현장 정보 → ③ 공종 선택 → ④ 위험요인 → ⑤ 점수·개선대책 → ⑥ 보고서')
+    st.markdown('#### ① 공사종류를 선택하세요')
+    construction_type=st.selectbox('공사종류',RA_CONSTRUCTION_TYPES,index=None,
+                                 placeholder='공사종류를 선택하세요',key='ra_construction_type')
+    if construction_type is None:
+        st.caption('공사종류를 선택하면 현장 정보와 공종 선택이 표시됩니다.')
+        return
     st.info('AI는 검토할 후보를 제안합니다. 빈도·강도와 최종 대책은 근로자와 현장 담당자가 확인하여 결정합니다.')
     if 'ra_rows' not in st.session_state:st.session_state.ra_rows=[]
     rows=st.session_state.ra_rows
@@ -5621,9 +5851,9 @@ def render_risk_assessment(actor):
     def text(label,key,default='',area=False):
         value=defaults.get(key,default)
         return (st.text_area if area else st.text_input)(label,value=str(value),key='ra_meta_'+key)
-    with st.expander('① 현장 정보',expanded=True):
+    with st.expander('② 현장 정보',expanded=True):
         # Keep existing score-input ranges; no unverified company action threshold.
-        meta={'frequency_max':5,'severity_max':4,'frequency_labels':['']*5,
+        meta={'construction_type':construction_type,'frequency_max':5,'severity_max':4,'frequency_labels':['']*5,
               'severity_labels':['']*4,'threshold':0,'criteria_confirmed':False}
         sites=list(dict.fromkeys(site for group in department_sites_map.values() for site in group))
         meta['site']=st.selectbox('점검현장 선택',sites,key='ra_site_choice')
@@ -5631,11 +5861,11 @@ def render_risk_assessment(actor):
         meta['date']=str(st.date_input('평가일',value=datetime.datetime.now(ZoneInfo('Asia/Seoul')).date(),key='ra_date'))
         kinds=['최초평가','정기평가','수시평가','상시평가 기록']
         meta['kind']=st.selectbox('평가 구분',kinds,key='ra_kind')
-    st.markdown('#### ② 현장에 있는 공종을 모두 선택하세요')
+    st.markdown('#### ③ 현장에 있는 공종을 모두 선택하세요')
     trades=ra_select_tasks()
     meta['trades']=list(dict.fromkeys(trades+[r['trade'] for r in rows]))
     if any(r['trade'] not in trades for r in rows):st.caption('선택 해제한 공종의 기존 평가 항목은 유지됩니다. 불필요한 항목은 아래에서 삭제하세요.')
-    with st.expander('③ 위험요인 후보를 골라 평가 항목 추가',expanded=True):
+    with st.expander('④ 위험요인 후보를 골라 평가 항목 추가',expanded=True):
         if not trades:st.caption('위에서 세부작업을 체크하고 ‘선택한 작업 적용’을 눌러주세요.')
         else:
             if st.session_state.get('ra_item_trade') not in trades:
@@ -5656,12 +5886,12 @@ def render_risk_assessment(actor):
                 if case_source:st.text(case_source)
                 else:st.caption('이 위험유형의 내장 사례는 아직 없습니다. 자료를 추가하면 함께 참고합니다.')
                 st.caption('2026-09-30 확인한 안전보건공단 공개사례의 요약입니다. 최신 사례 자동 수집이나 현장 전체 위험의 누락 없는 식별을 보장하지 않습니다.')
-            consent=st.checkbox('입력한 작업조건·위험유형·참고자료를 AI에 보내 추천받습니다.',key='ra_consent')
-            sig=ra_hash([trade,work,hazards,source]);cache=st.session_state.get('ra_factors',{})
+            consent=st.checkbox('입력한 공사종류·작업조건·위험유형·참고자료를 AI에 보내 추천받습니다.',key='ra_consent')
+            sig=ra_hash([construction_type,trade,work,hazards,source]);cache=st.session_state.get('ra_factors',{})
             if st.button('✨ AI 위험요인 후보 받기',disabled=not(consent and work.strip() and hazards),key='ra_factor_ai'):
                 try:
                     with st.spinner('작업조건에 맞는 위험요인을 검토하고 있습니다…'):
-                        cache={'sig':sig,'items':ra_ai('factor',{'trade':trade,'work':work,'hazards':hazards},source)}
+                        cache={'sig':sig,'items':ra_ai('factor',{'construction_type':construction_type,'trade':trade,'work':work,'hazards':hazards},source)}
                     st.session_state.ra_factors=cache
                 except Exception:st.error('AI 추천을 받지 못했습니다. 직접 입력하거나 잠시 후 다시 시도하세요.')
             options=cache.get('items',[]) if cache.get('sig')==sig else []
@@ -5676,7 +5906,7 @@ def render_risk_assessment(actor):
                         if any(r['trade']==trade and r['work']==work and r['factor']==factor for r in rows):continue
                         rows.append(dict(id=uuid.uuid4().hex,trade=trade,work=work,hazards=hazards.copy(),factor=factor,existing='',frequency=0,severity=0,reason='',urgent=False,mandatory=False,measures='',budget=0,budget_note='미정',owner='',deadline='',status='미착수',residual_f=0,residual_s=0,verified_by='',verified_date='',evidence='',source=source,source_note='AI 후보 · 현장 확인 필요' if factor in selected else '직접 입력'))
                     st.session_state.ra_rows=rows;st.success('평가 항목을 추가했습니다. 아래에서 점수와 조치를 작성하세요.')
-    st.markdown('#### ④ 항목별 점수와 개선조치를 작성하세요')
+    st.markdown('#### ⑤ 항목별 점수와 개선조치를 작성하세요')
     st.caption('빈도 = 발생 가능성, 강도 = 피해의 심각성. 0은 미평가입니다. 조치 후 점수는 자동으로 낮추지 않습니다.')
     for i,r in enumerate(rows):
         prefix='ra_row_'+r['id'];
@@ -5695,8 +5925,9 @@ def render_risk_assessment(actor):
             r['budget_note']=budget_band
             r['budget']=int(st.number_input('계획 예산 상한 (원)',min_value=0,value=int(r['budget']),step=10000,key=prefix+'budget')) if budget_band=='직접 입력' else {'미정':0,'추가 비용 최소화':0,'50만원 이내':500000,'100만원 이내':1000000,'500만원 이내':5000000}[budget_band]
             st.caption('AI 비용은 확정 견적이 아닙니다. 예산 부족 시 필수조치를 생략하지 않고 추가 예산·작업방법 변경을 검토합니다.')
-            consent2=st.checkbox('이 항목의 작업·위험요인·현재 조치·예산·자료를 AI에 보냅니다.',key=prefix+'consent')
+            consent2=st.checkbox('공사종류와 이 항목의 작업·위험요인·현재 조치·예산·자료를 AI에 보냅니다.',key=prefix+'consent')
             ai_input={k:r[k] for k in ['trade','work','hazards','factor','existing','frequency','severity','budget','budget_note','urgent','mandatory']}
+            ai_input['construction_type']=construction_type
             msig=ra_hash([ai_input,r['source']]);stored=st.session_state.get(prefix+'suggestions',{})
             if st.button('✨ 예산을 고려한 개선대책 추천',disabled=not consent2,key=prefix+'ai'):
                 try:
@@ -5714,7 +5945,7 @@ def render_risk_assessment(actor):
             if r['residual_f'] and r['residual_s'] and meta['threshold'] and r['residual_f']*r['residual_s']>=meta['threshold']:st.warning('조치 후에도 기준 이상입니다. 추가 개선대책을 검토하세요.')
             delete=st.checkbox('이 항목 삭제 확인',key=prefix+'delete_confirm')
             st.button('항목 삭제',disabled=not delete,key=prefix+'delete',on_click=ra_delete_row,args=(r['id'],))
-    st.markdown('#### ⑤ 검토·저장·보고서 출력')
+    st.markdown('#### ⑥ 검토·저장·보고서 출력')
     meta['sharing']=text('근로자 공유 내용·공유일·후속 점검 계획','sharing',area=True)
     meta['review_confirmed']=st.checkbox('현장 위험요인, 점수 및 대책을 검토했습니다.',value=False,key='ra_review_'+ra_hash([rows,meta])[:12])
     mode=st.radio('보고서 구분',['초안','현장 검토본'],horizontal=True,key='ra_mode');final=mode=='현장 검토본'
