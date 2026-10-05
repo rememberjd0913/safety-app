@@ -2134,7 +2134,7 @@ def inspection_photo_stream(value):
     return output
 
 
-def archive_generated_reports(owner, report_id, hwpx=None, pdf=None):
+def archive_generated_reports(owner, report_id, hwpx=None, pdf=None, *, title="", dept="", site="", kind=""):
     db = inspection_store()
     try:
         with db:
@@ -2142,6 +2142,10 @@ def archive_generated_reports(owner, report_id, hwpx=None, pdf=None):
                 id TEXT PRIMARY KEY, owner TEXT, created TEXT, hwpx BLOB, pdf BLOB)""")
             db.execute("INSERT OR REPLACE INTO generated_reports VALUES (?,?,?,?,?)",
                        (str(report_id), str(owner), case_now(), hwpx, pdf))
+            db.execute("""CREATE TABLE IF NOT EXISTS generated_report_info (
+                id TEXT PRIMARY KEY, owner TEXT, title TEXT, dept TEXT, site TEXT, kind TEXT)""")
+            db.execute("INSERT OR REPLACE INTO generated_report_info VALUES (?,?,?,?,?,?)",
+                       (str(report_id), str(owner), str(title), str(dept), str(site), str(kind)))
     finally:
         db.close()
 
@@ -2414,6 +2418,394 @@ def generate_inspection_pdf(dept, site, inspector, items, report_title="현장 �
         canvas.drawCentredString(A4[0]/2, 25, str(doc.page))
     SimpleDocTemplate(out, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=40, bottomMargin=45).build(story, onFirstPage=footer, onLaterPages=footer)
     return out.getvalue()
+
+
+# --- 본인 리포트 조회 / 원본 다운로드 / 이전 자료 가져오기 ---
+def report_history_identity(owner):
+    owner = str(owner)
+    if not owner or not st.session_state.get("password_correct") or str(st.session_state.get("logged_user", "")) != owner:
+        raise PermissionError("다시 로그인해 주세요.")
+    return owner
+
+
+def report_history_tables(db):
+    return {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+
+
+def report_history_list(owner):
+    """Read metadata only; original files are fetched only for the selected report."""
+    owner = report_history_identity(owner)
+    db = inspection_store()
+    try:
+        tables = report_history_tables(db)
+        records = []
+        if "report_files" in tables:
+            sql = """SELECT r.id,r.created,r.dept,r.site,
+                CASE WHEN f.hwpx IS NOT NULL THEN 1 ELSE 0 END,
+                CASE WHEN f.pdf IS NOT NULL THEN 1 ELSE 0 END
+                FROM reports r LEFT JOIN report_files f ON f.id=r.id WHERE r.owner=?"""
+        else:
+            sql = "SELECT id,created,dept,site,0,0 FROM reports WHERE owner=?"
+        for rid, created, dept, site, hwpx, pdf in db.execute(sql, (owner,)).fetchall():
+            records.append({"source":"inspection", "id":rid, "created":created or "", "dept":dept or "",
+                            "site":site or "", "title":"안전점검 보고서", "kind":"안전점검",
+                            "has_hwpx":bool(hwpx), "has_pdf":bool(pdf)})
+        if "generated_reports" in tables:
+            info_join = " LEFT JOIN generated_report_info i ON i.id=g.id AND i.owner=g.owner" if "generated_report_info" in tables else ""
+            info_fields = "i.title,i.dept,i.site,i.kind" if info_join else "NULL,NULL,NULL,NULL"
+            sql = ("SELECT g.id,g.created,g.hwpx IS NOT NULL,g.pdf IS NOT NULL," + info_fields
+                   + " FROM generated_reports g" + info_join + " WHERE g.owner=?")
+            risk_sites = dict(db.execute("SELECT id,site FROM risk_assessments WHERE owner=?", (owner,)).fetchall()) if "risk_assessments" in tables else {}
+            for rid, created, hwpx, pdf, title, dept, site, kind in db.execute(sql, (owner,)).fetchall():
+                default_kind = "위험성평가" if str(rid).startswith("risk:") else "점검 취합" if str(rid).startswith("batch:") else "보고서"
+                if not site and default_kind == "위험성평가":
+                    site = risk_sites.get(str(rid).rsplit(":", 1)[-1], "")
+                records.append({"source":"generated", "id":rid, "created":created or "", "dept":dept or "",
+                                "site":site or "", "title":title or default_kind + " 보고서", "kind":kind or default_kind,
+                                "has_hwpx":bool(hwpx), "has_pdf":bool(pdf)})
+        if "personal_report_imports" in tables:
+            sql = "SELECT id,created,dept,site,title,hwpx IS NOT NULL,pdf IS NOT NULL FROM personal_report_imports WHERE owner=?"
+            for rid, created, dept, site, title, hwpx, pdf in db.execute(sql, (owner,)).fetchall():
+                records.append({"source":"uploaded", "id":rid, "created":created or "", "dept":dept or "",
+                                "site":site or "", "title":title, "kind":"과거 파일",
+                                "has_hwpx":bool(hwpx), "has_pdf":bool(pdf)})
+        return sorted(records, key=lambda row:(row["created"], row["id"]), reverse=True)
+    finally:
+        db.close()
+
+
+def report_history_get(owner, source, report_id):
+    owner = report_history_identity(owner)
+    db = inspection_store()
+    try:
+        tables = report_history_tables(db)
+        if source == "inspection":
+            row = db.execute("SELECT id,created,dept,site,payload FROM reports WHERE id=? AND owner=?", (str(report_id),owner)).fetchone()
+            if row is None:
+                raise PermissionError("이 계정에서 조회할 수 있는 리포트가 아닙니다.")
+            files = db.execute("SELECT hwpx,pdf FROM report_files WHERE id=?", (row[0],)).fetchone() if "report_files" in tables else None
+            return {"id":row[0], "created":row[1], "dept":row[2], "site":row[3], "payload":json.loads(row[4]),
+                    "hwpx":files[0] if files else None, "pdf":files[1] if files else None}
+        if source == "generated" and "generated_reports" in tables:
+            row = db.execute("SELECT hwpx,pdf FROM generated_reports WHERE id=? AND owner=?", (str(report_id),owner)).fetchone()
+        elif source == "uploaded" and "personal_report_imports" in tables:
+            row = db.execute("SELECT hwpx,pdf FROM personal_report_imports WHERE id=? AND owner=?", (str(report_id),owner)).fetchone()
+        else:
+            row = None
+        if row is None:
+            raise PermissionError("이 계정에서 조회할 수 있는 리포트가 아닙니다.")
+        return {"id":str(report_id), "payload":{}, "hwpx":row[0], "pdf":row[1]}
+    finally:
+        db.close()
+
+
+def report_history_valid_file(raw, extension):
+    if raw is None:
+        return None
+    if extension not in ("pdf", "hwpx"):
+        raise ValueError("PDF와 HWPX 파일을 올려주세요.")
+    raw = bytes(raw)
+    safety_doc_validate("saved_report." + extension, raw)
+    return raw
+
+
+def report_history_pdf_page(raw, page_number=1):
+    import fitz
+    with fitz.open(stream=bytes(raw), filetype="pdf") as document:
+        if document.needs_pass or not document.page_count:
+            raise ValueError("PDF 미리보기를 만들지 못했습니다. 파일을 내려받아 확인해 주세요.")
+        page_number = max(1,min(int(page_number),document.page_count))
+        page = document[page_number-1]
+        zoom = min(1.5,1500/max(page.rect.width,page.rect.height,1))
+        picture = page.get_pixmap(matrix=fitz.Matrix(zoom,zoom),alpha=False,colorspace=fitz.csRGB)
+        return picture.tobytes("png"),document.page_count,page_number
+
+
+def report_history_save_upload(owner, title, site, created, hwpx=None, pdf=None):
+    owner = report_history_identity(owner)
+    title, site = str(title).strip()[:180], str(site).strip()[:180]
+    if not title:
+        raise ValueError("리포트 제목을 입력해 주세요.")
+    if created:
+        created = datetime.date.fromisoformat(str(created)).isoformat()
+    else:
+        created = ""
+    hwpx, pdf = report_history_valid_file(hwpx, "hwpx"), report_history_valid_file(pdf, "pdf")
+    if hwpx is None and pdf is None:
+        raise ValueError("PDF 또는 HWPX 파일을 하나 이상 선택해 주세요.")
+    signature = [owner,title,site,created,hashlib.sha256(hwpx).hexdigest() if hwpx else "",hashlib.sha256(pdf).hexdigest() if pdf else ""]
+    report_id = hashlib.sha256(json.dumps(signature, ensure_ascii=False).encode()).hexdigest()
+    dept = str(st.secrets.get("user_departments", {}).get(owner, ""))
+    db = inspection_store()
+    try:
+        with db:
+            db.execute("""CREATE TABLE IF NOT EXISTS personal_report_imports (
+                id TEXT PRIMARY KEY, owner TEXT, created TEXT, title TEXT, dept TEXT, site TEXT,
+                hwpx BLOB, pdf BLOB, uploaded TEXT)""")
+            existing = db.execute("SELECT 1 FROM personal_report_imports WHERE id=? AND owner=?", (report_id,owner)).fetchone()
+            if existing:
+                return False
+            db.execute("INSERT INTO personal_report_imports VALUES (?,?,?,?,?,?,?,?,?)",
+                       (report_id,owner,created,title,dept,site,hwpx,pdf,case_now()))
+        return True
+    finally:
+        db.close()
+
+
+def report_history_import_database(owner, raw):
+    """Append this owner's legacy rows; never overwrite or expose other owners."""
+    import sqlite3
+    owner = report_history_identity(owner)
+    raw = bytes(raw)
+    if len(raw) > 100 * 1024 * 1024 or not raw.startswith(b"SQLite format 3\x00"):
+        raise ValueError("이전 점검 기록 파일(.sqlite3, 100MB 이하)을 선택해 주세요.")
+    prepared = []
+    source = sqlite3.connect(":memory:")
+    try:
+        source.deserialize(raw)
+        source.execute("PRAGMA trusted_schema=OFF")
+        source.execute("PRAGMA query_only=ON")
+        if source.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+            raise ValueError("이전 기록 파일이 손상되었습니다. 원본 백업을 확인해 주세요.")
+        tables = report_history_tables(source)
+        columns = {r[1] for r in source.execute("PRAGMA table_info(reports)")}
+        if "reports" not in tables or not {"id","owner","dept","site","created","payload"}.issubset(columns):
+            raise ValueError("안전점검 기록 파일이 아닙니다. reports.sqlite3를 선택해 주세요.")
+        for rid,row_owner,dept,site,created,payload in source.execute("SELECT id,owner,dept,site,created,payload FROM reports WHERE owner=?", (owner,)).fetchall():
+            if str(row_owner) != owner:
+                continue
+            content = json.loads(payload)
+            if not isinstance(content,dict):
+                raise ValueError("점검 항목의 형식을 확인해 주세요.")
+            for item in content.values():
+                if not isinstance(item,dict):
+                    raise ValueError("점검 항목의 형식을 확인해 주세요.")
+                for field in ("before_files", "after_files"):
+                    values = item.get(field, [])
+                    if not isinstance(values,list):
+                        raise ValueError("사진 기록의 형식을 확인해 주세요.")
+                    restored = []
+                    for value in values:
+                        if not isinstance(value,str) or value.startswith(PHOTO_REF):
+                            raise ValueError("이 가져오기는 예전 로컬 점검 기록용입니다. 이미 저장소에 연결된 기록은 원래 앱에서 조회해 주세요.")
+                        photo = legacy_photo_bytes(value)
+                        if not photo or len(photo) > 20 * 1024 * 1024:
+                            raise ValueError("사진 파일의 크기를 확인해 주세요.")
+                        restored.append(photo)
+                    item[field] = restored
+            files = source.execute("SELECT hwpx,pdf FROM report_files WHERE id=?", (rid,)).fetchone() if "report_files" in tables else None
+            hwpx = report_history_valid_file(files[0], "hwpx") if files else None
+            pdf = report_history_valid_file(files[1], "pdf") if files else None
+            prepared.append((str(rid),str(dept or ""),str(site or ""),str(created or ""),content,hwpx,pdf))
+    except (sqlite3.Error, json.JSONDecodeError, TypeError, KeyError):
+        raise ValueError("이전 점검 기록의 형식을 확인하지 못했습니다. 원본 백업을 확인해 주세요.") from None
+    finally:
+        source.close()
+    if not prepared:
+        return {"imported":0, "duplicates":0, "files_restored":0}
+    imported = duplicates = files_restored = 0
+    db = inspection_store()
+    try:
+        # Check all ownership conflicts before uploading any legacy pictures.
+        for rid,*_ in prepared:
+            existing = db.execute("SELECT owner FROM reports WHERE id=?", (rid,)).fetchone()
+            if existing and str(existing[0]) != owner:
+                raise PermissionError("기존 점검과 번호가 충돌합니다. 원본 파일을 확인해 주세요.")
+        with db:
+            db.execute("CREATE TABLE IF NOT EXISTS report_files (id TEXT PRIMARY KEY, hwpx BLOB, pdf BLOB)")
+            for rid,dept,site,created,content,hwpx,pdf in prepared:
+                if db.execute("SELECT 1 FROM reports WHERE id=? AND owner=?", (rid,owner)).fetchone():
+                    duplicates += 1
+                    available = db.execute("SELECT hwpx IS NOT NULL,pdf IS NOT NULL FROM report_files WHERE id=?", (rid,)).fetchone() or (False,False)
+                    fill_hwpx = hwpx if not available[0] else None
+                    fill_pdf = pdf if not available[1] else None
+                    if fill_hwpx is not None or fill_pdf is not None:
+                        db.execute("""INSERT INTO report_files VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET
+                            hwpx=COALESCE(report_files.hwpx,excluded.hwpx), pdf=COALESCE(report_files.pdf,excluded.pdf)""", (rid,fill_hwpx,fill_pdf))
+                        files_restored += 1
+                    continue
+                for item in content.values():
+                    for field in ("before_files", "after_files"):
+                        item[field] = [inspection_photo_pack(io.BytesIO(photo)) for photo in item[field]]
+                db.execute("INSERT INTO reports VALUES (?,?,?,?,?,?)", (rid,owner,dept,site,created,json.dumps(content,ensure_ascii=False)))
+                if hwpx is not None or pdf is not None:
+                    db.execute("INSERT INTO report_files VALUES (?,?,?)", (rid,hwpx,pdf))
+                imported += 1
+        return {"imported":imported, "duplicates":duplicates, "files_restored":files_restored}
+    finally:
+        db.close()
+
+
+def report_history_import_local(owner):
+    import sqlite3
+    owner = report_history_identity(owner)
+    if nhn_storage_backend() is None:
+        raise ValueError("사진·보고서 저장소를 연결한 뒤 가져와 주세요.")
+    path = (Path(st.secrets.get("REPORT_STORAGE_PATH", "./KecoSafetyReports")) / "reports.sqlite3").resolve()
+    if not path.is_file():
+        raise ValueError("이 앱에 남아 있는 이전 점검 기록이 없습니다.")
+    source = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
+    copy = sqlite3.connect(":memory:")
+    try:
+        source.backup(copy)
+        raw = copy.serialize()
+    finally:
+        copy.close()
+        source.close()
+    return report_history_import_database(owner, raw)
+
+
+def report_history_restore_files(owner, report_id):
+    owner = report_history_identity(owner)
+    record = report_history_get(owner, "inspection", report_id)
+    items = case_unpack(record["payload"])
+    hwpx = record["hwpx"] or generate_inspection_hwpx(record["dept"],record["site"],owner,items)
+    pdf = record["pdf"] or generate_inspection_pdf(record["dept"],record["site"],owner,items)
+    db = inspection_store()
+    try:
+        with db:
+            if not db.execute("SELECT 1 FROM reports WHERE id=? AND owner=?", (str(report_id),owner)).fetchone():
+                raise PermissionError("이 계정에서 조회할 수 있는 리포트가 아닙니다.")
+            db.execute("CREATE TABLE IF NOT EXISTS report_files (id TEXT PRIMARY KEY, hwpx BLOB, pdf BLOB)")
+            db.execute("INSERT OR REPLACE INTO report_files VALUES (?,?,?)", (str(report_id),hwpx,pdf))
+    finally:
+        db.close()
+
+
+def render_report_history_import(owner):
+    with st.expander("예전에 만든 리포트 가져오기", expanded=False):
+        st.caption("PC나 이메일에 보관한 파일을 등록하면 웹에서 다시 내려받을 수 있습니다.")
+        with st.form("report_history_upload:" + owner):
+            title = st.text_input("리포트 제목", placeholder="예: 9월 현장 안전점검", max_chars=180)
+            site = st.text_input("점검 현장", max_chars=180)
+            original_day = st.date_input("작성일 (모르면 비워 두세요)", value=None)
+            pdf_file = st.file_uploader("보관한 PDF", type=["pdf"], key="report_history_pdf:" + owner)
+            hwpx_file = st.file_uploader("보관한 한글 HWPX", type=["hwpx"], key="report_history_hwpx:" + owner)
+            save = st.form_submit_button("내 리포트에 저장", width="stretch")
+        if save:
+            try:
+                added = report_history_save_upload(owner,title,site,original_day,
+                    hwpx=hwpx_file.getvalue() if hwpx_file else None, pdf=pdf_file.getvalue() if pdf_file else None)
+                st.session_state["report_history_notice:" + owner] = "과거 리포트를 저장했습니다." if added else "이미 저장한 리포트입니다."
+                st.rerun()
+            except (ValueError, StorageError, PermissionError) as exc:
+                st.error(str(exc))
+        st.markdown("**이전 앱·서버의 사진과 점검 기록 가져오기**")
+        st.caption("백업에서 reports.sqlite3만 골라주세요. 백업 ZIP 전체나 비밀번호 설정 파일은 올리지 않습니다. 본인 계정의 점검만 추가하며 이미 저장된 점검은 유지합니다.")
+        legacy_file = st.file_uploader("이전 점검 기록 파일", type=["sqlite3"], key="report_history_database:" + owner)
+        if st.button("이전 점검 기록 가져오기", disabled=legacy_file is None, key="report_history_db_import:" + owner):
+            try:
+                result = report_history_import_database(owner,legacy_file.getvalue())
+                st.session_state["report_history_notice:" + owner] = f"점검 {result['imported']}건을 가져왔습니다. 기존 점검 {result['duplicates']}건을 유지하고, 없던 원본 파일 {result['files_restored']}건을 복원했습니다."
+                st.rerun()
+            except (ValueError, StorageError, PermissionError) as exc:
+                st.error(str(exc))
+        local = Path(st.secrets.get("REPORT_STORAGE_PATH", "./KecoSafetyReports")) / "reports.sqlite3"
+        if nhn_storage_backend() is not None and local.is_file():
+            if st.button("이 앱에 남아 있는 이전 기록 가져오기", key="report_history_local_import:" + owner):
+                try:
+                    result = report_history_import_local(owner)
+                    st.session_state["report_history_notice:" + owner] = f"점검 {result['imported']}건을 가져왔습니다. 기존 점검 {result['duplicates']}건을 유지하고, 없던 원본 파일 {result['files_restored']}건을 복원했습니다."
+                    st.rerun()
+                except (ValueError, StorageError, PermissionError) as exc:
+                    st.error(str(exc))
+
+
+def render_report_history(owner):
+    owner = report_history_identity(owner)
+    st.subheader("내 리포트")
+    st.caption("로그인한 본인이 저장한 리포트를 조회하고 PDF·한글 파일을 다시 내려받습니다.")
+    notice = st.session_state.pop("report_history_notice:" + owner, None)
+    if notice:
+        st.success(notice)
+    render_report_history_import(owner)
+    try:
+        records = report_history_list(owner)
+    except StorageError as exc:
+        st.error(str(exc))
+        return
+    if not records:
+        st.info("아직 조회할 리포트가 없습니다. 보고서를 만들거나 위의 ‘예전에 만든 리포트 가져오기’를 이용해 주세요.")
+        st.caption("예전 점검의 시트 요약은 ‘점검 현황’에서 확인할 수 있습니다. 요약만 남아 있으면 원본 사진과 보고서 파일은 별도로 가져와야 합니다.")
+        return
+    left,right = st.columns(2)
+    search = left.text_input("리포트 검색", placeholder="현장명·리포트 제목", key="report_history_search:" + owner).strip().casefold()
+    period = right.selectbox("리포트 기간", ["전체 기간","최근 30일","최근 90일"], key="report_history_period:" + owner)
+    sites = ["전체 현장"] + sorted({row["site"] for row in records if row["site"]})
+    key = "report_history_site:" + owner
+    if st.session_state.get(key) not in sites:
+        st.session_state[key] = "전체 현장"
+    site = st.selectbox("리포트 현장", sites, key=key)
+    threshold = (datetime.datetime.now(ZoneInfo("Asia/Seoul")).date()-datetime.timedelta(days=29 if period=="최근 30일" else 89)).isoformat()
+    shown = [row for row in records if (site=="전체 현장" or row["site"]==site)
+             and (not search or search in (row["title"]+" "+row["site"]+" "+row["dept"]).casefold())
+             and (period=="전체 기간" or threshold <= row["created"][:10] <= datetime.datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat())]
+    if not shown:
+        st.info("조건에 맞는 리포트가 없습니다. 기간이나 검색어를 변경해 주세요.")
+        return
+    st.caption(f"리포트 {len(shown)}건")
+    st.dataframe([{"작성일":row["created"].replace("T"," ")[:19] or "날짜 미확인", "리포트":row["title"], "현장":row["site"], "종류":row["kind"],
+                   "저장 파일":" · ".join(label for flag,label in ((row["has_pdf"],"PDF"),(row["has_hwpx"],"한글")) if flag) or "점검 내용·사진"}
+                  for row in shown], hide_index=True, width="stretch")
+    choices = {json.dumps([row["source"],row["id"]]):row for row in shown}
+    select_key = "report_history_selected:" + owner
+    if st.session_state.get(select_key) not in choices:
+        st.session_state[select_key] = next(iter(choices))
+    selection = st.selectbox("열어 볼 리포트", list(choices), format_func=lambda token:
+        f"{choices[token]['created'].replace('T',' ')[:19] or '날짜 미확인'} | {choices[token]['site'] or choices[token]['title']} | {choices[token]['kind']} | {choices[token]['id'][-6:]}", key=select_key)
+    if st.button("선택한 리포트 열기", key="report_history_open_button:" + owner, width="stretch"):
+        st.session_state["report_history_open:" + owner] = selection
+    if st.session_state.get("report_history_open:" + owner) != selection:
+        return
+    row = choices[selection]
+    try:
+        detail = report_history_get(owner,row["source"],row["id"])
+    except (StorageError, PermissionError, ValueError) as exc:
+        st.error(str(exc))
+        return
+    st.markdown("**" + row["title"] + "**")
+    st.caption(" · ".join(value for value in (row["created"].replace("T"," ")[:19],row["dept"],row["site"]) if value))
+    filename = re.sub(r'[\\/:*?"<>|\x00-\x1f]',"_",row["title"]+"_"+row["site"])[:100] + "_" + row["id"][-6:]
+    if detail["pdf"]:
+        st.download_button("저장한 PDF 내려받기",detail["pdf"],filename+".pdf","application/pdf",key="report_history_pdf_download:"+owner,on_click="ignore",width="stretch")
+    if detail["hwpx"]:
+        st.download_button("저장한 한글 내려받기",detail["hwpx"],filename+".hwpx","application/vnd.hancom.hwpx",key="report_history_hwpx_download:"+owner,on_click="ignore",width="stretch")
+    if detail["pdf"]:
+        if st.button("PDF 화면에서 보기",key="report_history_preview_button:"+owner,width="stretch"):
+            st.session_state["report_history_preview:"+owner] = selection
+        if st.session_state.get("report_history_preview:"+owner) == selection:
+            page_key = "report_history_pdf_page:"+owner+":"+selection
+            try:
+                picture,total,page = report_history_pdf_page(detail["pdf"],st.session_state.get(page_key,1))
+                if st.session_state.get(page_key,page) != page:
+                    st.session_state[page_key] = page
+                st.number_input("PDF 페이지",min_value=1,max_value=total,value=page,step=1,key=page_key)
+                st.image(picture,caption=f"PDF {page} / {total}페이지",width="stretch")
+            except Exception:
+                st.warning("PDF 미리보기를 만들지 못했습니다. 파일을 내려받아 확인해 주세요.")
+    if row["source"] == "inspection":
+        if not detail["pdf"] or not detail["hwpx"]:
+            st.caption("예전 기록에 없는 보고서 파일은 저장된 사진과 내용으로 다시 만들 수 있습니다. 다시 만든 파일에는 현재 생성 시간이 표시됩니다.")
+            if st.button("저장된 내용으로 보고서 다시 만들기",key="report_history_restore:"+owner,width="stretch"):
+                try:
+                    report_history_restore_files(owner,row["id"])
+                    st.session_state["report_history_notice:" + owner] = "저장된 내용으로 보고서 파일을 다시 만들었습니다."
+                    st.rerun()
+                except Exception:
+                    st.error("보고서를 다시 만들지 못했습니다. 저장한 사진과 문서 생성 설정을 확인해 주세요.")
+        for index,item in detail["payload"].items():
+            with st.expander(f"점검 항목 {index}",expanded=True):
+                for field,label,description in (("before_files","조치 전","desc_before"),("after_files","조치 후","desc_after")):
+                    st.markdown("**"+label+"**")
+                    st.text(str(item.get(description,"")) or "기록된 설명이 없습니다.")
+                    for number,value in enumerate(item.get(field,[]),1):
+                        try:
+                            st.image(inspection_photo_bytes(value),caption=f"{label} 사진 {number}",width="stretch")
+                        except Exception:
+                            st.warning("저장된 사진을 읽지 못했습니다. 원본 자료와 저장소 연결을 확인해 주세요.")
+                if item.get("ai_analysis"):
+                    st.markdown("**저장한 AI 분석**")
+                    st.text(str(item["ai_analysis"]))
 
 
 # --- 점검 건 중심 업무 흐름: 저장 / 조치 / 승인 / 불변 보고서 ---
@@ -4067,6 +4459,7 @@ with main_tab1:
                 st.session_state.inspection_pdf_bytes = pdf_data
                 st.session_state.inspection_report_name = report_name
                 st.session_state.inspection_report_key = current_report_key
+                st.success("리포트를 저장했습니다. ‘점검 기록 보기 → 내 리포트’에서 다시 확인할 수 있습니다.")
         except Exception as exc:
             st.error(f"한글 보고서 생성 실패: {exc}")
     report_bytes = st.session_state.get("inspection_report_bytes")
@@ -4346,43 +4739,47 @@ def render_inspection_dashboard():
 
 # ---------------- Tab 2: 점검 현황 ----------------
 with main_tab2:
-    render_inspection_dashboard()
-    st.markdown("---")
-    with st.expander("여러 점검을 보고서 하나로 모으기", expanded=False):
-        st.caption("이번 버전부터 생성한 본인 보고서를 선택하여 사진·설명·AI 분석을 취합합니다. 기존 시트 요약 이력은 포함되지 않습니다.")
-        st.caption("저장한 점검의 사진과 내용을 다시 불러와 보고서를 만듭니다." if nhn_storage_backend() is not None else "재배포 후에도 보관하려면 영구 저장소를 연결해야 합니다. 기본 로컬 저장소는 서버 교체 시 사라질 수 있습니다.")
-        batch_db = inspection_store()
-        archived = batch_db.execute("SELECT id, dept, site, created, payload FROM reports WHERE owner=? ORDER BY created DESC, rowid DESC", (str(logged_user_id),)).fetchall()
-        batch_db.close()
-        records = {r[0]: r for r in archived}
-        selected_reports = st.multiselect("취합할 점검 보고서", list(records), format_func=lambda key: f"{records[key][3]} | {records[key][1]} | {records[key][2]} | {key[-6:]}")
-        batch_key = hashlib.sha256(json.dumps(sorted(selected_reports)).encode()).hexdigest()
-        if st.session_state.get("batch_key") != batch_key:
-            st.session_state.pop("batch_output", None)
-        if st.button("선택한 점검 건 취합", disabled=not selected_reports):
-            try:
-                combined = {}
-                for report_id in sorted(selected_reports):
-                    _, dept, site, day, payload = records[report_id]
-                    for idx, item in json.loads(payload).items():
-                        for field in ("before_files", "after_files"):
-                            item[field] = [inspection_photo_stream(value) for value in item[field]]
-                        label = f"{len(combined)+1} ({day} / {dept} / {site} / 원항목 {idx})"
-                        combined[label] = item
-                hwpx = generate_inspection_hwpx("선택 점검 건 취합", f"{len(selected_reports)}건", logged_user_id, combined)
-                pdf = generate_inspection_pdf("선택 점검 건 취합", f"{len(selected_reports)}건", logged_user_id, combined)
-                archive_generated_reports(logged_user_id, "batch:" + str(logged_user_id) + ":" + batch_key, hwpx, pdf)
-                st.session_state.batch_output = (hwpx, pdf, combined)
-                st.session_state.batch_key = batch_key
-            except Exception as exc:
-                st.error(f"취합 실패: {exc}")
-        if st.session_state.get("batch_output"):
-            hwpx, pdf, combined = st.session_state.batch_output
-            st.download_button("📥 일괄 한글 보고서", hwpx, "안전점검_일괄보고서.hwpx", "application/vnd.hancom.hwpx")
-            st.download_button("🖨️ 일괄 출력용 PDF", pdf, "안전점검_일괄보고서.pdf", "application/pdf")
-            if st.button("📧 일괄 보고서 이메일 전송"):
-                ok, detail = send_inspection_email("일괄 보고", f"{len(selected_reports)}건", logged_user_id, combined, hwpx, "안전점검_일괄보고서.hwpx", pdf, "batch:" + str(logged_user_id) + ":" + batch_key)
-                (st.success if ok else st.error)(detail)
+    history_mode = st.radio("점검 기록 메뉴", ["내 리포트", "점검 현황", "여러 점검 취합"], horizontal=True, key="inspection_history_menu")
+    if history_mode == "내 리포트":
+        render_report_history(str(logged_user_id))
+    elif history_mode == "점검 현황":
+        render_inspection_dashboard()
+    else:
+        with st.expander("여러 점검을 보고서 하나로 모으기", expanded=False):
+            st.caption("이번 버전부터 생성한 본인 보고서를 선택하여 사진·설명·AI 분석을 취합합니다. 기존 시트 요약 이력은 포함되지 않습니다.")
+            st.caption("저장한 점검의 사진과 내용을 다시 불러와 보고서를 만듭니다." if nhn_storage_backend() is not None else "재배포 후에도 보관하려면 영구 저장소를 연결해야 합니다. 기본 로컬 저장소는 서버 교체 시 사라질 수 있습니다.")
+            batch_db = inspection_store()
+            archived = batch_db.execute("SELECT id, dept, site, created, payload FROM reports WHERE owner=? ORDER BY created DESC, rowid DESC", (str(logged_user_id),)).fetchall()
+            batch_db.close()
+            records = {r[0]: r for r in archived}
+            selected_reports = st.multiselect("취합할 점검 보고서", list(records), format_func=lambda key: f"{records[key][3]} | {records[key][1]} | {records[key][2]} | {key[-6:]}")
+            batch_key = hashlib.sha256(json.dumps(sorted(selected_reports)).encode()).hexdigest()
+            if st.session_state.get("batch_key") != batch_key:
+                st.session_state.pop("batch_output", None)
+            if st.button("선택한 점검 건 취합", disabled=not selected_reports):
+                try:
+                    combined = {}
+                    for report_id in sorted(selected_reports):
+                        _, dept, site, day, payload = records[report_id]
+                        for idx, item in json.loads(payload).items():
+                            for field in ("before_files", "after_files"):
+                                item[field] = [inspection_photo_stream(value) for value in item[field]]
+                            label = f"{len(combined)+1} ({day} / {dept} / {site} / 원항목 {idx})"
+                            combined[label] = item
+                    hwpx = generate_inspection_hwpx("선택 점검 건 취합", f"{len(selected_reports)}건", logged_user_id, combined)
+                    pdf = generate_inspection_pdf("선택 점검 건 취합", f"{len(selected_reports)}건", logged_user_id, combined)
+                    archive_generated_reports(logged_user_id, "batch:" + str(logged_user_id) + ":" + batch_key, hwpx, pdf, title=f"안전점검 취합 보고서 · {len(selected_reports)}건", site=f"{len(selected_reports)}건 취합", kind="점검 취합")
+                    st.session_state.batch_output = (hwpx, pdf, combined)
+                    st.session_state.batch_key = batch_key
+                except Exception as exc:
+                    st.error(f"취합 실패: {exc}")
+            if st.session_state.get("batch_output"):
+                hwpx, pdf, combined = st.session_state.batch_output
+                st.download_button("📥 일괄 한글 보고서", hwpx, "안전점검_일괄보고서.hwpx", "application/vnd.hancom.hwpx")
+                st.download_button("🖨️ 일괄 출력용 PDF", pdf, "안전점검_일괄보고서.pdf", "application/pdf")
+                if st.button("📧 일괄 보고서 이메일 전송"):
+                    ok, detail = send_inspection_email("일괄 보고", f"{len(selected_reports)}건", logged_user_id, combined, hwpx, "안전점검_일괄보고서.hwpx", pdf, "batch:" + str(logged_user_id) + ":" + batch_key)
+                    (st.success if ok else st.error)(detail)
 
 import os
 
@@ -5128,7 +5525,7 @@ def render_risk_assessment(actor):
             if outputs.get('hwpx') or outputs.get('pdf'):
                 try:
                     ra_archive(actor,payload)
-                    archive_generated_reports(actor,'risk:'+str(actor)+':'+sig,outputs.get('hwpx'),outputs.get('pdf'))
+                    archive_generated_reports(actor,'risk:'+str(actor)+':'+sig,outputs.get('hwpx'),outputs.get('pdf'),title='위험성평가 보고서',site=meta.get('site',''),kind='위험성평가')
                 except Exception:
                     st.warning('보고서는 만들었으나 저장소 보관을 확인하지 못했습니다. 파일을 내려받아 보관하고 저장소 연결을 확인하세요.')
             st.session_state.ra_output=outputs
