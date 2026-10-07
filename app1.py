@@ -2070,11 +2070,14 @@ st.sidebar.info(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### ⚡ 현장 3대 안전 수칙")
+st.sidebar.markdown("### K-eco 안전동행 실천수칙")
+st.sidebar.markdown("**공통 실천분야**")
 st.sidebar.markdown(
-    "> 1. **추락 방지:** 안전모·안전대 필수 착용\n\n"
-    "> 2. **끼임 방지:** 방호덮개 및 정비 중 LOTO\n\n"
-    "> 3. **화재 예방:** 용접 작업 시 소화기 비치"
+    "1. **안전모·안전대 등 개인보호 지급 및 착용 철저**\n\n"
+    "2. **작업장 정리정돈 철저**\n\n"
+    "3. **작업 전 안전교육 실시**\n\n"
+    "4. **안전보건표지 부착 및 표지사항 준수**\n\n"
+    "5. **위험작업 시 안전작업허가서 승인 후 작업**"
 )
 
 st.sidebar.markdown("---")
@@ -2545,109 +2548,6 @@ def report_history_save_upload(owner, title, site, created, hwpx=None, pdf=None)
         db.close()
 
 
-def report_history_import_database(owner, raw):
-    """Append this owner's legacy rows; never overwrite or expose other owners."""
-    import sqlite3
-    owner = report_history_identity(owner)
-    raw = bytes(raw)
-    if len(raw) > 100 * 1024 * 1024 or not raw.startswith(b"SQLite format 3\x00"):
-        raise ValueError("이전 점검 기록 파일(.sqlite3, 100MB 이하)을 선택해 주세요.")
-    prepared = []
-    source = sqlite3.connect(":memory:")
-    try:
-        source.deserialize(raw)
-        source.execute("PRAGMA trusted_schema=OFF")
-        source.execute("PRAGMA query_only=ON")
-        if source.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
-            raise ValueError("이전 기록 파일이 손상되었습니다. 원본 백업을 확인해 주세요.")
-        tables = report_history_tables(source)
-        columns = {r[1] for r in source.execute("PRAGMA table_info(reports)")}
-        if "reports" not in tables or not {"id","owner","dept","site","created","payload"}.issubset(columns):
-            raise ValueError("안전점검 기록 파일이 아닙니다. reports.sqlite3를 선택해 주세요.")
-        for rid,row_owner,dept,site,created,payload in source.execute("SELECT id,owner,dept,site,created,payload FROM reports WHERE owner=?", (owner,)).fetchall():
-            if str(row_owner) != owner:
-                continue
-            content = json.loads(payload)
-            if not isinstance(content,dict):
-                raise ValueError("점검 항목의 형식을 확인해 주세요.")
-            for item in content.values():
-                if not isinstance(item,dict):
-                    raise ValueError("점검 항목의 형식을 확인해 주세요.")
-                for field in ("before_files", "after_files"):
-                    values = item.get(field, [])
-                    if not isinstance(values,list):
-                        raise ValueError("사진 기록의 형식을 확인해 주세요.")
-                    restored = []
-                    for value in values:
-                        if not isinstance(value,str) or value.startswith(PHOTO_REF):
-                            raise ValueError("이 가져오기는 예전 로컬 점검 기록용입니다. 이미 저장소에 연결된 기록은 원래 앱에서 조회해 주세요.")
-                        photo = legacy_photo_bytes(value)
-                        if not photo or len(photo) > 20 * 1024 * 1024:
-                            raise ValueError("사진 파일의 크기를 확인해 주세요.")
-                        restored.append(photo)
-                    item[field] = restored
-            files = source.execute("SELECT hwpx,pdf FROM report_files WHERE id=?", (rid,)).fetchone() if "report_files" in tables else None
-            hwpx = report_history_valid_file(files[0], "hwpx") if files else None
-            pdf = report_history_valid_file(files[1], "pdf") if files else None
-            prepared.append((str(rid),str(dept or ""),str(site or ""),str(created or ""),content,hwpx,pdf))
-    except (sqlite3.Error, json.JSONDecodeError, TypeError, KeyError):
-        raise ValueError("이전 점검 기록의 형식을 확인하지 못했습니다. 원본 백업을 확인해 주세요.") from None
-    finally:
-        source.close()
-    if not prepared:
-        return {"imported":0, "duplicates":0, "files_restored":0}
-    imported = duplicates = files_restored = 0
-    db = inspection_store()
-    try:
-        # Check all ownership conflicts before uploading any legacy pictures.
-        for rid,*_ in prepared:
-            existing = db.execute("SELECT owner FROM reports WHERE id=?", (rid,)).fetchone()
-            if existing and str(existing[0]) != owner:
-                raise PermissionError("기존 점검과 번호가 충돌합니다. 원본 파일을 확인해 주세요.")
-        with db:
-            db.execute("CREATE TABLE IF NOT EXISTS report_files (id TEXT PRIMARY KEY, hwpx BLOB, pdf BLOB)")
-            for rid,dept,site,created,content,hwpx,pdf in prepared:
-                if db.execute("SELECT 1 FROM reports WHERE id=? AND owner=?", (rid,owner)).fetchone():
-                    duplicates += 1
-                    available = db.execute("SELECT hwpx IS NOT NULL,pdf IS NOT NULL FROM report_files WHERE id=?", (rid,)).fetchone() or (False,False)
-                    fill_hwpx = hwpx if not available[0] else None
-                    fill_pdf = pdf if not available[1] else None
-                    if fill_hwpx is not None or fill_pdf is not None:
-                        db.execute("""INSERT INTO report_files VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET
-                            hwpx=COALESCE(report_files.hwpx,excluded.hwpx), pdf=COALESCE(report_files.pdf,excluded.pdf)""", (rid,fill_hwpx,fill_pdf))
-                        files_restored += 1
-                    continue
-                for item in content.values():
-                    for field in ("before_files", "after_files"):
-                        item[field] = [inspection_photo_pack(io.BytesIO(photo)) for photo in item[field]]
-                db.execute("INSERT INTO reports VALUES (?,?,?,?,?,?)", (rid,owner,dept,site,created,json.dumps(content,ensure_ascii=False)))
-                if hwpx is not None or pdf is not None:
-                    db.execute("INSERT INTO report_files VALUES (?,?,?)", (rid,hwpx,pdf))
-                imported += 1
-        return {"imported":imported, "duplicates":duplicates, "files_restored":files_restored}
-    finally:
-        db.close()
-
-
-def report_history_import_local(owner):
-    import sqlite3
-    owner = report_history_identity(owner)
-    if nhn_storage_backend() is None:
-        raise ValueError("사진·보고서 저장소를 연결한 뒤 가져와 주세요.")
-    path = (Path(st.secrets.get("REPORT_STORAGE_PATH", "./KecoSafetyReports")) / "reports.sqlite3").resolve()
-    if not path.is_file():
-        raise ValueError("이 앱에 남아 있는 이전 점검 기록이 없습니다.")
-    source = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
-    copy = sqlite3.connect(":memory:")
-    try:
-        source.backup(copy)
-        raw = copy.serialize()
-    finally:
-        copy.close()
-        source.close()
-    return report_history_import_database(owner, raw)
-
-
 def report_history_restore_files(owner, report_id):
     owner = report_history_identity(owner)
     record = report_history_get(owner, "inspection", report_id)
@@ -2683,25 +2583,6 @@ def render_report_history_import(owner):
                 st.rerun()
             except (ValueError, StorageError, PermissionError) as exc:
                 st.error(str(exc))
-        st.markdown("**이전 앱·서버의 사진과 점검 기록 가져오기**")
-        st.caption("백업에서 reports.sqlite3만 골라주세요. 백업 ZIP 전체나 비밀번호 설정 파일은 올리지 않습니다. 본인 계정의 점검만 추가하며 이미 저장된 점검은 유지합니다.")
-        legacy_file = st.file_uploader("이전 점검 기록 파일", type=["sqlite3"], key="report_history_database:" + owner)
-        if st.button("이전 점검 기록 가져오기", disabled=legacy_file is None, key="report_history_db_import:" + owner):
-            try:
-                result = report_history_import_database(owner,legacy_file.getvalue())
-                st.session_state["report_history_notice:" + owner] = f"점검 {result['imported']}건을 가져왔습니다. 기존 점검 {result['duplicates']}건을 유지하고, 없던 원본 파일 {result['files_restored']}건을 복원했습니다."
-                st.rerun()
-            except (ValueError, StorageError, PermissionError) as exc:
-                st.error(str(exc))
-        local = Path(st.secrets.get("REPORT_STORAGE_PATH", "./KecoSafetyReports")) / "reports.sqlite3"
-        if nhn_storage_backend() is not None and local.is_file():
-            if st.button("이 앱에 남아 있는 이전 기록 가져오기", key="report_history_local_import:" + owner):
-                try:
-                    result = report_history_import_local(owner)
-                    st.session_state["report_history_notice:" + owner] = f"점검 {result['imported']}건을 가져왔습니다. 기존 점검 {result['duplicates']}건을 유지하고, 없던 원본 파일 {result['files_restored']}건을 복원했습니다."
-                    st.rerun()
-                except (ValueError, StorageError, PermissionError) as exc:
-                    st.error(str(exc))
 
 
 def render_report_history(owner):
@@ -2720,7 +2601,6 @@ def render_report_history(owner):
         return
     if not records:
         st.info("아직 조회할 리포트가 없습니다. 보고서를 만들거나 위의 ‘예전에 만든 리포트 가져오기’를 이용해 주세요.")
-        st.caption("예전 시트 요약은 CSV로 가져온 뒤 ‘점검 현황 → 기존 시트 요약’에서 확인할 수 있습니다. 요약만 남아 있으면 원본 사진과 보고서 파일은 별도로 가져와야 합니다.")
         return
     left,right = st.columns(2)
     search = left.text_input("리포트 검색", placeholder="현장명·리포트 제목", key="report_history_search:" + owner).strip().casefold()
@@ -3170,13 +3050,6 @@ def inspection_history_actor(actor):
     return actor
 
 
-def inspection_history_admin(actor):
-    admins = st.secrets.get('history_admins', ['admin'])
-    if isinstance(admins, str):
-        admins = [admins]
-    return actor in admins or st.secrets.get('user_roles', {}).get(actor) == 'admin'
-
-
 def inspection_history_item_count(value):
     match = re.fullmatch(r'(\d+)\s*(?:(?:개|건)\s*(?:항목|세트)?)?', str(value).strip())
     return int(match.group(1)) if match and int(match.group(1)) <= 100000 else None
@@ -3185,7 +3058,7 @@ def inspection_history_item_count(value):
 def inspection_history_record(rid, owner, dept, site, created, encoded):
     record = {'기록ID': str(rid), '날짜': str(created or ''), '점검 부서': str(dept or ''),
               '점검 현장': str(site or ''), '작성자': str(owner or ''), '항목수': '',
-              'AI분석': '', '지적 분류': '', '사진경로': '', '자료 출처': '원본 점검', '자료 상태': ''}
+              'AI분석': '', '지적 분류': '', '사진경로': '', '자료 상태': ''}
     try:
         payload = json.loads(encoded)
         if not isinstance(payload, dict) or any(not isinstance(v, dict) for v in payload.values()):
@@ -3209,110 +3082,15 @@ def inspection_history_record(rid, owner, dept, site, created, encoded):
     return record
 
 
-def get_nhn_inspection_records(actor, source='원본 점검'):
+def get_nhn_inspection_records(actor):
     """Aggregate saved metadata without fetching photos or document blobs."""
     inspection_history_actor(actor)
-    if source not in ('원본 점검', '기존 시트 요약'):
-        raise ValueError('조회할 자료 출처를 확인해 주세요.')
     db = inspection_store()
     try:
-        if source == '원본 점검':
-            return [inspection_history_record(*row) for row in db.execute(
-                'SELECT id,owner,dept,site,created,payload FROM reports ORDER BY created DESC,rowid DESC').fetchall()]
-        if 'inspection_legacy_summaries' not in report_history_tables(db):
-            return []
-        rows = db.execute('''SELECT id,owner,dept,site,created,item_count,analysis,summary,photo_info
-            FROM inspection_legacy_summaries ORDER BY created DESC,rowid DESC''').fetchall()
-        return [{'기록ID': rid, '작성자': owner, '점검 부서': dept, '점검 현장': site, '날짜': created,
-                 '항목수': count, 'AI분석': analysis, '지적 분류': summary, '사진경로': photos,
-                 '자료 출처': '기존 시트 요약', '자료 상태': ''} for rid,owner,dept,site,created,count,analysis,summary,photos in rows]
+        return [inspection_history_record(*row) for row in db.execute(
+            'SELECT id,owner,dept,site,created,payload FROM reports ORDER BY created DESC,rowid DESC').fetchall()]
     finally:
         db.close()
-
-
-def inspection_history_import_csv(actor, raw, include_all=False):
-    actor = inspection_history_actor(actor)
-    if include_all and not inspection_history_admin(actor):
-        raise PermissionError('다른 작성자의 기록은 점검 이력 관리자만 가져올 수 있습니다.')
-    if nhn_storage_backend() is None:
-        raise ValueError('NHN 저장소를 연결한 뒤 가져와 주세요.')
-    rows = storage_csv_rows(raw)
-    clean_header = lambda value: re.sub(r'[\s·_]+', '', str(value).replace('\ufeff', '')).lower()
-    header = [clean_header(v) for v in rows[0]]
-    aliases = [
-        ('날짜', '일시', '작성일시', '점검일시', '저장일시', '생성시간', 'timestamp', 'date'),
-        ('점검부서', '부서'), ('점검현장', '현장', '현장명'),
-        ('항목수', '점검항목수', '세트수'), ('ai분석', 'ai분석결과', '분석결과', '분석내용'),
-        ('지적분류', '상세내용', '점검내용', '요약', '내용요약'),
-        ('작성자', '작성자사번', '사번', '점검자', '점검자사번'), ('사진경로', '사진정보', '저장경로')]
-    mapped = [next((i for i,v in enumerate(header) if v in names), None) for names in aliases]
-    positional_header = bool(header and header[0] in aliases[0])
-    if all(i is not None for i in mapped[:7]):
-        positions = mapped
-        rows = rows[1:]
-    elif positional_header:
-        positions = list(range(8))
-        rows = rows[1:]
-    else:
-        positions = list(range(8))
-        first_date = pd.to_datetime(str(rows[0][0]), errors='coerce')
-        if len(rows[0]) < 7 or pd.isna(first_date):
-            raise ValueError('점검 기록 CSV가 아닙니다. 날짜·부서·현장·항목수·AI분석·상세내용·작성자 순서를 확인해 주세요.')
-    if len(rows) > 20000:
-        raise ValueError('한 번에 20,000개 이하의 기록을 가져와 주세요.')
-    prepared = []
-    skipped = invalid = 0
-    for row in rows:
-        if any(pos is not None and pos >= len(row) for pos in positions[:7]):
-            invalid += 1
-            continue
-        values = [str(row[pos]).strip() if pos is not None and pos < len(row) else '' for pos in positions]
-        created, dept, site, count, analysis, summary, owner, photos = values
-        if not owner:
-            invalid += 1
-            continue
-        if not include_all and owner != actor:
-            skipped += 1
-            continue
-        if len(owner) > 180 or len(dept) > 200 or len(site) > 300 or len(created) > 100:
-            invalid += 1
-            continue
-        rid = 'legacy-csv:' + hashlib.sha256(json.dumps(values, ensure_ascii=False).encode()).hexdigest()
-        prepared.append((rid,owner,dept,site,created,count,analysis,summary,photos,actor))
-    imported = duplicates = 0
-    db = inspection_store()
-    try:
-        with db:
-            db.execute('''CREATE TABLE IF NOT EXISTS inspection_legacy_summaries (
-                id TEXT PRIMARY KEY, owner TEXT, dept TEXT, site TEXT, created TEXT,
-                item_count TEXT, analysis TEXT, summary TEXT, photo_info TEXT, imported_by TEXT)''')
-            for row in prepared:
-                added = db.execute('INSERT OR IGNORE INTO inspection_legacy_summaries VALUES (?,?,?,?,?,?,?,?,?,?)', row)
-                if added.rowcount:
-                    imported += 1
-                else:
-                    duplicates += 1
-        return {'imported': imported, 'duplicates': duplicates, 'skipped': skipped, 'invalid': invalid}
-    finally:
-        db.close()
-
-
-def render_inspection_history_import(actor):
-    with st.expander('예전 스프레드시트 점검 기록 가져오기', expanded=False):
-        st.caption('기존 점검 시트를 CSV로 내려받아 한 번 가져옵니다. 기본적으로 로그인한 본인의 사번과 같은 기록만 추가합니다.')
-        st.caption('가져온 자료는 ‘기존 시트 요약’에서 별도로 조회합니다. 원본 점검과 합산하지 않아 중복 집계를 방지합니다. 사진·보고서 원본은 CSV만으로 복원되지 않습니다.')
-        uploaded = st.file_uploader('기존 점검 기록 CSV (10MB 이하)', type=['csv'], key='inspection_legacy_csv:'+actor)
-        include_all = False
-        if inspection_history_admin(actor):
-            include_all = st.checkbox('다른 작성자의 점검 기록도 함께 가져오기', key='inspection_import_all:'+actor)
-        if st.button('과거 점검 요약 가져오기', disabled=uploaded is None, key='inspection_legacy_import:'+actor):
-            try:
-                result = inspection_history_import_csv(actor, uploaded.getvalue(), include_all)
-                st.success(f"추가 {result['imported']}건 · 기존 기록 유지 {result['duplicates']}건 · 다른 작성자 제외 {result['skipped']}건 · 형식 확인 필요 {result['invalid']}건")
-                st.session_state.dash_source = '기존 시트 요약'
-            except (ValueError, PermissionError, StorageError) as exc:
-                st.error(str(exc))
-
 
 
 # --- 2. AI 위험 분석 함수 ---
@@ -5363,7 +5141,7 @@ from html import escape as dashboard_escape
 
 
 def dashboard_frame(records):
-    columns = ['기록ID','날짜','점검 부서','점검 현장','항목수','AI분석','지적 분류','작성자','사진경로','자료 출처','자료 상태']
+    columns = ['기록ID','날짜','점검 부서','점검 현장','항목수','AI분석','지적 분류','작성자','사진경로','자료 상태']
     df = pd.DataFrame(records, columns=columns).fillna('')
     df['기록번호'] = range(1,len(df)+1)
     def parse_day(value):
@@ -5430,15 +5208,13 @@ def render_inspection_dashboard():
     <h2>우리 현장 안전점검, 한눈에</h2><p>점검한 현장과 자주 언급된 위험요인을 확인하세요.</p></div>''', unsafe_allow_html=True)
     try:
         actor=inspection_history_actor(st.session_state.get('logged_user',''))
-        render_inspection_history_import(actor)
         st.button('점검 이력 새로고침',key='dash_refresh',width='stretch')
-        source=st.selectbox('자료 출처',['원본 점검','기존 시트 요약'],key='dash_source')
-        records=get_nhn_inspection_records(actor,source)
+        records=get_nhn_inspection_records(actor)
     except (PermissionError,StorageError,ValueError) as exc:
         st.error(str(exc));return
     st.caption('조회 저장소: '+('NHN Cloud' if nhn_storage_backend() is not None else '로컬 폴더 · NHN 연결 확인 필요'))
     if not records:
-        st.info('아직 저장한 점검 기록이 없습니다. 안전 점검 등록에서 보고서를 만들면 이력에 반영됩니다.' if source=='원본 점검' else '가져온 과거 요약이 없습니다. 위의 CSV 가져오기를 이용해 주세요.')
+        st.info('아직 저장한 점검 기록이 없습니다. 안전 점검 등록에서 보고서를 만들면 이력에 반영됩니다.')
         return
     df = dashboard_frame(records)
     if df.empty:
@@ -5474,7 +5250,7 @@ def render_inspection_dashboard():
         if search.strip():
             haystack = view[['점검 현장', '작성자', '지적 분류', 'AI분석']].astype(str).agg(' '.join, axis=1)
             view = view[haystack.str.contains(search.strip(), case=False, regex=False)]
-        st.caption('모든 수치와 차트는 위 조회 조건을 따릅니다. 집계 단위는 현재 선택한 출처의 저장된 점검 기록이며 실제 사고 건수가 아닙니다.')
+        st.caption('모든 수치와 차트는 위 조회 조건을 따릅니다. 집계 단위는 저장된 원본 점검 기록이며 실제 사고 건수가 아닙니다.')
     if view.empty:
         st.info('조회 조건에 맞는 기록이 없습니다. 기간이나 검색어를 변경해주세요.')
         return
@@ -5575,7 +5351,7 @@ with main_tab2:
         render_inspection_dashboard()
     else:
         with st.expander("여러 점검을 보고서 하나로 모으기", expanded=False):
-            st.caption("이번 버전부터 생성한 본인 보고서를 선택하여 사진·설명·AI 분석을 취합합니다. 기존 시트 요약 이력은 포함되지 않습니다.")
+            st.caption("저장한 본인 점검 보고서를 선택하여 사진·설명·AI 분석을 취합합니다.")
             st.caption("저장한 점검의 사진과 내용을 다시 불러와 보고서를 만듭니다." if nhn_storage_backend() is not None else "재배포 후에도 보관하려면 영구 저장소를 연결해야 합니다. 기본 로컬 저장소는 서버 교체 시 사라질 수 있습니다.")
             batch_db = inspection_store()
             archived = batch_db.execute("SELECT id, dept, site, created, payload FROM reports WHERE owner=? ORDER BY created DESC, rowid DESC", (str(logged_user_id),)).fetchall()
