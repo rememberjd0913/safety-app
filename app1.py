@@ -3876,6 +3876,8 @@ div.stTabs [data-baseweb="tab-highlight"], div.stTabs [data-baseweb="tab-border"
 """, unsafe_allow_html=True)
 
 # 안전자료실: 파일 내용은 실행하거나 외부 AI로 보내지 않습니다.
+DOC_MAX_UPLOAD_MB = 100
+DOC_MAX_UPLOAD_BYTES = DOC_MAX_UPLOAD_MB * 1024 * 1024
 DOC_CATEGORIES = ['안전지침·매뉴얼', '점검표·서식', '교육자료', '사고사례', '법령·기준', '기타']
 DOC_TYPES = {'pdf':'application/pdf', 'hwp':'application/x-hwp',
              'hwpx':'application/vnd.hancom.hwpx',
@@ -3915,8 +3917,10 @@ def safety_doc_validate(filename, raw):
     ext = filename.rsplit('.', 1)[-1].lower()
     if ext not in DOC_TYPES:
         raise ValueError('PDF, HWP, HWPX, DOCX, JPG, PNG 파일만 올릴 수 있습니다.')
-    if not raw or len(raw) > 20 * 1024 * 1024:
-        raise ValueError('빈 파일은 저장할 수 없습니다. 파일 하나당 20MB 이하로 올려주세요.')
+    if not raw:
+        raise ValueError('빈 파일은 저장할 수 없습니다.')
+    if len(raw) > DOC_MAX_UPLOAD_BYTES:
+        raise ValueError(f'파일 하나당 {DOC_MAX_UPLOAD_MB}MB 이하로 올려주세요.')
     if ext == 'pdf' and not raw.startswith(b'%PDF-'):
         raise ValueError('PDF 파일 형식을 확인해 주세요.')
     if ext == 'hwp' and not raw.startswith(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'):
@@ -4189,6 +4193,7 @@ def render_safety_doc_questions(actor, doc):
 
 
 def render_safety_documents(actor):
+    import inspect
     _, dept = safety_doc_identity(actor)
     st.subheader('안전자료실')
     st.write('안전자료를 올려두고 필요할 때 찾아 내려받으세요.')
@@ -4199,7 +4204,11 @@ def render_safety_documents(actor):
         st.warning('원본도 별도로 보관하세요. 서버 교체·재배포 후에도 보관하려면 관리자가 영구 저장소를 연결해야 합니다. 폴더명 설정만으로 영구 보관되지는 않습니다.')
     with st.expander('새 자료 올리기', expanded=True):
         with st.form('safety_doc_upload', clear_on_submit=False):
-            uploaded = st.file_uploader('파일 선택 (한 번에 1개, 20MB 이하)', type=list(DOC_TYPES), key='safety_doc_file')
+            upload_options = {}
+            if 'max_upload_size' in inspect.signature(st.file_uploader).parameters:
+                upload_options['max_upload_size'] = DOC_MAX_UPLOAD_MB
+            uploaded = st.file_uploader(f'파일 선택 (한 번에 1개, {DOC_MAX_UPLOAD_MB}MB 이하)',
+                                        type=list(DOC_TYPES), key='safety_doc_file', **upload_options)
             title = st.text_input('자료 제목', max_chars=150, placeholder='예: 굴착 작업 안전점검 안내', key='safety_doc_title')
             category = st.selectbox('자료 분류', DOC_CATEGORIES, key='safety_doc_category')
             note = st.text_area('간단한 설명 (선택)', max_chars=1000, placeholder='발행기관, 작성 연도, 주요 내용 등을 적어주세요.', key='safety_doc_note')
@@ -4211,7 +4220,9 @@ def render_safety_documents(actor):
                 st.info('먼저 파일을 선택해 주세요.')
             else:
                 try:
-                    if safety_doc_save(actor, uploaded, title, category, note, shared):
+                    with st.spinner('자료를 저장하고 있습니다. 용량이 큰 자료는 잠시 기다려 주세요.'):
+                        saved = safety_doc_save(actor, uploaded, title, category, note, shared)
+                    if saved:
                         st.success('저장했습니다. 아래 ‘저장한 자료 찾기’에서 확인하세요.')
                     else:
                         st.info('이미 올린 파일입니다. 중복 저장하지 않았습니다. 기존 제목과 공유 범위는 그대로 유지됩니다.')
@@ -5813,41 +5824,17 @@ RA_TRADE_GROUPS = [
 ]
 
 
+
 def ra_custom_tasks(value):
     return list(dict.fromkeys(v.strip() for v in re.split(r'[,\n]+',value) if v.strip()))
 
 
-def ra_select_tasks():
-    """Submit all task selections together and retain the applied list."""
-    selected=[]
-    st.caption('해당 작업을 모두 체크한 뒤 아래 ‘선택한 작업 적용’을 한 번 누르세요.')
-    with st.form('ra_task_selection_form',clear_on_submit=False):
-        for group_index,(icon,group,tasks) in enumerate(RA_TRADE_GROUPS,1):
-            with st.expander(f'{group_index}. {icon} {group}'):
-                for task_index,task in enumerate(tasks,1):
-                    if st.checkbox(f'{task_index}. {task}',key=f'ra_task_{group_index}_{task_index}'):
-                        selected.append(group+' / '+task)
-                custom=st.text_area('기타 직접 입력',placeholder='이 공종에 추가할 세부작업을 한 줄에 하나씩 입력하세요.',key=f'ra_custom_group_{group_index}')
-                selected.extend(group+' / '+task for task in ra_custom_tasks(custom) if task not in tasks or group+' / '+task not in selected)
-        with st.expander('11. ✍️ 기타 직접 입력'):
-            other=st.text_area('목록에 없는 공종·세부작업',placeholder='예: 특수공사 / 해당 세부작업\n한 줄에 하나씩 입력하세요.',key='ra_custom_group_11')
-            selected.extend('기타 / '+task for task in ra_custom_tasks(other))
-        submitted=st.form_submit_button('선택한 작업 적용',type='primary')
-    if submitted:
-        st.session_state.ra_applied_tasks=list(dict.fromkeys(selected))
-    applied=list(st.session_state.get('ra_applied_tasks',[]))
-    st.caption(f'적용된 세부작업: {len(applied)}개 · 선택을 바꾼 뒤 적용 버튼을 눌러주세요.')
-    if applied:
-        with st.expander('선택한 작업 모아보기'):
-            for task in applied:st.write('• '+task)
-    return applied
-
-
 RA_HAZARDS = ['🪜 추락','⚙️ 끼임','🚶 넘어짐','🧱 맞음·낙하물','🚛 부딪힘·차량충돌','🏚️ 무너짐·매몰','⚡ 감전','🔥 화재','💥 폭발','🫁 질식·산소결핍','🧪 유해물질 노출','💧 빠짐·익사','🌡️ 폭염·한랭','🔊 소음·진동','🏋️ 근골격계 부담','🔪 베임·찔림','♨️ 화상','🦠 생물학적 위험','🌪️ 강풍·악천후','👥 혼재작업','✍️ 기타']
+
+
 RA_GUIDE = 'https://www.law.go.kr/lsLinkCommonInfo.do?lspttninfSeq=200111'
 
 
-# Short paraphrases of verified KOSHA public case publications, reviewed 2026-09-30.
 RA_CASES = [
     ('추락', '지붕재 교체 중 채광창 파손으로 추락한 사례. 지붕 아래 작업 대안과 작업발판·채광창 방호를 검토.', 'https://www.kosha.or.kr/ebook/fcatalog/access/ecatalogt.jsp?Dir=563&start=18'),
     ('추락', '개구부 주변 거푸집 작업 중 추락한 사례. 개구부 방호와 안전한 작업발판 확보를 검토.', 'https://www.kosha.or.kr/ebook/fcatalog/access/ecatalogt.jsp?Dir=563&start=18'),
@@ -5858,6 +5845,7 @@ RA_CASES = [
     ('넘어짐', '화물을 들고 계단을 내려가던 작업자가 발을 헛디딘 사례. 이동 시 시야 확보, 미끄럼 방지 및 통로 정돈을 검토.', 'https://www.kosha.or.kr/ebook/fcatalog/access/ecatalogt.jsp?Dir=626&start=50'),
 ]
 
+
 def ra_case_context(hazards):
     text=' '.join(hazards)
     return '\n\n'.join('안전보건공단 공개사례 요약: '+summary+'\n출처: '+url for tags,summary,url in RA_CASES if any(tag in text for tag in tags.split('|')))
@@ -5865,37 +5853,6 @@ def ra_case_context(hazards):
 
 def ra_hash(data):
     return hashlib.sha256(json.dumps(data,ensure_ascii=False,sort_keys=True,default=str).encode()).hexdigest()
-
-
-def ra_decision(row, meta):
-    if row.get('urgent'): return '즉시 안전조치 검토'
-    if row.get('mandatory'): return '필수조치 확인·이행 필요'
-    score = int(row.get('frequency',0))*int(row.get('severity',0))
-    if not meta.get('criteria_confirmed') or not meta.get('threshold'): return '평가기준 확인 필요'
-    if not score: return '미평가'
-    return '개선조치 필요' if score >= meta['threshold'] else '기준 미만·현장 확인'
-
-
-def ra_validate(meta, rows, final=False):
-    errors=[]
-    if not rows: errors.append('평가 항목을 한 개 이상 추가하세요.')
-    if final:
-        for key,label in [('site','현장명'),('evaluator','평가자')]:
-            if not str(meta.get(key,'')).strip(): errors.append(label+'을 입력하세요.')
-        if not str(meta.get('sharing','')).strip(): errors.append('근로자 공유 내용·일자·후속계획을 입력하세요.')
-        if not meta.get('review_confirmed'): errors.append('현장 확인 및 검토 여부를 확인하세요.')
-    for i,r in enumerate(rows,1):
-        if not r.get('factor','').strip(): errors.append(f'{i}번 위험요인이 비어 있습니다.')
-        if not (0 <= r.get('frequency',0) <= meta['frequency_max'] and 0 <= r.get('severity',0) <= meta['severity_max']): errors.append(f'{i}번 점수가 설정 범위를 벗어났습니다.')
-        if not (0 <= r.get('residual_f',0) <= meta['frequency_max'] and 0 <= r.get('residual_s',0) <= meta['severity_max']): errors.append(f'{i}번 조치 후 점수가 범위를 벗어났습니다.')
-        if final:
-            if not r.get('frequency') or not r.get('severity') or not r.get('reason','').strip(): errors.append(f'{i}번 빈도·강도와 판단 사유를 입력하세요.')
-            if not r.get('existing','').strip(): errors.append(f'{i}번 현재 안전조치를 입력하세요. 없다면 없음을 명시하세요.')
-            if ra_decision(r,meta) in ('개선조치 필요','즉시 안전조치 검토','필수조치 확인·이행 필요'):
-                if not all(str(r.get(k,'')).strip() for k in ['measures','owner','deadline']): errors.append(f'{i}번 개선조치·담당자·기한을 입력하세요.')
-            if r.get('status')=='완료·현장 확인':
-                if not all(r.get(k) for k in ['verified_by','verified_date','evidence','residual_f','residual_s']): errors.append(f'{i}번 완료 확인자·일자·증빙 및 재평가 점수를 입력하세요.')
-    return errors
 
 
 def ra_ai(kind, data, source):
@@ -5918,249 +5875,1065 @@ def ra_ai(kind, data, source):
     return list(dict.fromkeys(choices))
 
 
-def ra_report_sections(meta, rows, final):
-    status='검토본' if final else '초안 · 미확인 사항 포함'
-    sections=[('평가 개요',[
-        ('보고서 상태',status),('공사종류',meta.get('construction_type') or '확인 필요'),('현장명',meta['site']),
-        ('평가일 / 구분',meta['date']+' / '+meta['kind']),('평가자',meta['evaluator']),
-        ('평가 대상 공종',' / '.join(meta['trades'])),('위험성 산식','빈도 × 강도'),
-        ('작성 범위','AI는 작성 보조입니다. 공단 지정 서식 일치 여부 확인 필요. 별표·부칙·현장 의무조치는 별도 확인합니다.')])]
-    for i,r in enumerate(rows,1):
-        before=r['frequency']*r['severity'];after=r['residual_f']*r['residual_s']
-        sections.append((f'평가 항목 {i} · {r["trade"]}',[
-            ('작업 / 위치',r['work']),('위험유형',' / '.join(r['hazards'])),('유해·위험요인',r['factor']),
-            ('현재 안전보건조치',r['existing']),('현재 위험성',f'빈도 {r["frequency"] or "미평가"} × 강도 {r["severity"] or "미평가"} = {before or "미평가"}'),
-            ('판단 사유',r['reason']),('조치 판단',ra_decision(r,meta)),('법적 의무 / 급박한 위험',f'의무조치 확인 필요: {"예" if r["mandatory"] else "별도 표시 없음"} / 급박한 위험 우려: {"예" if r["urgent"] else "별도 표시 없음"}'),
-            ('개선대책',r['measures']),('항목별 계획예산',f'{r["budget"]:,}원 · {r["budget_note"]} · 견적 확인 필요'),
-            ('담당자 / 이행기한',r['owner']+' / '+r['deadline']),('진행 상태',r['status']),
-            ('조치 후 위험성',f'{"현장 확인 재평가" if r["status"]=="완료·현장 확인" else "예상값·완료 확인 전"}: 빈도 {r["residual_f"] or "미평가"} × 강도 {r["residual_s"] or "미평가"} = {after or "미평가"}'),
-            ('잔여 위험 판단','추가 개선 검토 필요' if after and meta['threshold'] and after>=meta['threshold'] else '현장 확인 및 판단 필요'),
-            ('확인자 / 확인일',r['verified_by']+' / '+r['verified_date']),('이행 증빙 / 재평가 사유',r['evidence']),
-            ('추천 출처',r['source_note']),('참고자료',r['source'] or '미제공 · 일반적 AI 추천 또는 직접 입력')]))
-    sections.append(('검토 및 공유 기록',[('최종 현장 검토','확인' if meta['review_confirmed'] else '미확인'),('근로자 공유 / 후속계획',meta['sharing']),('기록·보존 관련 조문',RA_GUIDE),('보관 안내','산업안전보건법 시행규칙 제37조의4: 평가 결과 자료 3년 보존. 보고서 파일을 기관의 보관 절차에 따라 저장하세요. 이 문서는 작업허가 또는 안전 확보를 자동 승인하지 않습니다.')]))
-    return sections
+# Short writing examples paraphrased from the user's KECO construction guide.
+# Scores and current safeguards are deliberately left for the site participants.
+RA_KECO_EXAMPLES = [
+    dict(id='road-traffic', title='도로 작업·자재 반입 — 차량 충돌',
+         keywords=['도로', '반입', '운반', '복구'], construction_types=['하수관로', '도시침수', '상수도'],
+         category='기계(설비)적 요인', hazards=['부딪힘', '차량충돌'],
+         factor='도로 점용 구간에서 자재를 반입하거나 작업구간으로 이동하는 중 일반차량·운반차량과 근로자가 충돌할 위험',
+         controls=[('공학적 대책', '차량 동선과 보행 동선을 분리하고 작업구간 방호시설·교통안전시설을 설치한다.'),
+                   ('관리적 대책', '작업·교통처리 계획에 운행경로, 통행 제한, 유도자 배치와 야간 시인성 확보 방법을 정한다.')],
+         source='첨부 공단 실무가이드 · 도로 점용·자재 반입 · 책자 60~61쪽 (PDF 31쪽)'),
+    dict(id='excavator-strike', title='굴착기 후진 — 근로자 충돌 사고사례',
+         keywords=['굴착', '상차', '철거', '운반', '현장 정리'], construction_types=['하수관로', '상수도', '도시침수'],
+         category='기계(설비)적 요인', hazards=['부딪힘', '차량충돌'],
+         factor='굴착기 후진·선회 구간에 보행 중인 근로자가 진입해 운전자의 사각지대에서 충돌·협착될 위험',
+         controls=[('공학적 대책', '장비 작업구역과 근로자 통로를 구획하고 후방 확인장치·경보장치의 작동을 점검한다.'),
+                   ('관리적 대책', '정해진 신호체계에 따라 유도하고 장비 반경 내 출입을 통제한다.')],
+         incident='2019년 마을 하수도 공사에서 도로를 청소하던 근로자가 후진하던 굴착기에 충돌한 사례를 바탕으로 한 작성 예시입니다.',
+         source='첨부 공단 실무가이드 · 굴착기 사고사례 · 책자 48~49쪽 (PDF 25쪽)'),
+    dict(id='bucket-pin', title='굴착기 부속장치 — 버킷 이탈',
+         keywords=['굴착', '파쇄', '브레이커', '터파기'], construction_types=['하수관로', '도시침수', '매립'],
+         category='기계(설비)적 요인', hazards=['맞음', '낙하물'],
+         factor='굴착기 버킷·부속장치 교체 후 결합상태가 불완전해 작업 중 부속장치가 이탈하고 근로자가 맞을 위험',
+         controls=[('공학적 대책', '장비에 적합한 체결장치와 잠금·안전핀을 사용하고 결합상태를 확인한다.'),
+                   ('관리적 대책', '교체 절차와 확인 책임자를 정하고 부속장치 하부·장비 작업반경의 접근을 통제한다.')],
+         source='첨부 공단 실무가이드 · 굴착기 부속장치 안전 및 장비 이동 · 책자 40~41·62~63쪽 (PDF 21·32쪽)'),
+    dict(id='excavation-collapse', title='관로 굴착 — 토사 붕괴·매몰',
+         keywords=['굴착', '터파기', '도랑', '사면'], construction_types=['하수관로', '상수도', '도시침수'],
+         category='작업환경 요인', hazards=['무너짐', '매몰'],
+         factor='관로 굴착 내부에서 작업 중 굴착면 토사나 굴착 가장자리 적재물이 무너져 근로자가 매몰될 위험',
+         controls=[('위험 제거·저감', '지반·깊이·주변 하중과 지하매설물을 확인하고 안전한 굴착방법·순서를 검토한다.'),
+                   ('공학적 대책', '현장에 적합한 사면·흙막이와 배수 조치를 마련하고 굴착 가장자리의 토사·장비 하중을 관리한다.'),
+                   ('관리적 대책', '강우·용수·균열 등 이상 징후를 점검하고 안전이 확인될 때까지 접근과 작업을 통제한다.')],
+         source='첨부 공단 실무가이드 · 굴착 작업 · 책자 64~67쪽 (PDF 33~34쪽)'),
+    dict(id='shoring', title='흙막이 설치 — 부재 붕괴·낙하',
+         keywords=['흙막이', '토류판', '버팀보', '띠장', '시트파일'], construction_types=['하수관로', '도시침수', '완충저류/비점오염'],
+         category='기계(설비)적 요인', hazards=['무너짐', '맞음', '낙하물'],
+         factor='흙막이 부재 설치·연결 작업 중 연결 불량 또는 지반 변화로 부재가 붕괴·낙하하여 근로자가 맞거나 매몰될 위험',
+         controls=[('공학적 대책', '설계·시공계획에 맞는 지보공과 연결부를 설치하고 변형·지반 변화의 확인 방법을 마련한다.'),
+                   ('관리적 대책', '설치 순서·인양 방법·점검 책임자를 정하고 위험구역 접근과 혼재작업을 통제한다.')],
+         source='첨부 공단 실무가이드 · 흙막이 가시설 설치 · 책자 68~69쪽 (PDF 35쪽)'),
+    dict(id='waler-drop', title='띠장 해체·인양 — 낙하 사고사례',
+         keywords=['띠장', '인발', '해체', '흙막이'], construction_types=['도시침수', '하수관로'],
+         category='기계(설비)적 요인', hazards=['맞음', '낙하물', '끼임'],
+         factor='흙막이 띠장을 해체·인양하는 중 결속장치에서 부재가 빠져 주변 근로자가 맞거나 끼일 위험',
+         controls=[('공학적 대책', '부재의 형상·무게·중심에 적합한 인양장비와 결속용구를 선정하고 상태를 확인한다.'),
+                   ('관리적 대책', '해체·인양과 주변 작업의 순서를 정하고 작업지휘·유도체계 및 인양 반경 출입통제를 시행한다.')],
+         incident='2019년 도시침수 예방사업에서 굴착기로 들어 올리던 띠장이 클램프에서 빠져 근로자가 사망한 사례를 바탕으로 합니다.',
+         source='첨부 공단 실무가이드 · 띠장 낙하 사고사례 · 책자 50~51쪽 (PDF 26쪽)'),
+    dict(id='pipe-lift', title='관 인양·부설 — 낙하·협착',
+         keywords=['관 인양', '부설', '받침', '맨홀', '관 접합'], construction_types=['하수관로', '상수도', '하수처리', '폐수처리'],
+         category='기계(설비)적 요인', hazards=['맞음', '낙하물', '끼임'],
+         factor='관·맨홀 부재를 인양·내려놓거나 접합하는 중 인양물이 낙하하거나 관과 받침·접합부 사이에 근로자가 끼일 위험',
+         controls=[('공학적 대책', '부재에 적합한 인양용구와 고임·받침을 마련하고 줄걸이·후크·연결부의 상태를 점검한다.'),
+                   ('관리적 대책', '인양물 하부 접근을 통제하고 유도자의 신호에 따라 부설하며 손이 끼이는 위치를 작업자와 확인한다.')],
+         source='첨부 공단 실무가이드 · 관 부설·되메우기 · 책자 70~71쪽 (PDF 36쪽)'),
+    dict(id='backfill-equipment', title='되메우기·다짐 — 장비 충돌·전도',
+         keywords=['되메우기', '성토', '다짐', '표토'], construction_types=['하수관로', '상수도', '매립', '생태하천'],
+         category='기계(설비)적 요인', hazards=['부딪힘', '차량충돌', '무너짐'],
+         factor='되메우기·다짐 중 근로자가 장비 이동구역에 진입하거나 연약지반·가장자리에서 장비가 전도하여 충돌·깔림이 발생할 위험',
+         controls=[('공학적 대책', '장비의 운행·작업 지반과 가장자리 안정성을 확인하고 필요한 지반 보강과 동선 분리 조치를 한다.'),
+                   ('관리적 대책', '장비별 작업순서·이동경로·속도와 출입통제를 정하고 유도 신호 및 작업 전 점검을 시행한다.')],
+         source='첨부 공단 실무가이드 · 관 부설·도로공사 · 책자 70~71·98~99쪽 (PDF 36·50쪽)'),
+    dict(id='rebar', title='철근 조립 — 전도·추락·끼임',
+         keywords=['철근', '절곡', '조립', '결속'], construction_types=['하수처리', '폐수처리', '완충저류/비점오염'],
+         category='기계(설비)적 요인', hazards=['무너짐', '끼임', '추락'],
+         factor='철근 가공·조립 중 철근이나 기계에 끼이거나 불안정한 조립 철근·작업발판에서 넘어지거나 추락할 위험',
+         controls=[('공학적 대책', '조립 철근의 전도 방지조치와 안전한 작업발판·승강시설을 마련하고 가공기 방호장치를 점검한다.'),
+                   ('관리적 대책', '철근 가공·적재·인양 구역을 구획하고 작업 방법·순서 및 기구 점검을 시행한다.')],
+         source='첨부 공단 실무가이드 · 철근 반입·조립 · 책자 86~87쪽 (PDF 44쪽)'),
+    dict(id='crane', title='이동식크레인 — 전도·인양물 낙하',
+         keywords=['크레인', '중량물', '설치', '인양'], construction_types=[],
+         category='기계(설비)적 요인', hazards=['맞음', '낙하물', '무너짐', '끼임'],
+         factor='이동식크레인을 불안정한 지반에 설치하거나 부적합한 줄걸이로 인양하여 장비가 전도하거나 인양물이 낙하할 위험',
+         controls=[('공학적 대책', '견고한 설치 지반·아웃트리거 지지상태를 확인하고 작업 조건의 정격하중에 적합한 장비·줄걸이 용구를 선정한다.'),
+                   ('관리적 대책', '인양경로·신호체계·작업지휘를 정하고 장비와 인양물의 작업반경·하부 출입을 통제한다.')],
+         source='첨부 공단 실무가이드 · 이동식크레인 · 책자 94~95쪽 (PDF 48쪽)'),
+    dict(id='forklift', title='지게차 운반 — 전도 사고사례',
+         keywords=['반입', '하역', '운반', '적재'], construction_types=['소각/자원회수', '매립', '바이오'],
+         category='기계(설비)적 요인', hazards=['부딪힘', '끼임'],
+         factor='지게차로 자재를 높은 위치에 든 채 이동하거나 하중 중심이 불안정한 상태로 운반하여 전도·깔림이 발생할 위험',
+         controls=[('위험 제거·저감', '자재의 형상·무게·하중 중심에 맞는 운반방식과 작업경로를 정한다.'),
+                   ('관리적 대책', '이동 시 포크·화물을 안전한 낮은 위치로 유지하고 작업계획, 운전자 교육, 안전벨트 착용 및 보행자 접근통제를 확인한다.')],
+         incident='2020년 폐기물 처리시설에서 비산재 톤백을 높은 위치에 든 지게차가 전도한 사례를 바탕으로 합니다.',
+         source='첨부 공단 실무가이드 · 지게차 전도 사고사례 · 책자 52~53쪽 (PDF 27쪽)'),
+    dict(id='lift-platform', title='고소작업대 이동 — 상부 구조물 협착 사고사례',
+         keywords=['고소작업대', '배관', '덕트', '계측', '시운전'], construction_types=['폐수처리', '하수처리', '바이오', '가축분뇨'],
+         category='기계(설비)적 요인', hazards=['끼임', '추락'],
+         factor='고소작업대를 이동·상승시키는 중 상부 배관·구조물과 작업대 사이에 근로자가 끼이거나 추락할 위험',
+         controls=[('공학적 대책', '통로의 폭·높이·경사·지반 상태와 상부 간섭을 확인하고 장비의 안전장치·비상조작 기능을 점검한다.'),
+                   ('관리적 대책', '설비 설치 등으로 동선이 바뀌면 작업계획을 수정하고 위험구역 출입통제 및 유도체계를 운영한다.')],
+         incident='2022년 폐수 처리시설에서 이동 중인 시저형 고소작업대의 작업자가 상부 폐수배관에 끼인 사례를 바탕으로 합니다.',
+         source='첨부 공단 실무가이드 · 고소작업대 협착 사고사례 · 책자 52~53쪽 (PDF 27쪽)'),
+    dict(id='temporary-electric', title='가설전기·분전반 — 누전·감전',
+         keywords=['전기', '분전반', '배전반', '케이블', '통전', '복전'], construction_types=[],
+         category='전기적 요인', hazards=['감전'],
+         factor='분전반·가설전선의 충전부 노출이나 절연·접지 불량, 빗물 침투 및 임의조작으로 근로자가 감전될 위험',
+         controls=[('공학적 대책', '현장에 적합한 외함·충전부 방호·접지·누전차단기 및 전선 보호조치를 마련하고 작동·절연 상태를 확인한다.'),
+                   ('관리적 대책', '전원 차단·임의 재투입 방지와 회로 표시, 담당자 조작 및 작업 전 점검 절차를 정한다.')],
+         source='첨부 공단 실무가이드 · 이동식 전기기계기구·가설분전반 · 책자 92~93쪽 (PDF 47쪽)'),
+    dict(id='confined-space', title='추진관·탱크·피트 내부 — 질식·중독',
+         keywords=['내부', '맨홀', '탱크', '피트', '추진', '준설', '저장조'], construction_types=['하수관로', '하수처리', '폐수처리', '바이오', '가축분뇨'],
+         category='작업환경 요인', hazards=['질식', '산소결핍', '유해물질'],
+         factor='추진관·탱크·피트 등 내부 작업장에 산소결핍 또는 유해가스가 존재해 진입 작업자와 무방비 구조자가 질식·중독될 위험',
+         controls=[('위험 제거·저감', '내부에 들어가지 않고 작업할 수 있는 방법과 위험물질·에너지 유입 차단을 먼저 검토한다.'),
+                   ('공학적 대책', '산소·유해가스 측정 및 적절한 환기로 진입 가능 조건을 확인한다.'),
+                   ('관리적 대책', '밀폐공간 작업프로그램·작업허가·감시·통신·구조계획을 마련한다. 안전이 확인되지 않으면 진입하거나 무방비로 구조하지 않는다.')],
+         source='첨부 공단 실무가이드 · 추진공사·설비 및 방수 작업 · 책자 104~105·122~123·128~129쪽 (PDF 53·62·65쪽) 기반 검토 예시'),
+    dict(id='hot-work', title='용접·용단 — 화재·폭발',
+         keywords=['용접', '용단', '불꽃', '연마', '배관'], construction_types=['소각/자원회수', '하수처리', '폐수처리', '바이오'],
+         category='화학(물질)적 요인', hazards=['화재', '폭발', '화상'],
+         factor='용접·용단의 불꽃과 열이 주변 가연물·인화성 물질에 전달되거나 인화성 분위기에 점화해 화재·폭발이 발생할 위험',
+         controls=[('위험 제거·저감', '가연물·인화성 물질을 제거하고 도장·방수 등 인접 작업과의 동시 수행을 조정한다.'),
+                   ('공학적 대책', '불티 비산방지·환기·소화설비를 마련하고 인접·하부 공간의 위험을 확인한다.'),
+                   ('관리적 대책', '화기작업 허가·감시·비상대피 절차를 정하고 종료 후 잔불과 인접 구역을 확인한다.')],
+         source='첨부 공단 실무가이드 · 설비·배관 작업 · 책자 122~123쪽 (PDF 62쪽) 기반 검토 예시'),
+    dict(id='coating', title='도장·방수 — 유기용제 노출·화재',
+         keywords=['도장', '도료', '방수', '방식', '라이닝'], construction_types=[],
+         category='화학(물질)적 요인', hazards=['유해물질', '질식', '화재'],
+         factor='도장·방수 작업에서 유기용제 증기를 흡입하거나 인화성 증기가 축적되어 중독·질식·화재가 발생할 위험',
+         controls=[('위험 제거·저감', 'MSDS와 작업조건을 확인하고 유해성이 낮은 자재·작업방법으로 변경할 수 있는지 검토한다.'),
+                   ('공학적 대책', '작업장 환기·유해가스 확인과 점화원 분리, 적정 보관 및 누출 방지 조치를 한다.'),
+                   ('관리적 대책', '화기작업과 동시작업을 통제하고 취급자 교육·표시·작업허가 필요 여부를 확인한다.'),
+                   ('개인보호구', '물질과 노출조건에 적합한 보호구를 선정한다. 보호구만으로 산소결핍 공간의 진입을 허용하지 않는다.')],
+         source='첨부 공단 실무가이드 · 도장·방수 작업 · 책자 128~129쪽 (PDF 65쪽) 기반 검토 예시'),
+]
 
 
-def ra_pdf(meta,rows,final):
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib import colors
-    from reportlab.lib.styles import ParagraphStyle
-    from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Table,TableStyle,PageBreak
-    from xml.sax.saxutils import escape
-    if 'KecoNanum' not in pdfmetrics.getRegisteredFontNames():
-        # Reuse the existing embedded Korean font registration without any external download.
-        generate_inspection_pdf('','','',{})
-    style=ParagraphStyle('ra',fontName='KecoNanum',fontSize=10,leading=15,wordWrap='CJK')
-    title=ParagraphStyle('ra_title',parent=style,fontSize=20,leading=28,alignment=1,spaceAfter=18)
-    heading=ParagraphStyle('ra_head',parent=style,fontSize=13,leading=20,spaceAfter=10,textColor=colors.HexColor('#006b50'))
-    def para(v):return Paragraph(escape(re.sub(r'[\U00010000-\U0010ffff\u2600-\u27bf\ufe0f]','',str(v or '미입력'))).replace('\n','<br/>'),style)
-    story=[Paragraph('현장 위험성평가 보고서',title)]
-    story.append(para('평가 결과 요약 · '+('검토본' if final else '초안')))
-    grid=[[para(v) for v in ['번호','공종','빈도','강도','위험성','조치 판단']]]
-    for i,r in enumerate(rows,1):
-        # Strip decorative emojis in print fonts; work names are retained.
-        trade=re.sub(r'^[^가-힣A-Za-z0-9]+','',r['trade'])
-        grid.append([para(v) for v in [i,trade,r['frequency'] or '-',r['severity'] or '-',r['frequency']*r['severity'] or '-',ra_decision(r,meta)]])
-    summary=Table(grid,colWidths=[32,127,42,42,48,196],repeatRows=1)
-    summary.setStyle(TableStyle([('GRID',(0,0),(-1,-1),.4,colors.HexColor('#b8cdc2')),('BACKGROUND',(0,0),(-1,0),colors.HexColor('#e5f1eb')),('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7)]))
-    story.extend([Spacer(1,12),summary,Spacer(1,20)])
-    for num,(name,pairs) in enumerate(ra_report_sections(meta,rows,final)):
-        if num:story.append(PageBreak())
-        story.append(Paragraph(escape(name),heading))
-        detail=Table([[para(label),para(value)] for label,value in pairs],colWidths=[112,375],splitByRow=1,splitInRow=1)
-        detail.setStyle(TableStyle([('GRID',(0,0),(-1,-1),.35,colors.HexColor('#c7d7ce')),('BACKGROUND',(0,0),(0,-1),colors.HexColor('#eef5f1')),('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7)]))
-        story.append(detail)
-    out=io.BytesIO()
-    def footer(canvas,doc):
-        canvas.setFont('KecoNanum',8);canvas.drawRightString(540,25,f'{doc.page} / 위험성평가 '+('검토본' if final else '초안'))
-    SimpleDocTemplate(out,pagesize=A4,rightMargin=54,leftMargin=54,topMargin=42,bottomMargin=42).build(story,onFirstPage=footer,onLaterPages=footer)
-    return out.getvalue()
+RA_STEPS = ['① 사전준비', '② 위험요인 파악', '③ 위험성 결정', '④ 감소대책 수립', '⑤ 이행·재평가', '⑥ 공유·보고서']
+RA_PROCEDURE = '한국환경공단 KECO-P-610 · 개정 7차 · 2024.06.10.'
+RA_CRITERIA_STAMP = 'KECO-P-610-20240610-5x4'
+RA_FREQUENCY = [
+    ('최하', '피해 가능성이 매우 낮고 안전조치가 잘 갖춰진 상태', '1년 1회 정도 발생·노출'),
+    ('하', '방호조치와 준수하기 쉬운 작업표준이 있으나 피해 가능성이 남은 상태', '반기 1회 정도 발생·노출'),
+    ('중', '안전장치를 쉽게 해제할 수 있거나 일부 수칙을 준수하기 어려운 상태', '분기 1회 정도 발생·노출'),
+    ('상', '안전장치가 해체돼 있거나 작업수칙 준수가 어려워 피해 가능성이 높은 상태', '주 1회 또는 수일 내 발생·노출'),
+    ('최상', '안전대책·표지·작업표준 등이 없고 피해 가능성이 매우 높은 상태', '1일 1회 정도 발생·노출'),
+]
+RA_SEVERITY = [
+    ('소', '처치 후 원래 작업을 수행할 수 있는 경미한 부상·질병'),
+    ('중', '응급조치 이상의 치료가 필요하나 휴업을 수반하지 않는 부상·질병'),
+    ('대', '휴업을 수반하는 중대한 부상·질병'),
+    ('최대', '사망·영구적 근로불능 또는 장애가 남는 부상·질병'),
+]
+RA_CATEGORIES = ['기계(설비)적 요인', '전기적 요인', '화학(물질)적 요인', '생물학적 요인', '작업특성 요인', '작업환경 요인']
+RA_CONTROL_TYPES = ['위험 제거·저감', '공학적 대책', '관리적 대책', '개인보호구']
+RA_ORIGINS = ['사업장 순회점검', '근로자 청취·제안', '아차사고', '안전보건자료·체크리스트', '공단 가이드 사례', 'AI 작성 후보', '직접 입력']
+RA_CHECK_ITEMS = [
+    '작업장 유해·위험요인 및 개선사항 고지', '개선 후 조치 유지·관리',
+    '개선현황 및 개선예정일 확인', '예산·교육 등 개선 지원사항 확인',
+    'TBM에서 개선현황 공유', '위험성평가 보고서 현장 게시',
+    '위험성평가 실시규정 확인', '사전교육 기록 확인', '근로자 참여 명단 확인',
+    '평가 결과 및 감소대책 보고서 보관', '사후교육 기록 확인',
+]
 
 
-def ra_hwpx(meta,rows,final):
-    doc=HwpxDocument.new()
-    p=doc.add_paragraph('');p.add_run('현장 위험성평가 보고서',font='맑은 고딕',size=20,bold=True)
-    doc.set_paragraph_format(paragraph_index=len(doc.paragraphs)-1,alignment='CENTER')
-    table=doc.add_table(rows=len(rows)+1,cols=6,width=49324,height=2200*(len(rows)+1))
-    widths=[3200,11000,4000,4000,5500,21624]
-    values=[['번호','공종','빈도','강도','위험성','조치 판단']]+[[str(i),re.sub(r'^[^가-힣A-Za-z0-9]+','',r['trade']),str(r['frequency'] or '-'),str(r['severity'] or '-'),str(r['frequency']*r['severity'] or '-'),ra_decision(r,meta)] for i,r in enumerate(rows,1)]
-    for i,line in enumerate(values):
-        for j,value in enumerate(line):
-            cell=table.cell(i,j);cell.set_size(width=widths[j],height=2200);cell.set_text('')
-            cell.paragraphs[0].add_run(value,font='맑은 고딕',size=9,bold=i==0)
-    for name,pairs in ra_report_sections(meta,rows,final):
-        doc.add_paragraph('');p=doc.add_paragraph('');p.add_run(name,font='맑은 고딕',size=13,bold=True)
-        for label,value in pairs:
-            # Separate paragraphs allow HWP to paginate arbitrarily long descriptions.
-            p=doc.add_paragraph('');p.add_run(label,font='맑은 고딕',size=10,bold=True)
-            for line in str(value or '미입력').splitlines():
-                p=doc.add_paragraph('');p.add_run(line,font='맑은 고딕',size=10)
-    output=io.BytesIO();doc.save_to_stream(output);return output.getvalue()
+def ra_default_meta(actor):
+    today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date().isoformat()
+    return dict(construction_type=None, department=str(globals().get('selected_dept', '')),
+                site=str(globals().get('selected_site', '')), address='', company='', date=today,
+                kind='최초평가', trigger='', evaluator=str(actor), reviewer='', workers='',
+                worker_rep='', opinions='', education='', pre_shared='', work_scope='',
+                equipment='', materials='', information=[], information_note='', trades=[],
+                criteria_name=RA_PROCEDURE+' · 비사무업무 빈도·강도법',
+                criteria_stamp=RA_CRITERIA_STAMP, frequency_max=5, severity_max=4,
+                frequency_labels=[v[0]+' · '+v[1] for v in RA_FREQUENCY],
+                severity_labels=[v[0]+' · '+v[1] for v in RA_SEVERITY],
+                threshold=8, criteria_confirmed=False, sharing='', sharing_date='',
+                sharing_method='TBM', sharing_state='공유 예정', followup='',
+                checks={}, supplement='', supplement_deadline='', review_confirmed=False,
+                review_sig='', report_mode='초안')
 
 
-def ra_archive(owner,payload):
-    db=inspection_store()
+def ra_default_row():
+    return dict(id='', trade='', work='', hazards=[], category='', factor='', origin='직접 입력',
+                existing='', frequency=0, severity=0, reason='', site_confirmed=False,
+                urgent=False, mandatory=False, measures='', control_types=[], budget=0,
+                budget_note='미정', owner='', deadline='', status='미착수',
+                residual_f=0, residual_s=0, verified_by='', verified_date='', evidence='',
+                followup='', before_photo='', after_photo='', source='', source_note='직접 입력')
+
+
+def ra_normalize_payload(payload, actor):
+    """Validate saved/backup content and reopen it as a draft requiring fresh review."""
+    import uuid
+    if not isinstance(payload, dict) or not isinstance(payload.get('meta'), dict) or not isinstance(payload.get('rows', []), list):
+        raise ValueError('위험성평가 작성 내용의 형식을 확인해 주세요.')
+    if len(payload.get('rows', [])) > 200:
+        raise ValueError('한 번에 평가 항목 200개까지 불러올 수 있습니다.')
+    meta = ra_default_meta(actor)
+    original = payload['meta']
+    for key, default in list(meta.items()):
+        value = original.get(key, default)
+        if isinstance(default, list):
+            if not isinstance(value, list) or any(not isinstance(v, str) for v in value):
+                raise ValueError('목록 입력의 형식을 확인해 주세요.')
+        elif isinstance(default, dict):
+            if not isinstance(value, dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in value.items()):
+                raise ValueError('확인사항 입력의 형식을 확인해 주세요.')
+        elif isinstance(default, bool):
+            if not isinstance(value, bool): raise ValueError('확인 입력의 형식을 확인해 주세요.')
+        elif isinstance(default, str):
+            if not isinstance(value, str) or len(value) > 30000: raise ValueError('문자 입력의 형식을 확인해 주세요.')
+        meta[key] = value
+    if meta['construction_type'] not in RA_CONSTRUCTION_TYPES: meta['construction_type'] = None
+    for field in ('frequency_max', 'severity_max', 'frequency_labels', 'severity_labels', 'threshold', 'criteria_name', 'criteria_stamp'):
+        meta[field] = ra_default_meta(actor)[field]
+    meta['criteria_confirmed'] = False
+    meta['review_confirmed'] = False
+    meta['review_sig'] = ''
+    meta['report_mode'] = '초안'
+    rows, seen = [], set()
+    for item in payload.get('rows', []):
+        if not isinstance(item, dict): raise ValueError('평가 항목의 형식을 확인해 주세요.')
+        row = ra_default_row()
+        for key, default in list(row.items()):
+            value = item.get(key, default)
+            if isinstance(default, bool):
+                if not isinstance(value, bool): raise ValueError('항목 확인 입력의 형식을 확인해 주세요.')
+            elif isinstance(default, int):
+                if isinstance(value, bool) or not isinstance(value, int) or value < 0: raise ValueError('점수·예산은 0 이상의 정수여야 합니다.')
+            elif isinstance(default, list):
+                if not isinstance(value, list) or any(not isinstance(v, str) for v in value): raise ValueError('위험유형·대책방법의 형식을 확인해 주세요.')
+            elif not isinstance(value, str) or len(value) > (30*1024*1024 if key in ('before_photo', 'after_photo') else 30000):
+                raise ValueError('평가 항목의 문자 입력을 확인해 주세요.')
+            row[key] = value
+        if not (0 <= row['frequency'] <= 5 and 0 <= row['severity'] <= 4 and 0 <= row['residual_f'] <= 5 and 0 <= row['residual_s'] <= 4):
+            raise ValueError('공단 기준 범위를 벗어난 점수가 있습니다. 빈도 0~5, 강도 0~4를 확인해 주세요.')
+        if not row['id']: row['id'] = uuid.uuid4().hex
+        if not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', row['id']) or row['id'] in seen:
+            raise ValueError('평가 항목 번호의 형식을 확인해 주세요.')
+        seen.add(row['id'])
+        if row['category'] not in RA_CATEGORIES: row['category'] = ''
+        if row['origin'] not in RA_ORIGINS: row['origin'] = '직접 입력'
+        if row['status'] not in ('미착수', '진행 중', '완료·현장 확인'): row['status'] = '미착수'
+        if row['budget_note'] not in ('미정', '추가 비용 최소화', '50만원 이내', '100만원 이내', '500만원 이내', '직접 입력'): row['budget_note'] = '직접 입력'
+        row['control_types'] = [v for v in row['control_types'] if v in RA_CONTROL_TYPES]
+        row['site_confirmed'] = False
+        rows.append(row)
+    meta['trades'] = list(dict.fromkeys(meta['trades']+[r['trade'] for r in rows if r['trade']]))
+    return dict(schema_version=2, meta=meta, rows=rows, final=False)
+
+
+def ra_initialize(actor):
+    if st.session_state.get('ra_actor') != str(actor):
+        for key in list(st.session_state):
+            if key.startswith('ra_'): del st.session_state[key]
+        st.session_state.ra_actor = str(actor)
+    if 'ra_meta' not in st.session_state:
+        meta = ra_default_meta(actor)
+        for field in ('evaluator', 'sharing'):
+            meta[field] = st.session_state.get('ra_meta_'+field, meta[field])
+        meta['site'] = st.session_state.get('ra_site_choice', meta['site'])
+        meta['construction_type'] = st.session_state.get('ra_construction_type', None)
+        st.session_state.ra_meta = meta
+    if 'ra_rows' not in st.session_state: st.session_state.ra_rows = []
+    if 'ra_entry' not in st.session_state:
+        st.session_state.ra_entry = dict(work='', category=None, origin='사업장 순회점검', hazards=[],
+                                         custom_hazard='', direct='', source='', consent=False, example=None)
+    for row in st.session_state.ra_rows:
+        for key, value in ra_default_row().items():
+            if key not in row: row[key] = value.copy() if isinstance(value, list) else value
+    st.session_state.setdefault('ra_step', RA_STEPS[0])
+
+
+def ra_review_signature(meta, rows):
+    clean = {k: v for k, v in meta.items() if k not in ('review_confirmed', 'review_sig', 'report_mode')}
+    return ra_hash([clean, rows])
+
+
+def ra_invalidate_review():
+    st.session_state.ra_meta['review_confirmed'] = False
+    st.session_state.ra_meta['review_sig'] = ''
+    if 'ra_edit_meta_review_confirmed' in st.session_state:
+        st.session_state['ra_edit_meta_review_confirmed'] = False
+
+
+def ra_target(row_id=None):
+    if row_id is None: return st.session_state.ra_meta
+    if row_id == 'entry': return st.session_state.ra_entry
+    return next(row for row in st.session_state.ra_rows if row['id'] == row_id)
+
+
+def ra_commit(row_id, field, key):
+    target = ra_target(row_id)
+    value = st.session_state[key]
+    if isinstance(value, (datetime.date, datetime.datetime)): value = value.isoformat()
+    if value is None and field in ('date', 'sharing_date'): value = ''
+    changed = target.get(field) != value
+    target[field] = value
+    if field == 'review_confirmed':
+        target['review_sig'] = ra_review_signature(target, st.session_state.ra_rows) if value else ''
+    elif changed and field != 'report_mode':
+        ra_invalidate_review()
+
+
+def ra_field(label, field, row_id=None, kind='text', options=None, **kwargs):
+    target = ra_target(row_id)
+    key = 'ra_edit_'+('meta' if row_id is None else row_id)+'_'+field
+    value = target.get(field)
+    if kind == 'date':
+        try: value = datetime.date.fromisoformat(str(value)) if value else None
+        except ValueError: value = None
+    if kind == 'select' and value not in options: value = options[0] if options else None
+    if kind == 'multi': value = [v for v in (value or []) if v in options]
+    if key not in st.session_state or (field == 'review_confirmed' and not target.get(field)):
+        st.session_state[key] = value
+    args = dict(key=key, on_change=ra_commit, args=(row_id, field, key), **kwargs)
+    if kind == 'select': result = st.selectbox(label, options, **args)
+    elif kind == 'multi': result = st.multiselect(label, options, **args)
+    elif kind == 'check': result = st.checkbox(label, **args)
+    elif kind == 'date': result = st.date_input(label, **args)
+    elif kind == 'number': result = st.number_input(label, **args)
+    elif kind == 'area': result = st.text_area(label, **args)
+    else: result = st.text_input(label, **args)
+    target[field] = result.isoformat() if isinstance(result, (datetime.date, datetime.datetime)) else ('' if result is None and kind == 'date' else result)
+    return result
+
+
+def ra_set_field(row_id, field, value):
+    ra_target(row_id)[field] = value
+    key = 'ra_edit_'+('meta' if row_id is None else row_id)+'_'+field
+    if key in st.session_state: st.session_state[key] = value
+    ra_invalidate_review()
+
+
+def ra_go_step(number):
+    st.session_state.ra_step = RA_STEPS[max(0, min(5, number))]
+
+
+def ra_select_tasks():
+    applied = list(st.session_state.get('ra_applied_tasks', []))
+    selected = []
+    st.caption('해당 작업을 체크하고 ‘선택한 작업 적용’을 한 번 누르세요.')
+    with st.form('ra_task_selection_form', clear_on_submit=False):
+        for group_index, (icon, group, tasks) in enumerate(RA_TRADE_GROUPS, 1):
+            with st.expander(f'{group_index}. {icon} {group}'):
+                for task_index, task in enumerate(tasks, 1):
+                    if st.checkbox(f'{task_index}. {task}', value=group+' / '+task in applied, key=f'ra_task_{group_index}_{task_index}'):
+                        selected.append(group+' / '+task)
+                extras = [v[len(group)+3:] for v in applied if v.startswith(group+' / ') and v[len(group)+3:] not in tasks]
+                custom = st.text_area('기타 직접 입력', value='\n'.join(extras), placeholder='한 줄에 세부작업 하나', key=f'ra_custom_group_{group_index}')
+                selected.extend(group+' / '+task for task in ra_custom_tasks(custom))
+        with st.expander('11. 기타 직접 입력'):
+            extras = [v[5:] for v in applied if v.startswith('기타 / ')]
+            other = st.text_area('목록에 없는 공종·세부작업', value='\n'.join(extras), placeholder='한 줄에 작업 하나', key='ra_custom_group_11')
+            selected.extend('기타 / '+task for task in ra_custom_tasks(other))
+        submitted = st.form_submit_button('선택한 작업 적용', type='primary')
+    if submitted:
+        st.session_state.ra_applied_tasks = list(dict.fromkeys(selected))
+        ra_invalidate_review()
+    applied = list(st.session_state.get('ra_applied_tasks', []))
+    st.session_state.ra_meta['trades'] = list(dict.fromkeys(applied+[r['trade'] for r in st.session_state.ra_rows]))
+    st.caption(f'적용한 작업 {len(applied)}개')
+    if applied:
+        with st.expander('선택한 작업 모아보기'): st.write('\n\n'.join('• '+v for v in applied))
+    return applied
+
+
+def ra_risk_level(score):
+    if not score: return '미평가', '점수를 입력하세요.'
+    if score not in {f*s for f in range(1, 6) for s in range(1, 5)}:
+        return '점수 확인 필요', '빈도 1~5 × 강도 1~4로 계산하세요.'
+    if score <= 3: return '무시할 수 있는 위험', '현재 안전대책 유지'
+    if score <= 6: return '미미한 위험', '안전정보와 주기적 표준작업 안전교육 제공'
+    if score == 8: return '경미한 위험', '표지·작업절차서 등 관리적 대책과 점진적 개선'
+    if score <= 12: return '상당한 위험', '계획된 정비·보수기간의 설비개선 등 감소대책 수립'
+    if score <= 15: return '중대한 위험', '긴급 임시안전대책 후 계획된 설비개선 등 안전대책 수립'
+    return '허용불가 위험', '즉시 작업 중지 및 시설개선 등 즉시 안전조치'
+
+
+def ra_decision(row, meta):
+    if row.get('urgent'): return '급박한 위험 · 작업 중지·대피 등 즉시 안전조치'
+    score = ra_score(row)
+    if score >= 16: return '허용불가 · 즉시 작업 중지'
+    if row.get('mandatory'): return '필수조치 확인·이행 필요'
+    if not meta.get('criteria_confirmed'): return '평가기준 확인 필요'
+    if not score: return '미평가'
+    if score >= 13: return '긴급 임시안전대책·개선 필요'
+    return '개선조치 필요' if score >= 8 else '현재 조치 유지·교육·현장 확인'
+
+
+def ra_needs_measures(row):
+    return bool(row.get('urgent') or row.get('mandatory') or ra_score(row) >= 8)
+
+
+def ra_score(row, residual=False):
+    f, s = (row.get('residual_f', 0), row.get('residual_s', 0)) if residual else (row.get('frequency', 0), row.get('severity', 0))
+    if type(f) is not int or type(s) is not int or not (0 <= f <= 5 and 0 <= s <= 4): return 0
+    return f*s
+
+
+def ra_text_ready(value):
+    text = str(value or '').strip()
+    return bool(text) and text not in ('확인 필요', '미정', '미입력', '미확인') and '[작성]' not in text
+
+
+def ra_validate(meta, rows, final=False):
+    errors = []
+    if not rows: errors.append('② 평가 항목을 한 개 이상 추가하세요.')
+    if final:
+        for field, label in [('site', '현장명'), ('department', '담당부서'), ('evaluator', '평가 담당자'), ('reviewer', '관리감독자·검토자'),
+                             ('workers', '참여 근로자 명단'), ('worker_rep', '근로자대표'), ('work_scope', '평가 대상 작업 개요'),
+                             ('pre_shared', '평가 일정 사전 공유 기록')]:
+            if not ra_text_ready(meta.get(field)): errors.append('① '+label+'을 입력하세요.')
+        if not meta.get('date'): errors.append('① 평가일을 입력하세요.')
+        if meta.get('kind') == '수시평가' and not ra_text_ready(meta.get('trigger')): errors.append('① 수시평가 실시 사유를 입력하세요.')
+        if not meta.get('criteria_confirmed'): errors.append('① 공단 빈도·강도 기준의 현장 적용 여부를 확인하세요.')
+        if not ra_text_ready(meta.get('sharing')) or not meta.get('sharing_date'): errors.append('⑥ 근로자 공유 내용과 공유일·예정일을 입력하세요.')
+        if not ra_text_ready(meta.get('followup')): errors.append('⑥ 후속 점검 계획을 입력하세요.')
+        if not meta.get('review_confirmed') or meta.get('review_sig') != ra_review_signature(meta, rows):
+            errors.append('⑥ 최신 내용으로 현장 검토 확인을 해 주세요.')
+    for number, row in enumerate(rows, 1):
+        prefix = f'{number}번 '
+        if not str(row.get('factor', '')).strip(): errors.append('② '+prefix+'위험발생상황이 비어 있습니다.')
+        for field, maximum in [('frequency', 5), ('severity', 4), ('residual_f', 5), ('residual_s', 4)]:
+            value = row.get(field, 0)
+            if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= maximum:
+                errors.append('③ '+prefix+'점수 범위를 확인하세요.')
+        if final:
+            if not row.get('category') or not ra_text_ready(row.get('work')) or not ra_text_ready(row.get('factor')) or not row.get('site_confirmed'):
+                errors.append('② '+prefix+'위험분류·작업조건·현장 확인을 작성하세요.')
+            if not ra_score(row) or not ra_text_ready(row.get('reason')):
+                errors.append('③ '+prefix+'빈도·강도와 판단 사유를 입력하세요.')
+            if not ra_text_ready(row.get('existing')): errors.append('③ '+prefix+'현재 안전조치를 입력하세요. 없다면 없음을 명시하세요.')
+            if ra_needs_measures(row):
+                if not all(ra_text_ready(row.get(k)) for k in ('measures', 'owner', 'deadline')) or not row.get('control_types'):
+                    errors.append('④ '+prefix+'감소대책·대책방법·담당자·기한을 입력하세요.')
+            if row.get('status') == '완료·현장 확인':
+                if not all(ra_text_ready(row.get(k)) for k in ('verified_by', 'verified_date', 'evidence')) or not ra_score(row, True):
+                    errors.append('⑤ '+prefix+'완료 확인자·일자·증빙 및 재평가 점수를 입력하세요.')
+                if ra_score(row, True) >= 8 and not ra_text_ready(row.get('followup')):
+                    errors.append('⑤ '+prefix+'잔여 위험에 대한 추가 개선계획을 입력하세요.')
+    return list(dict.fromkeys(errors))
+
+
+def ra_progress(meta, rows):
+    rated = bool(rows) and all(ra_score(r) and ra_text_ready(r.get('reason')) and ra_text_ready(r.get('existing')) for r in rows)
+    return [
+        bool(meta.get('site') and meta.get('workers') and meta.get('work_scope') and meta.get('criteria_confirmed') and meta.get('trades')),
+        bool(rows) and all(r.get('factor') and r.get('category') and r.get('work') and r.get('site_confirmed') for r in rows),
+        rated,
+        rated and all(not ra_needs_measures(r) or (ra_text_ready(r.get('measures')) and r.get('control_types') and ra_text_ready(r.get('owner')) and ra_text_ready(r.get('deadline'))) for r in rows),
+        rated and all(not ra_needs_measures(r) or (r.get('status') == '완료·현장 확인' and ra_text_ready(r.get('verified_by')) and r.get('verified_date') and ra_text_ready(r.get('evidence')) and ra_score(r, True)) for r in rows),
+        bool(rows) and not ra_validate(meta, rows, True),
+    ]
+
+
+def ra_add_factors(trade, work, hazards, category, origin, factors, source='', source_note='직접 입력'):
+    import uuid
+    for factor in factors:
+        factor = factor.strip()
+        if not factor or any(r['trade'] == trade and r['work'] == work and r['factor'] == factor for r in st.session_state.ra_rows): continue
+        row = ra_default_row()
+        row.update(id=uuid.uuid4().hex, trade=trade, work=work, hazards=list(hazards), category=category,
+                   origin=origin, factor=factor, source=source, source_note=source_note)
+        st.session_state.ra_rows.append(row)
+    st.session_state.ra_meta['trades'] = list(dict.fromkeys(st.session_state.ra_meta['trades']+[trade]))
+    ra_invalidate_review()
+
+
+def ra_active_row(stage):
+    rows = st.session_state.ra_rows
+    if not rows:
+        st.info('② 위험요인 파악에서 평가 항목을 추가해 주세요.')
+        st.button('위험요인 작성으로 이동', key='ra_empty_'+stage, on_click=ra_go_step, args=(1,))
+        return None
+    ids = [row['id'] for row in rows]
+    key = 'ra_active_'+stage
+    if st.session_state.get(key) not in ids: st.session_state[key] = ids[0]
+    labels = {row['id']: f'{number}. '+row['factor'][:70] for number, row in enumerate(rows, 1)}
+    selected = st.selectbox('작성할 평가 항목', ids, format_func=labels.__getitem__, key=key)
+    row = ra_target(selected)
+    st.caption(row['trade']+' · '+row['work'])
+    return row
+
+
+def ra_score_input(row, field, label, maximum):
+    values = RA_FREQUENCY if maximum == 5 else RA_SEVERITY
+    result = ra_field(label, field, row['id'], 'select', list(range(maximum+1)),
+                      format_func=lambda n: '미평가' if n == 0 else f'{n}점 · {values[n-1][0]} · {values[n-1][1]}')
+    if result: st.caption(('노출 예시: '+values[result-1][2]) if maximum == 5 else values[result-1][1])
+    return result
+
+
+def ra_fill_reason(row_id):
+    row = ra_target(row_id)
+    f, s = row['frequency'], row['severity']
+    if f and s:
+        ra_set_field(row_id, 'reason', f'빈도 {f}점({RA_FREQUENCY[f-1][0]}): '+RA_FREQUENCY[f-1][1]+'\n현장의 노출 빈도·시간과 안전조치 상태: [작성]\n'+f'강도 {s}점({RA_SEVERITY[s-1][0]}): '+RA_SEVERITY[s-1][1]+'\n예상 피해와 대상 근로자: [작성]')
+
+
+def ra_fill_measures(row_id, example_id):
+    example = next(v for v in RA_KECO_EXAMPLES if v['id'] == example_id)
+    old = ra_target(row_id)['measures']
+    text = '\n'.join(f'[{kind}] {detail}' for kind, detail in example['controls'])
+    if text not in old: ra_set_field(row_id, 'measures', '\n'.join(v for v in (old, text) if v))
+    ra_set_field(row_id, 'control_types', list(dict.fromkeys(ra_target(row_id)['control_types']+[v[0] for v in example['controls']])))
+
+
+def ra_apply_ai_measures(row_id, key):
+    picked = st.session_state.get(key, [])
+    if picked:
+        ra_set_field(row_id, 'measures', '\n'.join(v for v in (ra_target(row_id)['measures'], '\n'.join(picked)) if v))
+
+
+def ra_sharing_draft():
+    meta, rows = st.session_state.ra_meta, st.session_state.ra_rows
+    lines = [f"{meta['site']} 위험성평가 결과 공유", '작업과 관련된 위험요인·위험성 수준·감소대책·이행상태를 확인합니다.']
+    for number, row in enumerate(sorted(rows, key=lambda r: r['frequency']*r['severity'], reverse=True), 1):
+        score = row['frequency']*row['severity']
+        lines.extend([f'{number}. {row["trade"]}: {row["factor"]}',
+                      f'현재 위험성 {score or "미평가"} / {ra_risk_level(score)[0]}',
+                      '준수·주의사항: '+(row['measures'] or row['existing'] or '[작성]'),
+                      f'이행상태: {row["status"]} / 담당: {row["owner"] or "[작성]"} / 기한: {row["deadline"] or "[작성]"}'])
+    ra_set_field(None, 'sharing', '\n'.join(lines))
+
+
+def ra_payload():
+    return dict(schema_version=2, meta=st.session_state.ra_meta, rows=st.session_state.ra_rows,
+                final=st.session_state.ra_meta.get('report_mode') == '현장 검토본')
+
+
+def ra_archive(owner, payload):
+    owner = report_history_identity(owner)
+    encoded = json.dumps(payload, ensure_ascii=False, allow_nan=False)
+    db = inspection_store()
     try:
         with db:
             db.execute('CREATE TABLE IF NOT EXISTS risk_assessments (id TEXT PRIMARY KEY, owner TEXT, created TEXT, site TEXT, payload TEXT)')
-            db.execute('INSERT OR IGNORE INTO risk_assessments VALUES (?,?,?,?,?)',(ra_hash(payload),str(owner),datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(),payload['meta']['site'],json.dumps(payload,ensure_ascii=False)))
-    finally:db.close()
+            db.execute('INSERT OR IGNORE INTO risk_assessments VALUES (?,?,?,?,?)',
+                       (ra_hash([owner, payload]), owner, datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(), str(payload['meta'].get('site', '')), encoded))
+    finally: db.close()
+
+
+def ra_saved_list(owner):
+    owner = report_history_identity(owner)
+    db = inspection_store()
+    try:
+        if 'risk_assessments' not in report_history_tables(db): return []
+        return db.execute('SELECT id,created,site FROM risk_assessments WHERE owner=? ORDER BY created DESC,rowid DESC LIMIT 50', (owner,)).fetchall()
+    finally: db.close()
+
+
+def ra_saved_load(owner, record_id):
+    owner = report_history_identity(owner)
+    db = inspection_store()
+    try:
+        row = db.execute('SELECT payload FROM risk_assessments WHERE id=? AND owner=?', (str(record_id), owner)).fetchone()
+        if not row: raise PermissionError('본인이 저장한 위험성평가만 불러올 수 있습니다.')
+        return ra_normalize_payload(json.loads(row[0]), owner)
+    finally: db.close()
+
+
+def ra_restore_state(payload, actor):
+    # Callback runs before widgets are instantiated; no changes to other app tabs.
+    restored = ra_normalize_payload(payload, actor)
+    for key in list(st.session_state):
+        if key.startswith('ra_'): del st.session_state[key]
+    st.session_state.ra_actor = str(actor)
+    st.session_state.ra_meta = restored['meta']
+    st.session_state.ra_rows = restored['rows']
+    st.session_state.ra_applied_tasks = restored['meta']['trades']
+    st.session_state.ra_step = RA_STEPS[0]
+    st.session_state.ra_notice = '저장한 내용을 불러왔습니다. 적용 기준과 현장 상황을 다시 확인해 주세요.'
+
+
+def ra_load_selected(actor):
+    try: ra_restore_state(ra_saved_load(actor, st.session_state.ra_saved_choice), actor)
+    except (ValueError, PermissionError, StorageError, json.JSONDecodeError) as exc: st.session_state.ra_load_error = str(exc)
+
+
+def ra_load_backup(actor):
+    uploaded = st.session_state.get('ra_backup_file')
+    try:
+        if not uploaded or uploaded.size > 40*1024*1024: raise ValueError('작성 내용 JSON 백업(40MB 이하)을 선택해 주세요.')
+        ra_restore_state(json.loads(uploaded.getvalue().decode('utf-8-sig')), actor)
+    except (ValueError, UnicodeDecodeError, PermissionError, json.JSONDecodeError) as exc: st.session_state.ra_load_error = str(exc)
 
 
 def ra_delete_row(row_id):
     if st.session_state.get('password_correct'):
-        st.session_state.ra_rows=[row for row in st.session_state.get('ra_rows',[]) if row['id']!=row_id]
+        st.session_state.ra_rows = [row for row in st.session_state.get('ra_rows', []) if row['id'] != row_id]
+        ra_invalidate_review()
+
+
+def ra_overview(meta, rows):
+    if not rows: return
+    st.dataframe([{'번호': i, '세부작업': r['trade'].split(' / ')[-1], '위험발생상황': r['factor'],
+                   '현재 점수': str(r['frequency']*r['severity']) if r['frequency']*r['severity'] else '미평가',
+                   '위험도': ra_risk_level(r['frequency']*r['severity'])[0],
+                   '개선 담당자': r['owner'], '이행 상태': r['status']} for i, r in enumerate(rows, 1)],
+                 hide_index=True, width='stretch')
+
+
+def ra_render_preparation(meta, actor):
+    st.info('평가할 작업 범위와 참여자를 정하고, 현장 자료와 점수 기준을 준비합니다.')
+    with st.expander('작성 예시와 기준 자료'):
+        st.write('작업 개요: 관로 설치 구간의 굴착 → 관 인양·부설 → 되메우기 작업. 작업 위치·깊이·장비·주변 통행 등은 실제 현장 조건을 작성합니다.')
+        st.caption('주요작업 분석·안전보건상 위험정보: 절차서 붙임 10·11 / 참여·사전교육 기록: 붙임 5·7·8')
+    left, right = st.columns(2)
+    with left:
+        ra_field('담당부서', 'department', placeholder='예: 시설사업1부')
+        ra_field('평가현장', 'site', placeholder='현장명 입력', help='안전점검 등록에서 선택한 현장명이 처음 표시됩니다.')
+        ra_field('현장 주소', 'address')
+        ra_field('수행기관·시공사', 'company')
+    with right:
+        ra_field('평가일', 'date', kind='date')
+        ra_field('평가 구분', 'kind', kind='select', options=['최초평가', '정기평가', '수시평가', '상시평가 기록'])
+        if meta['kind'] == '수시평가': ra_field('수시평가 실시 사유', 'trigger', kind='area', placeholder='예: 작업방법 변경, 새로운 위험요인 발견, 사고·아차사고')
+        ra_field('평가 담당자', 'evaluator')
+        ra_field('관리감독자·검토자', 'reviewer')
+    ra_field('평가 대상 작업 개요', 'work_scope', kind='area', placeholder='어디에서 어떤 순서로 무엇을 하는 작업인지 작성하세요.')
+    with st.expander('참여 근로자·사전 공유·교육', expanded=True):
+        ra_field('참여 근로자 명단·역할', 'workers', kind='area', placeholder='한 줄에 이름 / 소속 / 참여 작업 또는 역할')
+        ra_field('근로자대표', 'worker_rep', placeholder='대표 이름·소속. 해당 여부가 불분명하면 확인 필요를 명시하세요.')
+        ra_field('근로자 의견·아차사고 및 반영사항', 'opinions', kind='area', placeholder='예: 장비와 보행자 동선 분리 요청 → 유도자·출입통제 대책에 반영')
+        ra_field('평가 일정 사전 공유 기록', 'pre_shared', kind='area', placeholder='실시일 / 공유 대상 / TBM·게시·회의 등 방법 / 공유한 일정')
+        ra_field('사전교육 기록', 'education', kind='area', placeholder='교육일·내용·참석자·기록 위치. 미실시이면 계획을 구분해 작성')
+    with st.expander('장비·물질·안전보건정보'):
+        ra_field('주요 기계·기구·설비', 'equipment', kind='area', placeholder='장비명, 용량·수량, 운전·작업 조건')
+        ra_field('취급물질·화학물질 및 MSDS', 'materials', kind='area', placeholder='제품명·물질명·취급방법·MSDS 확인 상태')
+        ra_field('검토한 자료', 'information', kind='multi', options=['작업절차·작업계획서', '장비 사양·점검결과', 'MSDS', '도면·지하매설물 정보', '혼재작업 정보', '재해·아차사고', '작업환경·건강정보', '안전작업허가'])
+        ra_field('확인한 위험정보·추가 확인사항', 'information_note', kind='area')
+        st.caption('소음 측정치·건강자료와 화학물질 CHARM 평가는 공단의 별도 평가방법도 함께 검토하세요.')
+    with st.expander('공단 빈도·강도 기준', expanded=True):
+        st.caption(RA_PROCEDURE+' · 붙임 2. 현장의 최신 적용 절차와 함께 확인합니다.')
+        st.dataframe([{'빈도': i, '수준': v[0], '안전조치·발생 가능성': v[1], '발생·노출 예시': v[2]} for i, v in enumerate(RA_FREQUENCY, 1)], hide_index=True, width='stretch')
+        st.dataframe([{'강도': i, '수준': v[0], '예상 피해': v[1]} for i, v in enumerate(RA_SEVERITY, 1)], hide_index=True, width='stretch')
+        st.caption('노출 예시는 판단을 돕는 기준입니다. 노출시간·방호상태·피해 가능성을 함께 고려하세요. 중대재해가 발생한 경우에는 첨부 절차서에 따라 빈도 5등급을 검토합니다.')
+        st.write('**8점 이상 감소대책 수립 · 16점 이상 즉시 작업 중지·즉시 안전조치**')
+        ra_field('위 기준의 현장 적용 여부를 근로자·담당자와 확인했습니다.', 'criteria_confirmed', kind='check')
+    st.markdown('#### 평가할 공종·세부작업')
+    ra_select_tasks()
+
+
+def ra_examples_for(trade, construction_type):
+    ranked = sorted(RA_KECO_EXAMPLES, key=lambda v: (not any(k in trade for k in v['keywords']), construction_type not in v.get('construction_types', []), v['title']))
+    return ranked
+
+
+def ra_render_identification(meta):
+    st.info('현장 순회점검·근로자 의견·아차사고와 사례를 참고해 위험발생상황을 작성합니다.')
+    tasks = list(dict.fromkeys(st.session_state.get('ra_applied_tasks', [])+meta['trades']))
+    if not tasks:
+        st.warning('① 사전준비에서 평가할 세부작업을 선택해 주세요.')
+        st.button('공종 선택으로 이동', on_click=ra_go_step, args=(0,), key='ra_pick_tasks')
+        return
+    if st.session_state.get('ra_item_trade') not in tasks: st.session_state.ra_item_trade = tasks[0]
+    trade = st.selectbox('이번에 평가할 세부작업', tasks, key='ra_item_trade')
+    work = ra_field('세부작업·위치·장비·작업조건', 'work', 'entry', placeholder='위치·높이/깊이·장비·인원·혼재작업 등 실제 조건')
+    category = ra_field('위험분류', 'category', 'entry', 'select', [None]+RA_CATEGORIES, format_func=lambda v: v or '위험분류 선택')
+    origin = ra_field('위험요인을 확인한 방법', 'origin', 'entry', 'select', RA_ORIGINS)
+    examples = ra_examples_for(trade, meta['construction_type'])
+    with st.expander('공단 가이드 사례로 작성하기', expanded=True):
+        ids = [v['id'] for v in examples]
+        selected_id = ra_field('참고할 사례', 'example', 'entry', 'select', ids, format_func=lambda eid: next(v['title'] for v in examples if v['id'] == eid))
+        example = next(v for v in examples if v['id'] == selected_id)
+        st.write('**위험요인 예시:** '+example['factor'])
+        for kind, text in example['controls']: st.write('• '+kind+' / '+text)
+        st.caption(example['source']+' · 현장 조건과 실행 가능성을 확인해 수정합니다.')
+        if example.get('incident'): st.caption('사고사례 요약: '+example['incident'])
+        if st.button('이 사례를 평가 항목으로 추가', key='ra_add_example', disabled=not work.strip()):
+            hazards = [label for label in RA_HAZARDS if any(tag in label for tag in example['hazards'])]
+            before = len(st.session_state.ra_rows)
+            ra_add_factors(trade, work, hazards, example['category'], '공단 가이드 사례', [example['factor']], example['source'], '공단 가이드 예시 · 현장 확인 필요')
+            st.success('평가 항목을 추가했습니다. 아래에서 현장 문구를 확인하세요.' if len(st.session_state.ra_rows) > before else '같은 작업·위험요인이 이미 있습니다.')
+    with st.expander('위험요인 직접 작성·AI 작성 도움'):
+        hazards = ra_field('관련 위험유형', 'hazards', 'entry', 'multi', RA_HAZARDS)
+        custom = ra_field('기타 위험유형', 'custom_hazard', 'entry')
+        if custom.strip(): hazards = hazards+[custom.strip()]
+        st.caption('작성 문장: [작업상황]에서 [위험원]에 [노출·접촉]하여 [예상 피해]가 발생할 위험')
+        direct = ra_field('직접 입력할 위험발생상황 (한 줄에 한 항목)', 'direct', 'entry', 'area', placeholder='예: 관로 굴착 내부에서 작업 중 굴착면 토사가 붕괴하여 근로자가 매몰될 위험')
+        user_source = ra_field('추가 현장자료·사례와 출처', 'source', 'entry', 'area', max_chars=30000)
+        source = '\n\n'.join(v for v in [example['source']+'\n'+example['factor']+'\n'+'\n'.join(text for _, text in example['controls']), ra_case_context(hazards), user_source] if v)
+        consent = ra_field('작업조건·위험유형·참고자료를 AI에 보내 후보를 받습니다.', 'consent', 'entry', 'check')
+        sig = ra_hash([meta['construction_type'], trade, work, hazards, source])
+        cache = st.session_state.get('ra_factors', {})
+        if st.button('AI 위험요인 후보 받기', disabled=not(consent and work.strip() and hazards), key='ra_factor_ai'):
+            try:
+                with st.spinner('입력한 현장 조건을 참고하고 있습니다…'):
+                    cache = {'sig': sig, 'items': ra_ai('factor', dict(construction_type=meta['construction_type'], trade=trade, work=work, hazards=hazards), source)}
+                st.session_state.ra_factors = cache
+            except Exception: st.error('AI 연결 확인 필요. 공단 사례 또는 직접 입력으로 작성할 수 있습니다.')
+        options = cache.get('items', []) if cache.get('sig') == sig else []
+        chosen = st.multiselect('현장에 해당하는 AI 후보', options, key='ra_select_'+sig[:12])
+        if st.button('선택·입력한 위험요인을 평가표에 추가', key='ra_add'):
+            factors = list(dict.fromkeys(chosen+[v.strip() for v in direct.splitlines() if v.strip()]))
+            if not work.strip() or not category or not factors or not hazards:
+                st.warning('작업조건·위험분류·위험유형·위험발생상황을 입력하세요.')
+            else:
+                for factor in factors:
+                    ra_add_factors(trade, work, hazards, category, 'AI 작성 후보' if factor in chosen else origin, [factor], source, 'AI 후보 · 현장 확인 필요' if factor in chosen else '직접 입력')
+                st.success('평가 항목을 추가했습니다.')
+    row = ra_active_row('identify')
+    if row:
+        st.markdown('#### 현장 상황에 맞게 확인·수정')
+        ra_field('실제 작업조건', 'work', row['id'], 'area')
+        ra_field('위험분류', 'category', row['id'], 'select', RA_CATEGORIES)
+        ra_field('위험발생상황', 'factor', row['id'], 'area')
+        ra_field('확인 방법', 'origin', row['id'], 'select', RA_ORIGINS)
+        ra_field('이 위험요인이 실제 현장에 해당하는지 확인했습니다.', 'site_confirmed', row['id'], 'check')
+        remove = st.checkbox('이 항목 삭제 확인', key='ra_delete_confirm_'+row['id'])
+        st.button('항목 삭제', disabled=not remove, on_click=ra_delete_row, args=(row['id'],), key='ra_delete_'+row['id'])
+    ra_overview(meta, st.session_state.ra_rows)
+
+
+def ra_render_rating(meta):
+    st.info('현재 안전조치를 확인한 상태에서 발생 가능성과 피해의 심각성을 판단합니다.')
+    row = ra_active_row('rating')
+    if not row: return
+    with st.expander('점수 기준·위험성 계산표'):
+        st.dataframe([{'빈도': f, **{f'강도 {s}': f*s for s in range(1, 5)}} for f in range(5, 0, -1)], hide_index=True, width='stretch')
+        st.dataframe([{'점수': band, '위험도': ra_risk_level(score)[0], '관리방향': ra_risk_level(score)[1]} for band, score in [('1~3', 3), ('4~6', 6), ('8', 8), ('9~12', 12), ('13~15', 15), ('16~20', 20)]], hide_index=True, width='stretch')
+        st.caption(RA_PROCEDURE+' · 붙임 2. 빈도는 노출시간·안전조치·발생 가능성을 함께 고려합니다.')
+    ra_field('현재 시행 중인 안전보건조치', 'existing', row['id'], 'area', placeholder='실제로 설치·시행 중인 조치만 입력. 없으면 없음')
+    ra_score_input(row, 'frequency', '현재 빈도(가능성)', 5)
+    ra_score_input(row, 'severity', '현재 강도(중대성)', 4)
+    score = row['frequency']*row['severity']
+    st.write(f'**현재 위험성: {score or "미평가"} · {ra_risk_level(score)[0]}**')
+    st.caption(ra_decision(row, meta)+' / '+ra_risk_level(score)[1])
+    st.button('점수 판단 사유 작성 틀 넣기', disabled=not score, on_click=ra_fill_reason, args=(row['id'],), key='ra_reason_template')
+    ra_field('점수 판단 사유', 'reason', row['id'], 'area', placeholder='노출 빈도·시간, 방호상태, 피해 가능성·예상 피해를 실제 조건으로 설명')
+    ra_field('급박한 위험이 우려됩니다.', 'urgent', row['id'], 'check')
+    ra_field('필수 안전조치의 미이행 또는 확인이 필요합니다.', 'mandatory', row['id'], 'check')
+    if row['urgent'] or score >= 16: st.error('점수·예산과 관계없이 작업 중지·대피 등 즉시 안전 확보가 필요합니다. 현장 책임자와 조치를 확인하세요.')
+    if not meta['criteria_confirmed']: st.warning('① 사전준비에서 점수 기준의 현장 적용 여부를 확인해 주세요.')
+    ra_overview(meta, st.session_state.ra_rows)
+
+
+def ra_render_measures(meta):
+    st.info('위험 제거·저감 → 공학적 대책 → 관리적 대책 → 개인보호구 순으로 검토하고, 담당자와 기한을 정합니다.')
+    row = ra_active_row('measures')
+    if not row: return
+    st.write(f'**{ra_decision(row, meta)}**')
+    examples = ra_examples_for(row['trade'], meta['construction_type'])
+    with st.expander('공단 감소대책 예시', expanded=True):
+        eid = st.selectbox('대책 참고 사례', [v['id'] for v in examples], format_func=lambda value: next(v['title'] for v in examples if v['id'] == value), key='ra_measures_example_'+row['id'])
+        example = next(v for v in examples if v['id'] == eid)
+        for kind, detail in example['controls']: st.write('• '+kind+' / '+detail)
+        st.caption(example['source'])
+        st.button('이 대책을 작성 초안에 추가', on_click=ra_fill_measures, args=(row['id'], eid), key='ra_measures_template_'+row['id'])
+    ra_field('감소대책 방법', 'control_types', row['id'], 'multi', RA_CONTROL_TYPES)
+    ra_field('최종 감소대책', 'measures', row['id'], 'area', placeholder='무엇을 어떻게 개선하는지, 작업 전 조건·검증방법을 구체적으로 작성')
+    left, right = st.columns(2)
+    with left: ra_field('개선 담당자', 'owner', row['id'])
+    with right: ra_field('개선 예정일·이행기한', 'deadline', row['id'], placeholder='YYYY-MM-DD 또는 즉시')
+    with st.expander('계획 예산·AI 대책 작성 도움'):
+        band = ra_field('이 항목의 개선 예산', 'budget_note', row['id'], 'select', ['미정', '추가 비용 최소화', '50만원 이내', '100만원 이내', '500만원 이내', '직접 입력'])
+        if band == '직접 입력': ra_field('계획 예산 상한 (원)', 'budget', row['id'], 'number', min_value=0, step=10000)
+        else: row['budget'] = {'미정': 0, '추가 비용 최소화': 0, '50만원 이내': 500000, '100만원 이내': 1000000, '500만원 이내': 5000000}[band]
+        st.caption('비용은 견적 확인 필요. 예산 부족 시 필수조치를 생략하지 않고 추가 예산·작업방법 변경을 검토합니다.')
+        consent = st.checkbox('이 항목의 작업·위험요인·현재 조치·예산·참고자료를 AI에 보냅니다.', key='ra_measure_consent_'+row['id'])
+        data = {k: row[k] for k in ('trade', 'work', 'hazards', 'factor', 'existing', 'frequency', 'severity', 'budget', 'budget_note', 'urgent', 'mandatory')}
+        data['construction_type'] = meta['construction_type']
+        source = row['source']+'\n'+example['source']+'\n'+'\n'.join(text for _, text in example['controls'])
+        sig = ra_hash([data, source])
+        cache_key = 'ra_measures_ai_'+row['id']
+        cache = st.session_state.get(cache_key, {})
+        if st.button('AI 개선대책 후보 받기', disabled=not consent, key='ra_measure_ai_button_'+row['id']):
+            try:
+                with st.spinner('대책 후보를 작성하고 있습니다…'): cache = {'sig': sig, 'items': ra_ai('measures', data, source)}
+                st.session_state[cache_key] = cache
+            except Exception: st.error('AI 연결 확인 필요. 공단 예시와 직접 입력을 이용해 주세요.')
+        options = cache.get('items', []) if cache.get('sig') == sig else []
+        pick_key = 'ra_measure_picks_'+row['id']+'_'+sig[:10]
+        picked = st.multiselect('반영할 대책 후보', options, key=pick_key)
+        st.button('선택 대책을 작성 내용에 추가', disabled=not picked, on_click=ra_apply_ai_measures, args=(row['id'], pick_key), key='ra_measure_apply_'+row['id'])
+
+
+def ra_render_execution(meta):
+    st.info('계획과 실제 이행을 구분해 기록하고, 개선 후 위험성을 직접 재평가합니다.')
+    row = ra_active_row('execution')
+    if not row: return
+    st.write('**감소대책:** '+(row['measures'] or '④ 감소대책을 먼저 작성하세요.'))
+    st.caption('개선 담당자 '+(row['owner'] or '미기재')+' / 예정일 '+(row['deadline'] or '미기재'))
+    ra_field('이행 상태', 'status', row['id'], 'select', ['미착수', '진행 중', '완료·현장 확인'])
+    left, right = st.columns(2)
+    with left: ra_field('완료 확인자', 'verified_by', row['id'])
+    with right: ra_field('개선 완료일·확인일', 'verified_date', row['id'], placeholder='YYYY-MM-DD')
+    ra_field('이행 증빙·점검 결과', 'evidence', row['id'], 'area', placeholder='사진·점검표의 보관 위치, 실제 개선 내용, 현장 확인 결과')
+    ra_score_input(row, 'residual_f', '개선 후 빈도', 5)
+    ra_score_input(row, 'residual_s', '개선 후 강도', 4)
+    before, after = row['frequency']*row['severity'], row['residual_f']*row['residual_s']
+    label = '현장 확인 재평가' if row['status'] == '완료·현장 확인' else '예상값 · 완료 확인 전'
+    st.write(f'**현재 {before or "미평가"} → 개선 후 {after or "미평가"} · {label}**')
+    if after >= 8: st.warning('개선 후에도 8점 이상입니다. 추가 감소대책과 후속 점검을 작성하세요.')
+    ra_field('잔여 위험·추가 개선계획', 'followup', row['id'], 'area', placeholder='추가 개선내용 / 담당 / 기한 / 후속 확인 방법')
+    st.caption('현재 빈도·강도와 개선 후 점수는 자동으로 낮추지 않습니다. 절차서 붙임 16의 실행결과 항목에 반영됩니다.')
+
+
+def ra_report_sections(meta, rows, final):
+    sections = [('사전준비 · 평가 개요', [
+        ('보고서 상태', '현장 검토본' if final else '초안 · 미확인 사항 포함'),
+        ('공사종류 / 담당부서', (meta.get('construction_type') or '확인 필요')+' / '+meta.get('department', '')),
+        ('현장명 / 주소', meta.get('site', '')+' / '+meta.get('address', '')),
+        ('수행기관·시공사', meta.get('company', '')), ('평가일 / 구분', meta.get('date', '')+' / '+meta.get('kind', '')),
+        ('수시평가 사유', meta.get('trigger', '') or '해당 없음 또는 미기재'),
+        ('평가 담당자 / 관리감독자·검토자', meta.get('evaluator', '')+' / '+meta.get('reviewer', '')),
+        ('평가 대상 작업 개요', meta.get('work_scope', '')), ('평가 대상 공종', '\n'.join(meta.get('trades', []))),
+        ('참여 근로자 / 근로자대표', meta.get('workers', '')+'\n대표: '+meta.get('worker_rep', '')),
+        ('근로자 의견 및 반영', meta.get('opinions', '')), ('평가 일정 사전 공유', meta.get('pre_shared', '')),
+        ('사전교육 기록', meta.get('education', '')), ('장비·설비 / 취급물질', meta.get('equipment', '')+'\n'+meta.get('materials', '')),
+        ('안전보건상 위험정보', '\n'.join(meta.get('information', []))+'\n'+meta.get('information_note', '')),
+        ('평가기준', RA_PROCEDURE+' · 빈도 5단계 × 강도 4단계 · 8점 이상 개선대책 수립'),
+        ('적용 기준 확인', '확인' if meta.get('criteria_confirmed') else '현장 적용 여부 확인 필요'),
+        ('서식 반영 범위', '절차서 붙임 10·11·14·16·17의 주요 작성 항목을 반영한 작성 지원 보고서')])]
+    for number, row in enumerate(rows, 1):
+        before, after = row['frequency']*row['severity'], row['residual_f']*row['residual_s']
+        sections.append((f'평가 항목 {number} · '+row['trade'], [
+            ('세부작업·위치·조건', row['work']), ('위험분류 / 유형', row.get('category', '')+' / '+' · '.join(row['hazards'])),
+            ('유해·위험발생상황', row['factor']), ('확인 방법 / 출처', row.get('origin', '')+' / '+row['source_note']),
+            ('현장 해당 여부 확인', '확인' if row.get('site_confirmed') else '미확인'), ('현재 안전보건조치', row['existing']),
+            ('현재 위험성', f'빈도 {row["frequency"] or "미평가"} × 강도 {row["severity"] or "미평가"} = {before or "미평가"} / '+ra_risk_level(before)[0]),
+            ('점수 판단 사유', row['reason']), ('조치 판단', ra_decision(row, meta)),
+            ('급박한 위험 / 필수조치 확인', f'{"급박한 위험 우려" if row["urgent"] else "별도 표시 없음"} / {"필수조치 확인·이행 필요" if row["mandatory"] else "별도 표시 없음"}'),
+            ('위험성 감소대책', row['measures']), ('감소대책 방법', ' / '.join(row.get('control_types', []))),
+            ('계획 예산', f'{row["budget"]:,}원 / {row["budget_note"]} / 견적 확인 필요'),
+            ('개선 담당자 / 예정일', row['owner']+' / '+row['deadline']), ('이행 상태', row['status']),
+            ('개선 후 위험성', ('현장 확인 재평가' if row['status'] == '완료·현장 확인' else '예상값 · 완료 확인 전')+f' / 빈도 {row["residual_f"] or "미평가"} × 강도 {row["residual_s"] or "미평가"} = {after or "미평가"}'),
+            ('완료 확인자 / 확인일', row['verified_by']+' / '+row['verified_date']), ('이행 증빙·현장 점검', row['evidence']),
+            ('잔여 위험·추가 개선', row.get('followup', '') or ('8점 이상 · 추가 개선 확인 필요' if after >= 8 else '현장 확인 필요')),
+            ('참고자료', row['source'] or '직접 입력 또는 일반적인 검토 후보')]))
+    sections.append(('결과 공유 · 이행·점검 확인', [
+        ('공유 상태 / 공유일·예정일 / 방법', meta.get('sharing_state', '')+' / '+meta.get('sharing_date', '')+' / '+meta.get('sharing_method', '')),
+        ('근로자 공유·TBM 전달내용', meta.get('sharing', '')), ('후속 점검 계획', meta.get('followup', '')),
+        ('이행·점검 확인사항', '\n'.join(key+': '+meta.get('checks', {}).get(key, '미확인') for key in RA_CHECK_ITEMS)),
+        ('보완사항 / 완료 예정일', meta.get('supplement', '')+' / '+meta.get('supplement_deadline', '')),
+        ('최종 현장 검토', '최신 내용 검토 확인' if meta.get('review_confirmed') and meta.get('review_sig') == ra_review_signature(meta, rows) else '미확인'),
+        ('기록 보존', '위험성평가 실시 시기·담당자·참여 근로자·근로자대표·위험성 결정·개선대책·이행 결과를 기록하고 3년간 보존합니다.'),
+        ('법령 확인', '산업안전보건법 시행규칙 제37조의2~제37조의4 / '+RA_GUIDE),
+        ('작성 자료', RA_PROCEDURE+' / 첨부 건설공사 위험성평가 실무가이드'),
+        ('유의사항', '사례·AI 후보는 현장 확인 후 적용합니다. 이 보고서는 작업허가 또는 작업 재개를 자동 승인하지 않습니다.')]))
+    return sections
+
+
+def ra_evaluation_grid(rows):
+    headers = ['번호', '공정·작업', '위험분류', '위험발생상황', '현재 안전조치', '빈도', '강도', '위험성',
+               '위험성 감소대책', '대책방법', '개선 후 위험성', '개선 예정일', '개선 완료일', '담당자']
+    values = [[str(i), row['trade'], row.get('category', ''), row['factor'], row['existing'],
+               str(row['frequency'] or '-'), str(row['severity'] or '-'), str(row['frequency']*row['severity'] or '-'),
+               row['measures'], ' / '.join(row.get('control_types', [])),
+               str(row['residual_f']*row['residual_s'] or '-')+(' (예상)' if row['status'] != '완료·현장 확인' and row['residual_f']*row['residual_s'] else ''),
+               row['deadline'], row['verified_date'] if row['status'] == '완료·현장 확인' else '-', row['owner']] for i, row in enumerate(rows, 1)]
+    return headers, values
+
+
+def ra_pdf(meta, rows, final):
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from xml.sax.saxutils import escape
+    if 'KecoNanum' not in pdfmetrics.getRegisteredFontNames(): generate_inspection_pdf('', '', '', {})
+    style = ParagraphStyle('ra_body', fontName='KecoNanum', fontSize=9.5, leading=14, wordWrap='CJK')
+    small = ParagraphStyle('ra_small', parent=style, fontSize=7.4, leading=10.5)
+    compact = ParagraphStyle('ra_overview', parent=style, fontSize=9, leading=11.8)
+    title = ParagraphStyle('ra_title', parent=style, fontSize=20, leading=27, alignment=1, spaceAfter=15)
+    heading = ParagraphStyle('ra_heading', parent=style, fontSize=13, leading=18, textColor=colors.HexColor('#086b55'), spaceAfter=9)
+    def para(value, cell_style=style):
+        text = re.sub(r'[\U00010000-\U0010ffff\u2600-\u27bf\ufe0f]', '', str(value if value not in (None, '') else '미입력'))
+        return Paragraph(escape(text).replace('\n', '<br/>'), cell_style)
+    def table_style(header=True):
+        commands = [('GRID', (0, 0), (-1, -1), .35, colors.HexColor('#bacfc6')), ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('TOPPADDING', (0, 0), (-1, -1), 5), ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 5), ('RIGHTPADDING', (0, 0), (-1, -1), 5)]
+        if header: commands.append(('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e6f3eb')))
+        return TableStyle(commands)
+    story = [Paragraph('현장 위험성평가 보고서', title), para('공단 작성 항목 반영 / '+('현장 검토본' if final else '초안 · 미확인 사항 포함')), Spacer(1, 12)]
+    sections = ra_report_sections(meta, rows, final)
+    story.append(Paragraph(sections[0][0], heading))
+    overview = Table([[para(label, compact), para(value, compact)] for label, value in sections[0][1]], colWidths=[151, 593], splitByRow=1, splitInRow=1)
+    overview.setStyle(table_style(False))
+    overview.setStyle(TableStyle([('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]))
+    story.append(overview)
+    story.extend([PageBreak(), Paragraph('위험성평가표 · 위험성 결정', heading), para('절차서 붙임 14의 작성 항목 반영. 완료 확인 전 개선 후 점수는 예상값입니다.'), Spacer(1, 10)])
+    headers, values = ra_evaluation_grid(rows)
+    grid = Table([[para(value, small) for value in line] for line in [headers]+values],
+                 colWidths=[24, 74, 54, 116, 72, 24, 24, 34, 106, 50, 40, 42, 42, 42], repeatRows=1, splitByRow=1, splitInRow=1)
+    grid.setStyle(table_style()); story.append(grid)
+    story.extend([Spacer(1, 12), para('8점 이상: 감소대책 수립 / 13~15점: 긴급 임시안전대책 / 16~20점: 즉시 작업 중지·즉시 개선')])
+    for name, pairs in sections[1:]:
+        story.extend([PageBreak(), Paragraph(name, heading)])
+        detail = Table([[para(label), para(value)] for label, value in pairs], colWidths=[151, 593], splitByRow=1, splitInRow=1)
+        detail.setStyle(table_style(False)); story.append(detail)
+    output = io.BytesIO()
+    def footer(canvas, document):
+        canvas.setFont('KecoNanum', 8)
+        canvas.drawString(40, 22, '한국환경공단 위험성평가 작성 지원 / '+('현장 검토본' if final else '초안'))
+        canvas.drawRightString(802, 22, str(document.page))
+    SimpleDocTemplate(output, pagesize=landscape(A4), leftMargin=40, rightMargin=40, topMargin=38, bottomMargin=38).build(story, onFirstPage=footer, onLaterPages=footer)
+    return output.getvalue()
+
+
+def ra_hwpx(meta, rows, final):
+    doc = HwpxDocument.new()
+    if hasattr(doc, 'page'):
+        doc.page.setup(paper_size='A4', orientation='LANDSCAPE', margin_left_mm=14, margin_right_mm=14, margin_top_mm=14, margin_bottom_mm=14)
+    elif hasattr(doc, 'set_page_setup'):
+        doc.set_page_setup(paper_size='A4', orientation='LANDSCAPE', margin_left_mm=14, margin_right_mm=14, margin_top_mm=14, margin_bottom_mm=14)
+    else:
+        doc.set_page_size(width=59528, height=84189, orientation='LANDSCAPE')
+        doc.set_page_margins(left=3969, right=3969, top=3969, bottom=3969)
+    apply_format = doc.styles.apply_paragraph_format if hasattr(doc, 'styles') else doc.set_paragraph_format
+    def paragraph(text, size=10, bold=False, page_break=False):
+        # Each paragraph starts from the body style; headings must not propagate
+        # centering or page-break settings to the paragraphs that follow them.
+        p = doc.add_paragraph('', para_pr_id_ref='0')
+        p.add_run(str(text or '미입력'), font='맑은 고딕', size=size, bold=bold)
+        if page_break: apply_format(paragraphs=[p], page_break_before=True)
+        return p
+    title = paragraph('현장 위험성평가 보고서', 20, True)
+    apply_format(paragraphs=[title], alignment='CENTER')
+    paragraph('공단 작성 항목 반영 / '+('현장 검토본' if final else '초안 · 미확인 사항 포함'))
+    sections = ra_report_sections(meta, rows, final)
+    paragraph(sections[0][0], 13, True)
+    for label, value in sections[0][1]:
+        paragraph(label, 10, True)
+        for line in str(value or '미입력').splitlines(): paragraph(line)
+    paragraph('위험성평가표 · 위험성 결정', 13, True, True)
+    paragraph('절차서 붙임 14의 작성 항목 반영. 긴 문구의 전체 내용은 뒤의 항목별 상세기록에 표시됩니다.', 9)
+    headers, lines = ra_evaluation_grid(rows)
+    widths = [2400, 7400, 5400, 11600, 7200, 2400, 2400, 3400, 10600, 5000, 4000, 4200, 4200, 4200]
+    # Repeat small tables rather than a fixed-height table spanning many HWP pages.
+    for offset in range(0, len(lines), 3):
+        values = [headers]+lines[offset:offset+3]
+        table = doc.add_table(rows=len(values), cols=len(headers), width=sum(widths), height=7000*len(values))
+        for i, line in enumerate(values):
+            for j, value in enumerate(line):
+                text = str(value)
+                limit = max(12, int(widths[j]/750)*5)
+                if len(text) > limit: text = text[:limit]+'…'
+                cell = table.cell(i, j); cell.set_size(width=widths[j], height=7000); cell.set_text('')
+                cell.paragraphs[0].add_run(text, font='맑은 고딕', size=8, bold=i == 0)
+        paragraph('')
+    for name, pairs in sections[1:]:
+        paragraph(name, 13, True, True)
+        for label, value in pairs:
+            paragraph(label, 10, True)
+            for line in str(value or '미입력').splitlines(): paragraph(line)
+    output = io.BytesIO(); doc.save_to_stream(output)
+    return output.getvalue()
+
+
+def ra_render_sharing(meta, actor):
+    st.info('공유 내용과 후속 계획을 기록하고, 누락 항목을 확인한 뒤 보고서를 만듭니다.')
+    st.button('TBM·근로자 공유 문구 초안 만들기', on_click=ra_sharing_draft, disabled=not st.session_state.ra_rows, key='ra_sharing_template')
+    left, right = st.columns(2)
+    with left:
+        ra_field('공유 상태', 'sharing_state', kind='select', options=['공유 예정', '공유 완료'])
+        ra_field('공유일·예정일', 'sharing_date', kind='date')
+    with right: ra_field('공유 방법', 'sharing_method', kind='select', options=['TBM', '현장 게시', '교육', '회의·메신저', '기타'])
+    ra_field('근로자 공유·교육·TBM 전달내용', 'sharing', kind='area', height=200)
+    ra_field('후속 점검 계획', 'followup', kind='area', placeholder='점검 대상 / 담당 / 다음 점검일 / 확인 방법')
+    with st.expander('이행·점검 확인서 항목 (붙임 17)'):
+        for number, label in enumerate(RA_CHECK_ITEMS):
+            key = 'ra_check_'+str(number)
+            saved = meta['checks'].get(label, '미확인')
+            if key not in st.session_state: st.session_state[key] = saved
+            value = st.selectbox(label, ['미확인', '이행', '보완 필요', '해당 없음'], key=key)
+            if meta['checks'].get(label) != value:
+                meta['checks'][label] = value
+                ra_invalidate_review()
+        ra_field('보완사항', 'supplement', kind='area')
+        ra_field('보완 완료 예정일', 'supplement_deadline')
+    with st.expander('보고서에 들어갈 평가표 미리보기', expanded=True): ra_overview(meta, st.session_state.ra_rows)
+    missing = [error for error in ra_validate(meta, st.session_state.ra_rows, True) if '최신 내용' not in error]
+    if missing:
+        st.warning(f'현장 검토본 작성 전 확인할 항목 {len(missing)}개')
+        for error in missing: st.write('• '+error)
+    else: st.success('주요 작성 항목을 입력했습니다. 현장 검토 후 보고서 구분을 선택하세요.')
+    ra_field('현장 위험요인·점수·대책·참여 및 공유 기록의 최신 내용을 검토했습니다.', 'review_confirmed', kind='check')
+    ra_field('보고서 구분', 'report_mode', kind='select', options=['초안', '현장 검토본'])
+    payload = ra_payload(); sig = ra_hash(payload)
+    st.download_button('작성 내용 JSON 백업', json.dumps(payload, ensure_ascii=False, indent=2).encode(), '위험성평가_작성내용.json', 'application/json', key='ra_json', on_click='ignore')
+    if st.button('위험성평가 보고서 만들기', type='primary', key='ra_build'):
+        errors = ra_validate(meta, st.session_state.ra_rows, payload['final'])
+        if errors:
+            for error in errors: st.warning(error)
+        else:
+            outputs = {'sig': sig}
+            with st.spinner('평가표와 상세기록을 보고서로 만들고 있습니다…'):
+                try: outputs['pdf'] = ra_pdf(meta, st.session_state.ra_rows, payload['final'])
+                except Exception: st.error('PDF 생성 실패. 글꼴·문서 라이브러리 확인 필요.')
+                try: outputs['hwpx'] = ra_hwpx(meta, st.session_state.ra_rows, payload['final'])
+                except Exception: st.error('한글 생성 실패. HWPX 라이브러리 확인 필요.')
+                if outputs.get('hwpx') or outputs.get('pdf'):
+                    try:
+                        ra_archive(actor, payload)
+                        archive_generated_reports(actor, 'risk:'+str(actor)+':'+sig, outputs.get('hwpx'), outputs.get('pdf'), title='위험성평가 보고서', site=meta.get('site', ''), kind='위험성평가')
+                        st.session_state.ra_last_saved_sig = sig
+                    except Exception: st.warning('보고서는 생성했으나 저장소 보관 확인 필요. 다운로드해 보관해 주세요.')
+            st.session_state.ra_output = outputs
+    outputs = st.session_state.get('ra_output', {})
+    if outputs.get('sig') == sig:
+        if outputs.get('pdf'): st.download_button('출력용 PDF 다운로드', outputs['pdf'], '위험성평가_보고서.pdf', 'application/pdf', key='ra_pdf_download', on_click='ignore')
+        if outputs.get('hwpx'): st.download_button('편집용 한글 HWPX 다운로드', outputs['hwpx'], '위험성평가_보고서.hwpx', 'application/hwp+zip', key='ra_hwpx_download', on_click='ignore')
+    elif outputs: st.caption('작성 내용이 바뀌었습니다. 보고서를 다시 만들어 주세요.')
 
 
 @st.fragment
 def render_risk_assessment(actor):
-    if not actor or not st.session_state.get('password_correct'):return
-    if st.session_state.get('ra_actor')!=str(actor):
-        for k in list(st.session_state):
-            if k.startswith('ra_'):del st.session_state[k]
-        st.session_state.ra_actor=str(actor)
-    st.subheader('위험성평가, 하나씩 선택해 작성하세요')
-    st.caption('① 공사종류 → ② 현장 정보 → ③ 공종 선택 → ④ 위험요인 → ⑤ 점수·개선대책 → ⑥ 보고서')
-    st.markdown('#### ① 공사종류를 선택하세요')
-    construction_type=st.selectbox('공사종류',RA_CONSTRUCTION_TYPES,index=None,
-                                 placeholder='공사종류를 선택하세요',key='ra_construction_type')
-    if construction_type is None:
-        st.caption('공사종류를 선택하면 현장 정보와 공종 선택이 표시됩니다.')
+    if not actor or not st.session_state.get('password_correct'): return
+    ra_initialize(actor)
+    meta, rows = st.session_state.ra_meta, st.session_state.ra_rows
+    st.subheader('공단 위험성평가 · 단계별 작성')
+    notice = st.session_state.pop('ra_notice', None)
+    if notice: st.success(notice)
+    error = st.session_state.pop('ra_load_error', None)
+    if error: st.error(error)
+    ra_field('공사종류', 'construction_type', kind='select', options=[None]+RA_CONSTRUCTION_TYPES,
+             format_func=lambda value: '공사종류를 선택하세요' if value is None else value)
+    if not meta['construction_type']:
+        st.info('공사종류를 선택하면 단계별 작성 화면이 열립니다.')
+        with st.expander('저장한 평가 이어서 작성'):
+            if st.button('저장 목록 확인', key='ra_load_initial'):
+                try: st.session_state.ra_saved_records = ra_saved_list(actor)
+                except (StorageError, PermissionError): st.error('저장 목록 연결 확인 필요.')
+            records = st.session_state.get('ra_saved_records', [])
+            if records:
+                st.selectbox('저장한 평가', [v[0] for v in records], format_func=lambda rid: next(v[1][:16]+' / '+v[2] for v in records if v[0] == rid), key='ra_saved_choice')
+                st.button('선택 평가 불러오기', on_click=ra_load_selected, args=(actor,), key='ra_load_initial_selected')
         return
-    st.info('AI는 검토할 후보를 제안합니다. 빈도·강도와 최종 대책은 근로자와 현장 담당자가 확인하여 결정합니다.')
-    if 'ra_rows' not in st.session_state:st.session_state.ra_rows=[]
-    rows=st.session_state.ra_rows
-    defaults={}
-    def text(label,key,default='',area=False):
-        value=defaults.get(key,default)
-        return (st.text_area if area else st.text_input)(label,value=str(value),key='ra_meta_'+key)
-    with st.expander('② 현장 정보',expanded=True):
-        # Keep existing score-input ranges; no unverified company action threshold.
-        meta={'construction_type':construction_type,'frequency_max':5,'severity_max':4,'frequency_labels':['']*5,
-              'severity_labels':['']*4,'threshold':0,'criteria_confirmed':False}
-        sites=list(dict.fromkeys(site for group in department_sites_map.values() for site in group))
-        meta['site']=st.selectbox('점검현장 선택',sites,key='ra_site_choice')
-        meta['evaluator']=text('평가자','evaluator',str(actor))
-        meta['date']=str(st.date_input('평가일',value=datetime.datetime.now(ZoneInfo('Asia/Seoul')).date(),key='ra_date'))
-        kinds=['최초평가','정기평가','수시평가','상시평가 기록']
-        meta['kind']=st.selectbox('평가 구분',kinds,key='ra_kind')
-    st.markdown('#### ③ 현장에 있는 공종을 모두 선택하세요')
-    trades=ra_select_tasks()
-    meta['trades']=list(dict.fromkeys(trades+[r['trade'] for r in rows]))
-    if any(r['trade'] not in trades for r in rows):st.caption('선택 해제한 공종의 기존 평가 항목은 유지됩니다. 불필요한 항목은 아래에서 삭제하세요.')
-    with st.expander('④ 위험요인 후보를 골라 평가 항목 추가',expanded=True):
-        if not trades:st.caption('위에서 세부작업을 체크하고 ‘선택한 작업 적용’을 눌러주세요.')
-        else:
-            if st.session_state.get('ra_item_trade') not in trades:
-                st.session_state.ra_item_trade=trades[0]
-            trade=st.selectbox('이번에 평가할 세부작업',trades,key='ra_item_trade')
-            work=st.text_input('세부작업·위치·장비·작업조건',placeholder='예: 3m 굴착구간 관로 설치, 굴착기와 근로자 동시작업',key='ra_work')
-            hazards=[]
-            for start in range(0,len(RA_HAZARDS),4):
-                cols=st.columns(4)
-                for j,h in enumerate(RA_HAZARDS[start:start+4]):
-                    if cols[j].checkbox(h,key='ra_hazard_'+str(start+j)):hazards.append(h)
-            custom_hazard=st.text_input('기타 위험유형 직접 입력',key='ra_custom_hazard')
-            if custom_hazard.strip():hazards.append(custom_hazard.strip())
-            user_source=st.text_area('추가 사고사례·현장자료 (출처명·URL과 내용을 함께 붙여넣기)',max_chars=30000,key='ra_source')
-            case_source=ra_case_context(hazards)
-            source='\n\n'.join(v for v in [case_source,user_source] if v)
-            with st.expander('추천에 참고하는 공개사례 보기'):
-                if case_source:st.text(case_source)
-                else:st.caption('이 위험유형의 내장 사례는 아직 없습니다. 자료를 추가하면 함께 참고합니다.')
-                st.caption('2026-09-30 확인한 안전보건공단 공개사례의 요약입니다. 최신 사례 자동 수집이나 현장 전체 위험의 누락 없는 식별을 보장하지 않습니다.')
-            consent=st.checkbox('입력한 공사종류·작업조건·위험유형·참고자료를 AI에 보내 추천받습니다.',key='ra_consent')
-            sig=ra_hash([construction_type,trade,work,hazards,source]);cache=st.session_state.get('ra_factors',{})
-            if st.button('✨ AI 위험요인 후보 받기',disabled=not(consent and work.strip() and hazards),key='ra_factor_ai'):
-                try:
-                    with st.spinner('작업조건에 맞는 위험요인을 검토하고 있습니다…'):
-                        cache={'sig':sig,'items':ra_ai('factor',{'construction_type':construction_type,'trade':trade,'work':work,'hazards':hazards},source)}
-                    st.session_state.ra_factors=cache
-                except Exception:st.error('AI 추천을 받지 못했습니다. 직접 입력하거나 잠시 후 다시 시도하세요.')
-            options=cache.get('items',[]) if cache.get('sig')==sig else []
-            selected=st.multiselect('현장에 해당하는 위험요인 선택 (여러 개 가능)',options,key='ra_select_'+sig[:12])
-            direct=st.text_area('직접 입력할 위험요인 (한 줄에 한 항목)',key='ra_direct')
-            if st.button('선택·입력한 위험요인을 평가표에 추가',key='ra_add'):
-                factors=list(dict.fromkeys(selected+[v.strip() for v in direct.splitlines() if v.strip()]))
-                if not factors or not hazards or not work.strip():st.warning('세부작업, 위험유형, 위험요인을 입력하세요.')
-                else:
-                    import uuid
-                    for factor in factors:
-                        if any(r['trade']==trade and r['work']==work and r['factor']==factor for r in rows):continue
-                        rows.append(dict(id=uuid.uuid4().hex,trade=trade,work=work,hazards=hazards.copy(),factor=factor,existing='',frequency=0,severity=0,reason='',urgent=False,mandatory=False,measures='',budget=0,budget_note='미정',owner='',deadline='',status='미착수',residual_f=0,residual_s=0,verified_by='',verified_date='',evidence='',source=source,source_note='AI 후보 · 현장 확인 필요' if factor in selected else '직접 입력'))
-                    st.session_state.ra_rows=rows;st.success('평가 항목을 추가했습니다. 아래에서 점수와 조치를 작성하세요.')
-    st.markdown('#### ⑤ 항목별 점수와 개선조치를 작성하세요')
-    st.caption('빈도 = 발생 가능성, 강도 = 피해의 심각성. 0은 미평가입니다. 조치 후 점수는 자동으로 낮추지 않습니다.')
-    for i,r in enumerate(rows):
-        prefix='ra_row_'+r['id'];
-        with st.expander(f'{i+1}. {r["trade"]} · {r["factor"][:55]}',expanded=len(rows)==1):
-            def edit(label,key,area=False):
-                r[key]=(st.text_area if area else st.text_input)(label,value=str(r.get(key,'')),key=prefix+key)
-            edit('세부작업·위치','work');edit('위험요인 (현장 상황에 맞게 수정)','factor',True);edit('현재 시행 중인 안전조치','existing',True)
-            for field,label,mx in [('frequency','빈도',meta['frequency_max']),('severity','강도',meta['severity_max']),('residual_f','조치 후 빈도',meta['frequency_max']),('residual_s','조치 후 강도',meta['severity_max'])]:
-                r[field]=st.selectbox(label,list(range(mx+1)),index=r[field] if r[field]<=mx else 0,format_func=lambda n, labels=meta['frequency_labels'] if field in ('frequency','residual_f') else meta['severity_labels']: '미평가' if n==0 else f'{n}점 · {labels[n-1] or "기준 확인 필요"}',key=prefix+field+str(mx))
-            edit('현재 점수 판단 사유 (노출 빈도·사고 가능성·예상 피해)','reason',True)
-            r['urgent']=st.checkbox('급박한 위험이 우려됩니다.',value=r['urgent'],key=prefix+'urgent')
-            r['mandatory']=st.checkbox('점수와 별도로 필요한 의무조치의 미이행 또는 확인이 필요합니다.',value=r['mandatory'],key=prefix+'mandatory')
-            decision=ra_decision(r,meta);st.write(f'**현재 {str(r["frequency"]*r["severity"])+"점" if r["frequency"] and r["severity"] else "미평가"} · {decision}**')
-            if r['urgent']:st.error('점수·예산과 무관하게 작업 중지·대피 등 즉시 안전 확보 여부를 현장 책임자와 확인하세요.')
-            budget_band=st.selectbox('이 항목의 개선 예산', ['미정','추가 비용 최소화','50만원 이내','100만원 이내','500만원 이내','직접 입력'],index=['미정','추가 비용 최소화','50만원 이내','100만원 이내','500만원 이내','직접 입력'].index(r['budget_note']),key=prefix+'budget_band')
-            r['budget_note']=budget_band
-            r['budget']=int(st.number_input('계획 예산 상한 (원)',min_value=0,value=int(r['budget']),step=10000,key=prefix+'budget')) if budget_band=='직접 입력' else {'미정':0,'추가 비용 최소화':0,'50만원 이내':500000,'100만원 이내':1000000,'500만원 이내':5000000}[budget_band]
-            st.caption('AI 비용은 확정 견적이 아닙니다. 예산 부족 시 필수조치를 생략하지 않고 추가 예산·작업방법 변경을 검토합니다.')
-            consent2=st.checkbox('공사종류와 이 항목의 작업·위험요인·현재 조치·예산·자료를 AI에 보냅니다.',key=prefix+'consent')
-            ai_input={k:r[k] for k in ['trade','work','hazards','factor','existing','frequency','severity','budget','budget_note','urgent','mandatory']}
-            ai_input['construction_type']=construction_type
-            msig=ra_hash([ai_input,r['source']]);stored=st.session_state.get(prefix+'suggestions',{})
-            if st.button('✨ 예산을 고려한 개선대책 추천',disabled=not consent2,key=prefix+'ai'):
-                try:
-                    with st.spinner('필수조치와 예산을 고려해 대안을 작성하고 있습니다…'):stored={'sig':msig,'items':ra_ai('measures',ai_input,r['source'])}
-                    st.session_state[prefix+'suggestions']=stored
-                except Exception:st.error('AI 연결 확인 필요. 개선대책은 직접 입력할 수 있습니다.')
-            opts=stored.get('items',[]) if stored.get('sig')==msig else []
-            picked=st.multiselect('적용할 개선대책 선택',opts,key=prefix+'picks'+msig[:10])
-            if st.button('선택 대책을 아래 내용에 추가',disabled=not picked,key=prefix+'apply'):
-                old=st.session_state.get(prefix+'measures',r['measures'])
-                st.session_state[prefix+'measures']='\n'.join(dict.fromkeys([v for v in [old]+picked if v]))
-            edit('최종 개선대책 (직접 수정 가능)','measures',True);edit('개선 담당자','owner');edit('이행기한 (YYYY-MM-DD 또는 즉시)','deadline')
-            statuses=['미착수','진행 중','완료·현장 확인'];r['status']=st.selectbox('이행 상태',statuses,index=statuses.index(r['status']),key=prefix+'status')
-            edit('완료 확인자','verified_by');edit('완료 확인일 (YYYY-MM-DD)','verified_date');edit('이행 증빙·잔여 위험 및 조치 후 점수 판단 사유','evidence',True)
-            if r['residual_f'] and r['residual_s'] and meta['threshold'] and r['residual_f']*r['residual_s']>=meta['threshold']:st.warning('조치 후에도 기준 이상입니다. 추가 개선대책을 검토하세요.')
-            delete=st.checkbox('이 항목 삭제 확인',key=prefix+'delete_confirm')
-            st.button('항목 삭제',disabled=not delete,key=prefix+'delete',on_click=ra_delete_row,args=(r['id'],))
-    st.markdown('#### ⑥ 검토·저장·보고서 출력')
-    meta['sharing']=text('근로자 공유 내용·공유일·후속 점검 계획','sharing',area=True)
-    meta['review_confirmed']=st.checkbox('현장 위험요인, 점수 및 대책을 검토했습니다.',value=False,key='ra_review_'+ra_hash([rows,meta])[:12])
-    mode=st.radio('보고서 구분',['초안','현장 검토본'],horizontal=True,key='ra_mode');final=mode=='현장 검토본'
-    meta['trades']=list(dict.fromkeys(meta['trades']+[r['trade'] for r in rows]))
-    payload={'meta':meta,'rows':rows,'final':final};sig=ra_hash(payload)
-    if st.button('작성 내용 저장',disabled=not rows,key='ra_save'):
-        try:ra_archive(actor,payload);st.success('작성 내용을 서버에 저장했습니다. 장기 보관용 파일도 내려받으세요.')
-        except Exception:st.error('서버 저장 실패. 아래 JSON 백업과 보고서를 내려받으세요.')
-    st.download_button('작성 내용 JSON 백업',json.dumps(payload,ensure_ascii=False,indent=2).encode(),'위험성평가_작성내용.json','application/json',key='ra_json',on_click='ignore')
-    if st.button('📄 위험성평가 보고서 만들기',type='primary',key='ra_build'):
-        errors=ra_validate(meta,rows,final)
-        if errors:
-            for error in errors:st.warning(error)
-        else:
-            outputs={'sig':sig}
-            try:outputs['pdf']=ra_pdf(meta,rows,final)
-            except Exception:st.error('PDF 생성 실패. 글꼴·문서 라이브러리 확인 필요.')
-            try:outputs['hwpx']=ra_hwpx(meta,rows,final)
-            except Exception:st.error('한글 생성 실패. HWPX 라이브러리 확인 필요.')
-            if outputs.get('hwpx') or outputs.get('pdf'):
-                try:
-                    ra_archive(actor,payload)
-                    archive_generated_reports(actor,'risk:'+str(actor)+':'+sig,outputs.get('hwpx'),outputs.get('pdf'),title='위험성평가 보고서',site=meta.get('site',''),kind='위험성평가')
-                except Exception:
-                    st.warning('보고서는 만들었으나 저장소 보관을 확인하지 못했습니다. 파일을 내려받아 보관하고 저장소 연결을 확인하세요.')
-            st.session_state.ra_output=outputs
-    outputs=st.session_state.get('ra_output',{})
-    if outputs.get('sig')==sig:
-        if outputs.get('pdf'):st.download_button('🖨️ 출력용 PDF 다운로드',outputs['pdf'],'위험성평가_보고서.pdf','application/pdf',key='ra_pdf_download',on_click='ignore')
-        if outputs.get('hwpx'):st.download_button('📝 편집용 한글 HWPX 다운로드',outputs['hwpx'],'위험성평가_보고서.hwpx','application/hwp+zip',key='ra_hwpx_download',on_click='ignore')
-    elif outputs:st.caption('내용이 변경되었습니다. 보고서 만들기를 다시 눌러 최신 파일을 생성하세요.')
-    st.caption('현재 점수는 빈도 × 강도로 계산합니다. 개선조치 기준점수가 미설정되어 점수에 따른 자동 판정은 보류합니다.')
+    st.caption('필요한 단계로 이동할 수 있습니다. 입력값은 단계 이동 후에도 유지되며, 임시 저장하면 다시 접속해 이어서 작성할 수 있습니다.')
+    left, right = st.columns(2)
+    with left:
+        if st.button('작성 내용 임시 저장', key='ra_save', width='stretch'):
+            try:
+                payload = ra_payload(); ra_archive(actor, payload)
+                st.session_state.ra_last_saved_sig = ra_hash(payload)
+                st.success('저장했습니다. ‘저장한 평가 이어서 작성’에서 불러올 수 있습니다.')
+            except Exception: st.error('저장소 연결 확인 필요. ⑥ 단계에서 JSON 백업을 내려받아 보관할 수 있습니다.')
+    with right:
+        with st.expander('저장한 평가 이어서 작성'):
+            st.caption('불러오면 현재 화면의 작성 내용이 선택한 평가로 바뀝니다.')
+            if st.button('저장 목록 확인', key='ra_saved_refresh'):
+                try: st.session_state.ra_saved_records = ra_saved_list(actor)
+                except (StorageError, PermissionError): st.error('저장 목록 연결 확인 필요.')
+            records = st.session_state.get('ra_saved_records', [])
+            if records:
+                st.selectbox('저장한 평가', [v[0] for v in records], format_func=lambda rid: next(v[1][:16]+' / '+v[2] for v in records if v[0] == rid), key='ra_saved_choice')
+                st.button('선택 평가 불러오기', on_click=ra_load_selected, args=(actor,), key='ra_load_selected')
+            st.file_uploader('작성 내용 JSON 백업 불러오기', type=['json'], key='ra_backup_file')
+            st.button('JSON 내용 불러오기', on_click=ra_load_backup, args=(actor,), disabled=not st.session_state.get('ra_backup_file'), key='ra_load_backup')
+    ready = ra_progress(meta, rows)
+    st.progress(sum(ready)/6, text=f'작성 확인 {sum(ready)}/6단계 · 평가 항목 {len(rows)}개')
+    step = st.radio('작성 순서', RA_STEPS, horizontal=True, key='ra_step')
+    index = RA_STEPS.index(step)
+    st.markdown('### '+step)
+    if index == 0: ra_render_preparation(meta, actor)
+    elif index == 1: ra_render_identification(meta)
+    elif index == 2: ra_render_rating(meta)
+    elif index == 3: ra_render_measures(meta)
+    elif index == 4: ra_render_execution(meta)
+    else: ra_render_sharing(meta, actor)
+    st.divider()
+    previous, next_step = st.columns(2)
+    with previous: st.button('이전 단계', on_click=ra_go_step, args=(index-1,), disabled=index == 0, key='ra_previous', width='stretch')
+    with next_step: st.button('다음 단계', on_click=ra_go_step, args=(index+1,), disabled=index == 5, key='ra_next', width='stretch')
+    st.caption('AI는 후보 작성만 돕습니다. 점수와 현장 적용·이행 확인은 참여 근로자와 담당자가 결정합니다.')
 
 
 with risk_tab:
