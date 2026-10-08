@@ -7589,24 +7589,49 @@ def ra_hub_change_trash(actor, restore):
     except Exception: st.session_state.ra_load_error = '저장소 반영 확인 필요. 목록을 새로고침해 보관 상태를 확인해 주세요.'
 
 
-def ra_hub_import_backup(actor):
-    try:
-        uploaded = st.session_state.get('ra_hub_backup_file')
-        if not uploaded or uploaded.size > 40*1024*1024: raise ValueError('작성 내용 JSON 백업(40MB 이하)을 선택해 주세요.')
-        data = ra_normalize_payload(json.loads(uploaded.getvalue().decode('utf-8-sig')), actor)
-        meta = data['meta']
-        name = (meta.get('assessment_name') or (meta.get('site') or '현장')+' 위험성평가')[:110]+' (백업 복원)'
-        kind = meta.get('kind') if meta.get('kind') in RA_KINDS else '수시평가'
-        record_id = ra_record_create(actor, name, kind, payload=data)
-        st.session_state.ra_hub_created_id = record_id
-        ra_hub_filter_reset()
-        st.session_state.ra_notice = '백업을 별도 평가로 등록했습니다. 평가명을 누르고 적용 기준과 현장 상황을 다시 확인해 주세요.'
-    except (ValueError, UnicodeDecodeError, PermissionError, json.JSONDecodeError) as exc: st.session_state.ra_load_error = str(exc)
-    except Exception: st.session_state.ra_load_error = '백업 등록 실패. 저장소 연결을 확인해 주세요.'
-
-
 def ra_hub_page_move(page):
     st.session_state.ra_hub_page_number = max(1, page)
+
+
+def ra_render_frequency_method():
+    st.markdown('#### 빈도·강도법이란?')
+    st.write('유해·위험요인이 발생할 가능성인 빈도와 피해의 크기인 강도를 각각 판단하고, 두 값을 곱해 위험성 수준과 필요한 조치를 결정하는 방법입니다.')
+    st.info('평가척도: **빈도 5 × 강도 4**')
+    st.markdown('#### 1. 유해·위험요인 파악')
+    st.write('공정·작업·장소·기계·물질·작업행동 등을 살펴보고, 산업재해·아차사고와 근로자 의견을 참고해 평가할 위험요인을 찾습니다.')
+    st.markdown('#### 2. 빈도 판단')
+    st.caption('위험요인에 노출되는 횟수·시간, 안전조치 상태와 피해가 발생할 가능성을 함께 고려합니다.')
+    st.dataframe([{'빈도': number, '수준': value[0], '판단 기준': value[1], '발생·노출 예시': value[2]}
+                  for number, value in reversed(list(enumerate(RA_FREQUENCY, 1)))], hide_index=True, width='stretch')
+    st.caption('절차서에서는 중대재해가 발생한 경우 빈도를 5등급으로 산정합니다.')
+    st.markdown('#### 3. 강도 판단')
+    st.caption('위험한 사건이 발생했을 때 예상되는 부상·질병과 피해의 크기를 판단합니다.')
+    st.dataframe([{'강도': number, '수준': value[0], '예상 피해': value[1]}
+                  for number, value in reversed(list(enumerate(RA_SEVERITY, 1)))], hide_index=True, width='stretch')
+    st.markdown('#### 4. 위험성 계산')
+    st.markdown('**위험성 = 빈도 × 강도**')
+    st.write('예: 빈도 3 × 강도 4 = 위험성 12')
+    st.dataframe([{'빈도': frequency, **{f'강도 {severity}': frequency*severity for severity in range(4, 0, -1)}}
+                  for frequency in range(5, 0, -1)], hide_index=True, width='stretch')
+    with st.expander('소음 평가 기준'):
+        st.caption('절차서의 소음 위험성 계산표에 따른 강도 기준입니다.')
+        st.dataframe([
+            {'작업환경측정결과': '95 dB 이상', '강도': 4, '수준': '매우 높음'},
+            {'작업환경측정결과': '90 dB 이상 ~ 95 dB 미만', '강도': 3, '수준': '높음'},
+            {'작업환경측정결과': '85 dB 이상 ~ 90 dB 미만', '강도': 2, '수준': '보통'},
+            {'작업환경측정결과': '80 dB 이상 ~ 85 dB 미만', '강도': 1, '수준': '낮음'},
+        ], hide_index=True, width='stretch')
+        st.write('소음성난청 유소견자가 발생한 경우에는 노출수준과 관계없이 강도 4를 적용합니다.')
+    st.markdown('#### 5. 위험성 수준과 관리기준')
+    bands = [('1~3', 3, '현재 안전대책 유지'), ('4~6', 6, '안전정보 제공 및 주기적인 표준작업 안전교육'),
+             ('8', 8, '표지 부착·작업절차서 반영 등 관리적 대책 및 점진적 개선'),
+             ('9~12', 12, '감소대책 수립, 계획된 정비·보수기간의 설비개선 등 추진'),
+             ('13~15', 15, '긴급 임시안전대책을 마련하고 계획된 설비개선 등 추진'),
+             ('16~20', 20, '즉시 작업 중지·시설개선 등 안전조치, 위험작업 불허')]
+    st.dataframe([{'위험성 점수': band, '위험도': ra_risk_level(score)[0], '관리기준': action}
+                  for band, score, action in bands], hide_index=True, width='stretch')
+    st.markdown('#### 6. 감소대책 수립·실행')
+    st.write('8점 이상인 위험요인에는 개선대책을 수립하고, 위험성이 높은 항목부터 개선계획을 추진합니다. 개선 후에는 현장 이행 여부를 확인하고 위험성을 다시 평가합니다.')
 
 
 def ra_render_guide():
@@ -7623,12 +7648,18 @@ def ra_render_guide():
                 st.caption('현장 예시 · '+example)
     with methods:
         for title, subtitle, description, availability in RA_METHOD_GUIDE:
+            if title == RA_METHOD:
+                with st.expander(title):
+                    st.markdown('**'+subtitle+'**')
+                    st.write(description)
+                    ra_render_frequency_method()
+                continue
             with st.container(border=True):
                 st.markdown('### '+title)
                 st.markdown('**'+subtitle+'**')
                 st.write(description)
                 st.caption(availability)
-        st.info('이 앱의 현재 평가척도는 공단 제공 절차서에 따른 빈도 1~5 × 강도 1~4입니다. 8점 이상은 감소대책, 16점 이상은 즉시 안전조치를 검토하며 현장의 적용 기준을 먼저 확인합니다.')
+        st.info('평가척도: **빈도 5 × 강도 4**')
     with writing:
         descriptions = ['평가 대상·참여자·자료·점수 기준과 공종을 정합니다.', '실제 작업조건을 입력하고 표준모델·근로자 의견 등으로 위험요인을 찾습니다.', '현재 안전조치를 확인하고 빈도·강도와 판단 사유를 작성합니다.', '위험을 낮출 대책, 담당자, 기한과 필요한 예산을 정합니다.', '실제 이행 여부와 증빙을 기록하고 개선 후 위험성을 재평가합니다.', 'TBM 등 공유 내용과 후속 점검을 기록하고 보고서를 만듭니다.']
         for title, description in zip(RA_STEPS, descriptions):
@@ -7636,8 +7667,7 @@ def ra_render_guide():
                 st.markdown('**'+title+'**')
                 st.write(description)
         st.caption('목록에서 평가명 선택 → 단계별 작성 → 임시 저장 → 이후 같은 평가를 열어 이어서 작성')
-    st.markdown('안내 참고: [사업장 위험성평가에 관한 지침](https://www.law.go.kr/행정규칙/사업장위험성평가에관한지침) · [고용노동부 위험성평가 방법 안내](https://www.moel.go.kr/news/enews/report/enewsView.do?news_seq=15093)')
-    st.caption('공단 작성 기준: '+RA_PROCEDURE+'. 구체적인 실시 시기·적용 예외는 최신 지침과 현장 실시규정을 함께 확인하세요.')
+    st.markdown('안내 참고: [사업장 위험성평가에 관한 지침](https://www.law.go.kr/행정규칙/사업장위험성평가에관한지침) · [고용노동부 산하기관 누리집 산업안전포털](https://portal.kosha.or.kr/kras/evaluation/kras-method)')
 
 
 def ra_render_registration(actor):
@@ -7734,10 +7764,11 @@ def ra_render_history(actor):
                 with status:
                     st.write(record['status'])
                     st.caption(f'작성 확인 {record["progress"]}/6')
-        left, label, right = st.columns([1, 2, 1])
-        with left: st.button('이전', key='ra_hub_page_previous', disabled=page == 1, on_click=ra_hub_page_move, args=(page-1,))
-        with label: st.caption(f'{page} / {page_count}페이지')
-        with right: st.button('다음', key='ra_hub_page_next', disabled=page == page_count, on_click=ra_hub_page_move, args=(page+1,))
+        with st.container(key='ra_hub_pagination'):
+            left, label, right = st.columns([1, 2, 1], gap='small')
+            with left: st.button('이전', key='ra_hub_page_previous', disabled=page == 1, on_click=ra_hub_page_move, args=(page-1,), width='stretch')
+            with label: st.markdown(f'<div class="ra-page-counter">{page} / {page_count}페이지</div>', unsafe_allow_html=True)
+            with right: st.button('다음', key='ra_hub_page_next', disabled=page == page_count, on_click=ra_hub_page_move, args=(page+1,), width='stretch')
     if selected:
         with st.container(border=True):
             st.write(f'선택한 평가 {len(selected)}건')
@@ -7747,11 +7778,6 @@ def ra_render_history(actor):
                 st.caption('평가 작성 이력을 휴지통으로 옮깁니다. 생성한 보고서는 보고서 보관함에서 별도로 관리합니다.')
                 confirmed = st.checkbox('선택한 평가를 휴지통으로 옮기는 것을 확인합니다.', key='ra_hub_delete_confirm')
                 st.button('선택 평가 삭제', key='ra_hub_delete', disabled=not confirmed, on_click=ra_hub_change_trash, args=(actor, False))
-    if not trashed:
-        with st.expander('작성 내용 JSON 백업 복원'):
-            st.caption('백업 파일을 새로운 평가로 등록합니다. 적용 기준과 현장 확인은 다시 검토하세요.')
-            st.file_uploader('작성 내용 JSON 백업', type=['json'], key='ra_hub_backup_file')
-            st.button('백업을 새 평가로 등록', key='ra_hub_import', disabled=not st.session_state.get('ra_hub_backup_file'), on_click=ra_hub_import_backup, args=(actor,))
     st.button('목록 새로고침', key='ra_hub_history_refresh')
 
 
@@ -7858,8 +7884,29 @@ def render_risk_assessment(actor):
     .st-key-ra_hub_intro {background:#f5f8fc;border:1px solid #e0e7ef;border-radius:12px;padding:6px 8px;}
     .st-key-ra_hub_filters_box {background:#f7f9fc;}
     .st-key-ra_hub_table_header {background:#edf3f9;padding:10px 14px;border-radius:8px;margin-bottom:8px;}
-    [class*="st-key-ra_hub_row_"] {border-color:#e5eaf0;border-radius:8px;}
-    [class*="st-key-ra_hub_row_"] button[kind="tertiary"] {color:#146bb8;text-align:left;justify-content:flex-start;font-weight:600;}
+    [class*="st-key-ra_hub_row_"] {background:#fff;border-color:#e5eaf0;border-radius:6px;box-shadow:none;}
+    [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button {
+        background:transparent!important;background-image:none!important;color:#1e293b!important;
+        border:none!important;border-radius:0!important;box-shadow:none!important;
+        min-height:0!important;height:auto!important;padding:0!important;
+        text-align:left!important;justify-content:flex-start!important;font-weight:600!important;
+        transform:none!important;transition:none!important;
+    }
+    [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button:hover {background:transparent!important;box-shadow:none!important;text-decoration:underline;}
+    [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button:focus-visible {outline:2px solid #64748b!important;outline-offset:4px;}
+    [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button p,
+    [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button span {color:#1e293b!important;-webkit-text-fill-color:#1e293b!important;font-size:16px!important;line-height:1.5!important;}
+    [class*="st-key-ra_hub_row_"] [data-testid="stCheckbox"] {background:transparent!important;border:none!important;min-height:0!important;padding:0!important;box-shadow:none!important;}
+    .st-key-ra_hub_pagination [data-testid="stHorizontalBlock"] {flex-wrap:nowrap!important;align-items:center!important;}
+    .st-key-ra_hub_pagination [data-testid="stColumn"] {min-width:0!important;}
+    .st-key-ra_hub_pagination [data-testid="stButton"] > button {
+        background:#fff!important;background-image:none!important;color:#334155!important;
+        border:1px solid #d7dce3!important;border-radius:6px!important;box-shadow:none!important;
+        min-height:38px!important;height:38px!important;padding:6px 12px!important;transform:none!important;
+    }
+    .st-key-ra_hub_pagination [data-testid="stButton"] > button p {color:#334155!important;-webkit-text-fill-color:#334155!important;font-size:15px!important;}
+    .st-key-ra_hub_pagination [data-testid="stButton"] > button:disabled {opacity:.45!important;}
+    .st-key-ra_hub_pagination .ra-page-counter {text-align:center;line-height:38px;font-size:15px;color:#64748b;}
     @media(max-width:700px){.st-key-ra_hub_table_header{display:none;}}
     </style>''', unsafe_allow_html=True)
     notice = st.session_state.pop('ra_notice', None)
