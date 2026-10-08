@@ -2041,6 +2041,19 @@ if not check_password():
     st.stop()
     
 logged_user_id = st.session_state.get('logged_user')
+
+_MOBILE_BACK_GUARD_HTML = '<!doctype html><html><body><script>(() => {\n  "use strict";\n  let w;\n  try { w = window.parent; void w.document.body; } catch (_) { return; }\n  const owner = __BACK_GUARD_OWNER__;\n  const slot = "__kecoMobileBackGuardV1";\n  if (w[slot] && w[slot].owner === owner) { w[slot].syncTabs(); return; }\n  if (w[slot]) w[slot].dispose();\n  const doc = w.document, hist = w.history;\n  const tag = "__kecoBackGuard", marker = "keco-safe-back-v1:" + owner;\n  let observer, syncTimer, busy = false, disposed = false, leaving = false;\n  let exitDialog = null, restoringTab = null;\n  let pendingRevision = null, busyTimer;\n  const trail = [];\n  const state = phase => Object.assign({}, hist.state || {}, {[tag]: {marker, phase}});\n  const rearm = () => {\n    if (!disposed && !leaving) hist.pushState(state("guard"), "", w.location.href);\n  };\n  const mainTabs = () => {\n    const menu = doc.querySelector(".st-key-keco_main_menu");\n    const list = menu && menu.querySelector(\'[role="tablist"]\');\n    return list ? Array.from(list.querySelectorAll(\'[role="tab"]\')) : [];\n  };\n  const activeIndex = () => mainTabs().findIndex(tab => tab.getAttribute("aria-selected") === "true");\n  const syncTabs = () => {\n    const risk = doc.getElementById("keco-risk-navigation");\n    if (pendingRevision !== null && risk && risk.dataset.revision !== pendingRevision) {\n      pendingRevision = null; busy = false; w.clearTimeout(busyTimer);\n    }\n    const index = activeIndex();\n    if (index < 0) return;\n    if (restoringTab !== null) {\n      if (index === restoringTab) restoringTab = null;\n      return;\n    }\n    if (!trail.length || trail[trail.length-1] !== index) trail.push(index);\n    if (trail.length > 100) trail.splice(0, trail.length-100);\n  };\n  const blurInput = () => {\n    const focused = doc.activeElement;\n    if (focused && focused !== doc.body && typeof focused.blur === "function") focused.blur();\n  };\n  const removeDialog = () => {\n    if (!exitDialog) return;\n    const restoreFocus = exitDialog.restoreFocus;\n    exitDialog.element.remove(); exitDialog = null;\n    if (restoreFocus && restoreFocus.isConnected) restoreFocus.focus();\n  };\n  const showExit = (message = "") => {\n    if (exitDialog) return;\n    const overlay = doc.createElement("div");\n    overlay.id = "keco-back-exit-dialog";\n    overlay.style.cssText = "position:fixed;inset:0;z-index:2147483000;background:rgba(15,23,42,.4);display:flex;align-items:center;justify-content:center;padding:20px;";\n    overlay.innerHTML = \'<section role="dialog" aria-modal="true" aria-labelledby="keco-exit-title" style="width:min(100%,380px);box-sizing:border-box;background:#fff;border-radius:16px;padding:24px;color:#1e293b;font-family:Arial,sans-serif;box-shadow:0 14px 48px #0003;">\'\n      + \'<h2 id="keco-exit-title" style="font-size:20px;margin:0 0 12px;">앱에서 나가시겠습니까?</h2>\'\n      + \'<p style="font-size:15px;line-height:1.7;margin:0 0 20px;">처음 화면입니다. 계속 사용하려면 아래 버튼을 누르세요. 저장하지 않은 입력이 있으면 앱에서 나가기 전에 저장해 주세요.</p>\'\n      + \'<button type="button" data-action="continue" style="width:100%;min-height:48px;border:0;border-radius:10px;background:#007a4d;color:#fff;font-size:16px;font-weight:700;cursor:pointer;">앱 계속 사용</button>\'\n      + \'<button type="button" data-action="exit" style="width:100%;min-height:44px;margin-top:10px;border:1px solid #dce5df;border-radius:10px;background:#fff;color:#475569;font-size:15px;cursor:pointer;">앱 나가기</button></section>\';\n    exitDialog = {element:overlay, restoreFocus:doc.activeElement};\n    if (message) {\n      overlay.querySelector("p").textContent = message;\n      overlay.querySelector(\'[data-action="exit"]\').style.display = "none";\n    }\n    doc.body.appendChild(overlay);\n    overlay.querySelector(\'[data-action="continue"]\').addEventListener("click", removeDialog);\n    overlay.querySelector(\'[data-action="exit"]\').addEventListener("click", () => {\n      removeDialog(); leaving = true; hist.back();\n      // A standalone app may have no earlier page to leave for.\n      w.setTimeout(() => {\n        if (!disposed && leaving) {\n          leaving = false; rearm();\n          showExit("이 기기에서는 휴대폰 홈 버튼 또는 브라우저 닫기를 이용해 앱에서 나갈 수 있습니다. 계속 사용하려면 아래 버튼을 누르세요.");\n        }\n      }, 900);\n    });\n    overlay.querySelector(\'[data-action="continue"]\').focus();\n  };\n  const onKey = event => {\n    if (!exitDialog) return;\n    if (event.key === "Escape") { event.preventDefault(); removeDialog(); }\n    if (event.key === "Tab") {\n      const buttons = Array.from(exitDialog.element.querySelectorAll("button"));\n      const target = event.shiftKey ? buttons[buttons.length-1] : buttons[0];\n      if ((event.shiftKey && doc.activeElement === buttons[0]) || (!event.shiftKey && doc.activeElement === buttons[buttons.length-1])) {\n        event.preventDefault(); target.focus();\n      }\n    }\n  };\n  const goInside = () => {\n    if (disposed || leaving) return;\n    syncTabs();\n    const tabs = mainTabs(), index = activeIndex();\n    const riskMarker = doc.getElementById("keco-risk-navigation");\n    if (index >= 0 && tabs[index].textContent.trim() === "위험성평가" && riskMarker && riskMarker.dataset.back === "yes") {\n      const button = doc.querySelector(".st-key-keco_hardware_back button");\n      if (button && !button.disabled) {\n        pendingRevision = riskMarker.dataset.revision;\n        button.click();\n        busyTimer = w.setTimeout(() => { pendingRevision = null; busy = false; }, 15000);\n        return;\n      }\n    }\n    const homeView = doc.getElementById("keco-workstation-view");\n    if (index === 0 && homeView && homeView.dataset.registration === "yes" && w.matchMedia("(min-width:769px)").matches) {\n      const homeButton = doc.querySelector(".st-key-ws_return_home button");\n      if (homeButton && !homeButton.disabled) { homeButton.click(); return; }\n    }\n    if (trail.length > 1) {\n      trail.pop(); restoringTab = trail[trail.length-1];\n      if (tabs[restoringTab]) tabs[restoringTab].click();\n      else restoringTab = null;\n      return;\n    }\n    if (index > 0 && tabs[0]) {\n      trail.splice(0, trail.length, 0); restoringTab = 0; tabs[0].click(); return;\n    }\n    showExit();\n  };\n  const onPop = () => {\n    if (disposed) return;\n    if (leaving) { hist.back(); return; }\n    rearm(); // Re-arm synchronously even when Back is pressed repeatedly.\n    syncTabs();\n    if (exitDialog) { removeDialog(); return; }\n    if (busy) return;\n    busy = true; blurInput();\n    // Blur submits the current Streamlit text widget before navigation.\n    w.setTimeout(() => { goInside(); if (pendingRevision === null) w.setTimeout(() => { busy = false; }, 250); }, 160);\n  };\n  const dispose = () => {\n    disposed = true; w.removeEventListener("popstate", onPop);\n    doc.removeEventListener("keydown", onKey);\n    if (observer) observer.disconnect();\n    w.clearTimeout(syncTimer); w.clearTimeout(busyTimer); removeDialog();\n  };\n  const existing = hist.state && hist.state[tag];\n  if (!existing || existing.marker !== marker) {\n    hist.replaceState(state("anchor"), "", w.location.href); rearm();\n  } else if (existing.phase !== "guard") rearm();\n  w.addEventListener("popstate", onPop);\n  doc.addEventListener("keydown", onKey);\n  observer = new w.MutationObserver(records => {\n    if (records.some(record => record.attributeName === "aria-selected")) syncTabs();\n    w.clearTimeout(syncTimer); syncTimer = w.setTimeout(syncTabs, 30);\n  });\n  observer.observe(doc.body, {subtree:true, childList:true, attributes:true, attributeFilter:["aria-selected", "data-revision"]});\n  w[slot] = {owner, syncTabs, dispose}; syncTabs();\n})();\n</script></body></html>'
+
+def render_mobile_back_guard(actor):
+    import hashlib
+    owner = hashlib.sha256(str(actor).encode('utf-8')).hexdigest()[:24]
+    script = _MOBILE_BACK_GUARD_HTML.replace('__BACK_GUARD_OWNER__', json.dumps(owner))
+    with st.container(key='keco_back_guard_frame'):
+        components.html(script, height=0, scrolling=False)
+    st.markdown('<style>.st-key-keco_back_guard_frame{display:none!important;}</style>', unsafe_allow_html=True)
+
+render_mobile_back_guard(logged_user_id)
+
 user_emails_map = st.secrets.get("user_emails", {})
 mapped_email = user_emails_map.get(str(logged_user_id), st.secrets.get("smtp", {}).get("receiver_email", ""))
 
@@ -2086,6 +2099,9 @@ st.sidebar.markdown(
 st.sidebar.markdown("---")
 if st.sidebar.button("🔓 로그아웃", width="stretch"):
     st.session_state["password_correct"] = False
+    st.session_state.pop("ws_actor", None)
+    st.session_state.pop("ws_registration_open", None)
+    st.session_state.pop("ws_navigation", None)
     st.session_state.pop("_perf_private_cache", None)
     st.rerun()
 
@@ -5223,6 +5239,253 @@ st.markdown("""<style>
 .st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(6)::before {content:"✓"!important;background:none!important;font-size:28px!important;line-height:32px!important;}
 </style>""", unsafe_allow_html=True)
 
+"""PC 업무 스테이션: 저장된 점검자료 집계와 기존 메뉴 연결."""
+from html import escape as workstation_escape
+
+WORKSTATION_CSS = '''<style>
+.st-key-workstation_route_frame {display:none!important}
+.ws-brand,.st-key-workstation_home,.st-key-workstation_return {display:none!important}
+@media(min-width:769px){
+ .stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"] {background:#fff!important}
+ [data-testid="block-container"],.stMainBlockContainer {max-width:1240px!important;padding-top:2rem!important}
+ [data-testid="stElementContainer"]:has(.keco-header),[data-testid="stElementContainer"]:has(.top-status-bar),[data-testid="stElementContainer"]:has(.mascot-banner) {display:none!important}
+ .ws-brand {display:flex!important;align-items:center;justify-content:space-between;gap:24px;padding:4px 4px 24px;border-bottom:1px solid #e6eee9;margin-bottom:4px}
+ .ws-brand-main {display:flex;align-items:center;gap:14px}
+ .ws-brand img {width:52px!important;height:46px!important;object-fit:contain}
+ .ws-brand strong {display:block;font-size:22px;font-weight:700;color:#183d2d!important}
+ .ws-brand small {display:block;font-size:13px;color:#64766c!important;margin-top:3px}
+ .ws-profile {font-size:13px;color:#64766c!important;text-align:right;line-height:1.8}
+ .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6)) {gap:8px!important;padding:12px 0 18px!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;border-bottom:1px solid #e6eee9!important;background:#fff!important;border-radius:0!important;box-shadow:none!important}
+ .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] {min-height:52px!important;height:52px!important;padding:10px 8px!important;border:0!important;border-radius:9px!important;background:#fff!important;box-shadow:none!important;transform:none!important;flex-direction:row!important;gap:0!important;color:#486356!important;-webkit-text-fill-color:#486356!important}
+ .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] p,.st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] span {font-size:15px!important;color:#486356!important;-webkit-text-fill-color:#486356!important;font-weight:600!important;white-space:nowrap!important}
+ .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]::before {display:none!important;content:none!important}
+ .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>div:not([role="tab"]) {display:none!important}
+ .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] {background:#087f57!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+ .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] p,.st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] span {color:#fff!important;-webkit-text-fill-color:#fff!important}
+ .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]:hover:not([aria-selected="true"]) {background:#eef7f2!important}
+ .st-key-workstation_home {display:flex!important;gap:18px!important}
+ .st-key-workstation_home [data-testid="stMarkdownContainer"] {margin-bottom:0!important}
+ .st-key-workstation_registration {display:none!important}
+ .st-key-workstation_return {display:flex!important}
+ .ws-context {display:flex;justify-content:space-between;align-items:center;gap:20px;margin:12px 0 4px;color:#65796c!important;font-size:13px}
+ .ws-context span {color:#65796c!important}
+ .st-key-workstation_home [data-testid="stHorizontalBlock"] {gap:18px!important;align-items:stretch!important}
+ .st-key-workstation_welcome {background:#087f57!important;border-radius:18px!important;padding:28px!important;min-height:268px!important;height:100%;box-sizing:border-box}
+ .st-key-workstation_welcome .ws-eyebrow {color:#c5ead6!important;-webkit-text-fill-color:#c5ead6!important;font-size:12px;letter-spacing:1px;margin-bottom:12px}
+ .st-key-workstation_welcome h2,.st-key-workstation_welcome h2 * {font-size:30px!important;line-height:1.5!important;color:#fff!important;-webkit-text-fill-color:#fff!important;margin:0!important;padding:0!important;font-weight:700!important}
+ .st-key-workstation_welcome p,.st-key-workstation_welcome p * {color:#e1f2e9!important;-webkit-text-fill-color:#e1f2e9!important;font-size:14px!important;margin:12px 0 15px!important;line-height:1.8!important}
+ .st-key-workstation_home [data-testid="stButton"]>button {background:#edf7f1!important;background-image:none!important;border:0!important;border-radius:9px!important;box-shadow:none!important;transform:none!important;color:#08734e!important;min-height:44px!important;padding:9px 18px!important;width:auto!important}
+ .st-key-workstation_home [data-testid="stButton"]>button p,.st-key-workstation_home [data-testid="stButton"]>button span {font-size:14px!important;font-weight:600!important;color:#08734e!important;-webkit-text-fill-color:#08734e!important;margin:0!important}
+ .st-key-workstation_home [data-testid="stButton"]>button:hover {background:#dcefe4!important}
+ .st-key-workstation_welcome [data-testid="stButton"]>button {background:#fff!important;min-height:46px!important}
+ .ws-metrics {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+ .ws-metric {padding:22px 24px;border:1px solid #dfeae3;border-radius:15px;background:#fff;min-height:126px;box-sizing:border-box}
+ .ws-label {font-size:13px;color:#65796c!important}
+ .ws-number {font-size:34px;line-height:1.5;font-weight:700;color:#173d2a!important;font-variant-numeric:tabular-nums;margin:6px 0 2px}
+ .ws-number small {font-size:13px;font-weight:400;margin-left:5px;color:#65796c!important}
+ .ws-note {font-size:12px;line-height:1.7;color:#6a7e70!important}
+ .ws-panel {border:1px solid #dfeae3;border-radius:15px;padding:22px;background:#fff;box-sizing:border-box;min-height:248px}
+ .ws-panel h3,.ws-panel h3 *,.ws-banner h3,.ws-banner h3 * {font-size:17px!important;color:#173d2a!important;-webkit-text-fill-color:#173d2a!important;margin:0 0 16px!important;padding:0!important;font-weight:700!important;line-height:1.5!important}
+ .ws-task {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid #edf2ee;min-width:0}
+ .ws-task:last-child {border-bottom:0}
+ .ws-task strong {display:block;font-size:14px;font-weight:500;line-height:1.6;color:#234d38!important;overflow-wrap:anywhere}
+ .ws-task small {display:block;font-size:12px;color:#718174!important;margin-top:4px;line-height:1.6;overflow-wrap:anywhere}
+ .ws-badge {background:#fff3da;color:#7b551c!important;border-radius:6px;padding:5px 8px;font-size:12px;white-space:nowrap!important;flex-shrink:0}
+ .ws-empty {font-size:14px;color:#667b6c!important;line-height:1.8;padding:24px 0}
+ .ws-completion {display:flex;align-items:center;justify-content:center;gap:30px;padding:12px 0 20px}
+ .ws-donut {width:144px;height:144px;border-radius:50%;background:conic-gradient(#087f57 0 var(--ws-progress),#edf4ef var(--ws-progress) 100%);position:relative;display:grid;place-items:center;flex-shrink:0}
+ .ws-donut::before {content:"";position:absolute;inset:17px;border-radius:50%;background:#fff}
+ .ws-donut strong {position:relative;font-size:30px;color:#173d2a!important;font-variant-numeric:tabular-nums}
+ .ws-donut small {display:block;font-size:12px;font-weight:400;color:#718174!important;text-align:center;margin-top:4px}
+ .ws-legend {font-size:13px;color:#65796c!important;line-height:1.8}
+ .ws-legend strong {display:block;font-size:22px;font-weight:600;color:#173d2a!important;margin-bottom:10px;font-variant-numeric:tabular-nums}
+ .st-key-workstation_quick_0,.st-key-workstation_quick_1,.st-key-workstation_quick_2 {border:1px solid #dfeae3;border-radius:15px;padding:20px!important;background:#fff;height:100%}
+ .ws-quick h3,.ws-quick h3 * {font-size:16px!important;font-weight:600!important;color:#173d2a!important;-webkit-text-fill-color:#173d2a!important;margin:0 0 8px!important;padding:0!important}
+ .ws-quick p,.ws-quick p * {font-size:13px!important;color:#65796c!important;-webkit-text-fill-color:#65796c!important;line-height:1.8!important;margin:0 0 14px!important}
+ .ws-banner {display:flex;align-items:center;gap:26px;border:1px solid #e5eee8;border-radius:15px;padding:18px 24px;background:#fafcfb;margin-top:6px}
+ .ws-banner h3,.ws-banner h3 * {margin:0 0 5px!important;font-size:16px!important}
+ .ws-banner p,.ws-banner p * {font-size:13px!important;color:#65796c!important;-webkit-text-fill-color:#65796c!important;margin:0!important}
+ .ws-landscape {width:190px;height:108px;position:relative;overflow:hidden;background:#e4f2eb;border-radius:12px;flex-shrink:0}
+ .ws-landscape::before {content:"";position:absolute;background:#c4dfbd;left:-15px;bottom:10px;width:220px;height:65px;border-radius:50%;transform:rotate(-8deg)}
+ .ws-landscape::after {content:"";position:absolute;left:0;right:0;bottom:0;height:25px;background:#90bfa2}
+ .ws-building {position:absolute;left:55px;bottom:25px;width:92px;height:45px;background:#fff;border-top:7px solid #36825b;z-index:1}
+ .ws-building::before {content:"";position:absolute;inset:10px 8px 12px;background:repeating-linear-gradient(90deg,#98c6b6 0 9px,transparent 9px 17px)}
+ .ws-water {position:absolute;left:18px;bottom:28px;width:55px;height:25px;border:5px solid #d8e7df;border-radius:50%;background:#86c4cf;z-index:2}
+ .ws-tree {position:absolute;right:19px;bottom:18px;width:6px;height:40px;background:#6f936b;z-index:2}
+ .ws-tree::before {content:"";position:absolute;left:-13px;top:-21px;width:32px;height:40px;background:#4f965f;border-radius:55%}
+ .ws-worker {position:absolute;right:40px;bottom:12px;background:#eba83d;border-bottom:7px solid #285b42;border-radius:4px;width:10px;height:20px;z-index:3}
+ .ws-worker::before {content:"";position:absolute;left:1px;top:-9px;width:9px;height:10px;border-radius:50%;background:#ebccaa;border-top:5px solid #fff}
+ .ws-footer {display:flex;justify-content:space-between;gap:18px;font-size:12px;color:#718174!important;margin-top:14px}
+}
+</style>'''
+
+
+def workstation_summarize(rows, site_map, today):
+    """등록된 조치 후 자료만 집계하며 안전조치 승인 여부로 해석하지 않습니다."""
+    result = dict(sites=len({str(site).strip() for sites in site_map.values() for site in sites if str(site).strip()}),
+                  total=len(rows), month=0, complete=0, pending=0, invalid=0, undated=0, tasks=[])
+    for record_id, owner, dept, site, created, encoded in rows:
+        try:
+            stamp = datetime.datetime.fromisoformat(str(created).replace('Z', '+00:00'))
+            if stamp.tzinfo is not None:
+                stamp = stamp.astimezone(ZoneInfo('Asia/Seoul'))
+            day = stamp.date()
+        except (ValueError, TypeError):
+            day = None
+            result['undated'] += 1
+        if day is not None and day.year == today.year and day.month == today.month and day <= today:
+            result['month'] += 1
+        detail, valid, complete = '', True, False
+        try:
+            payload = json.loads(encoded)
+            if not isinstance(payload, dict) or not payload or any(not isinstance(item, dict) for item in payload.values()):
+                raise ValueError('자료 형식 확인 필요')
+            ready = []
+            for item in payload.values():
+                photos = item.get('after_files', [])
+                if not isinstance(photos, list):
+                    raise ValueError('사진 목록 확인 필요')
+                description = str(item.get('desc_after', '') or '').strip()
+                done = bool(photos) and bool(description)
+                ready.append(done)
+                if not done and not detail:
+                    detail = str(item.get('desc_before', '') or '조치 후 사진·설명 등록 필요').strip()
+            complete = all(ready)
+        except (ValueError, TypeError):
+            valid = False
+            result['invalid'] += 1
+            detail = '저장된 점검자료의 형식 확인 필요'
+        if complete:
+            result['complete'] += 1
+        elif valid:
+            result['pending'] += 1
+        if not complete:
+            result['tasks'].append(dict(id=str(record_id), site=str(site or '현장 미기재'),
+                dept=str(dept or '부서 미기재'), day=day.isoformat() if day else '날짜 확인 필요',
+                detail=detail[:100], status='자료 보완' if valid else '확인 필요'))
+    result['rate'] = round(result['complete'] / result['total'] * 100) if result['total'] and not result['invalid'] else None
+    return result
+
+
+def workstation_snapshot(actor):
+    inspection_history_actor(actor)
+    db = inspection_store()
+    try:
+        rows = report_history_inspection_rows(db)
+    finally:
+        db.close()
+    return workstation_summarize(rows, department_sites_map, datetime.datetime.now(ZoneInfo('Asia/Seoul')).date())
+
+
+def workstation_navigate(index, history_mode=None):
+    import uuid
+    if index in (-1, 0):
+        st.session_state.ws_registration_open = index == 0
+    if history_mode is not None:
+        st.session_state.inspection_history_menu = history_mode
+    st.session_state.ws_navigation = dict(index=max(0, index), token=uuid.uuid4().hex)
+
+
+def render_workstation_shell(actor):
+    if st.session_state.get('ws_actor') != str(actor):
+        st.session_state.ws_actor = str(actor)
+        st.session_state.ws_registration_open = False
+        st.session_state.pop('ws_navigation', None)
+    st.markdown(WORKSTATION_CSS, unsafe_allow_html=True)
+    opened = st.session_state.get('ws_registration_open', False)
+    home_display, form_display = ('none', 'flex') if opened else ('flex', 'none')
+    st.markdown(f'<style>@media(min-width:769px){{.st-key-workstation_home{{display:{home_display}!important}}.st-key-workstation_registration{{display:{form_display}!important}}}}</style>', unsafe_allow_html=True)
+    logo = globals().get('img_base64', '')
+    image = f'<img src="data:image/png;base64,{logo}" alt="한국환경공단">' if logo else ''
+    day = datetime.datetime.now(ZoneInfo('Asia/Seoul')).strftime('%Y.%m.%d')
+    st.markdown(f'''<div class="ws-brand"><div class="ws-brand-main">{image}<div><strong>한국환경공단</strong>
+        <small>수도권서부환경본부 환경시설관리처</small></div></div>
+        <div class="ws-profile">스마트 건설현장 안전관리 시스템<br>{day} · 감독관 {workstation_escape(str(actor))}</div></div>''', unsafe_allow_html=True)
+
+
+def render_workstation_home(actor):
+    import sqlite3
+    if not _perf_actor_allowed(actor):
+        return
+    now = datetime.datetime.now(ZoneInfo('Asia/Seoul'))
+    error = False
+    try:
+        data = workstation_snapshot(actor)
+    except (PermissionError, StorageError, ValueError, OSError, sqlite3.Error):
+        error = True
+        data = workstation_summarize([], department_sites_map, now.date())
+    st.markdown(f'<div class="ws-context"><span>환경시설 설치사업 · 업무 대시보드</span><span>{now:%Y.%m.%d %H:%M} 기준</span></div>', unsafe_allow_html=True)
+    if error:
+        st.warning('점검 기록을 불러오지 못했습니다. 저장소 연결 확인 필요')
+    welcome, metrics = st.columns([1.08, 1.8])
+    with welcome:
+        with st.container(key='workstation_welcome'):
+            st.markdown('''<div class="ws-eyebrow">K-ECO · 안전동행</div><h2>오늘의 안전업무,<br>여기서 시작하세요.</h2><p>사진 등록부터 조치 후 자료 확인과 보고서 작성까지.</p>''', unsafe_allow_html=True)
+            st.button('점검 등록하기', key='ws_start_registration', on_click=workstation_navigate, args=(0,))
+    with metrics:
+        entries = [('관리현장', str(data['sites']), '개', '앱에 등록된 현장'),
+                   ('이번 달 점검', '—' if error else str(data['month']), '건', '저장된 점검 보고서'),
+                   ('조치 후 자료 등록률', '—' if error or data['rate'] is None else str(data['rate']), '%' if not error and data['rate'] is not None else '', '모든 항목의 사진·설명 등록 기준'),
+                   ('후속 자료 확인', '—' if error else str(data['pending'] + data['invalid']), '건', '사진·설명 보완 또는 원본 확인')]
+        cards = ''.join(f'<div class="ws-metric"><div class="ws-label">{label}</div><div class="ws-number">{value}<small>{unit}</small></div><div class="ws-note">{note}</div></div>' for label, value, unit, note in entries)
+        st.markdown('<div class="ws-metrics">'+cards+'</div>', unsafe_allow_html=True)
+    for number, (column, title, description, button, index, mode) in enumerate(zip(
+            st.columns(3), ['현장 점검 등록', '점검 기록 확인', 'AI 안전 가이드'],
+            ['조치 전·후 사진과 점검내용을 기록합니다.', '저장한 보고서와 현장별 점검현황을 살펴봅니다.', '현장 상황과 참고자료를 바탕으로 질문합니다.'],
+            ['점검 등록', '점검 기록 보기', 'AI에게 물어보기'], [0, 1, 2], [None, '점검 현황', None])):
+        with column:
+            with st.container(key=f'workstation_quick_{number}'):
+                st.markdown(f'<div class="ws-quick"><h3>{title}</h3><p>{description}</p></div>', unsafe_allow_html=True)
+                st.button(button, key=f'ws_quick_{number}', on_click=workstation_navigate, args=(index, mode))
+    pending, completion = st.columns([1.1, 1])
+    with pending:
+        tasks = ''.join(f'<div class="ws-task"><div><strong>{workstation_escape(row["detail"])}</strong><small>{workstation_escape(row["site"])} · {workstation_escape(row["day"])}</small></div><span class="ws-badge">{row["status"]}</span></div>' for row in data['tasks'][:3])
+        empty = '점검 기록을 불러오지 못했습니다.' if error else ('아직 저장된 점검 기록이 없습니다.' if not data['total'] else '등록된 모든 점검에 조치 후 사진·설명이 있습니다.')
+        st.markdown('<section class="ws-panel"><h3>후속 자료 확인</h3>'+(tasks or f'<div class="ws-empty">{empty}</div>')+'</section>', unsafe_allow_html=True)
+        st.button('저장한 보고서 확인', key='ws_open_reports', on_click=workstation_navigate, args=(1, '내 리포트'))
+    with completion:
+        rate = '—' if error or data['rate'] is None else str(data['rate'])+'%'
+        progress = 0 if error or data['rate'] is None else data['rate']
+        registered = '—' if error else f'{data["complete"]:,}건'
+        waiting = '—' if error else f'{data["pending"] + data["invalid"]:,}건'
+        note = '등록된 점검이 없어 비율을 산정하지 않았습니다.' if not data['total'] else '자료 등록 기준이며 안전조치 완료 승인율과 다릅니다.'
+        if error:
+            note = '점검 기록 조회 상태 확인 필요'
+        elif data['invalid']:
+            note = f'원본 확인 필요 {data["invalid"]}건이 있어 등록률 확인이 필요합니다.'
+        st.markdown(f'''<section class="ws-panel"><h3>조치 후 자료 등록현황</h3><div class="ws-completion">
+            <div class="ws-donut" style="--ws-progress:{progress}%" role="img" aria-label="조치 후 사진과 설명 등록률 {rate}"><strong>{rate}<small>자료 등록률</small></strong></div>
+            <div class="ws-legend">사진·설명 등록<strong>{registered}</strong>후속 자료 확인<strong>{waiting}</strong></div></div><div class="ws-note">{note}</div></section>''', unsafe_allow_html=True)
+    st.markdown('''<div class="ws-banner"><div class="ws-landscape" role="img" aria-label="친환경 환경시설과 안전모를 착용한 작업자"><div class="ws-building"></div><div class="ws-water"></div><div class="ws-tree"></div><div class="ws-worker"></div></div><div><h3>환경을 위한 현장, 안전을 위한 동행.</h3><p>한국환경공단 수도권서부환경본부 환경시설관리처</p></div></div>''', unsafe_allow_html=True)
+    note = f'저장된 점검 {data["total"]:,}건 기준 · 휴지통 제외' if not error else '점검 기록 조회 상태 확인 필요'
+    if data['undated']:
+        note += f' · 날짜 확인 필요 {data["undated"]}건은 이번 달 집계 제외'
+    st.markdown(f'<div class="ws-footer"><span>{note}</span><span>사진·설명 등록현황</span></div>', unsafe_allow_html=True)
+    st.button('현황 새로고침', key='ws_refresh_home')
+
+
+def render_workstation_route():
+    navigation = st.session_state.pop('ws_navigation', None)
+    if not navigation:
+        return
+    command = json.dumps(navigation)
+    script = '''<script>(()=>{let w;try{w=window.parent;void w.document.body;}catch(e){return;}
+        const command=__COMMAND__;let attempts=0;
+        const navigate=()=>{const menu=w.document.querySelector('.st-key-keco_main_menu');
+            const list=menu&&menu.querySelector('[role="tablist"]');
+            const tabs=list&&list.querySelectorAll('[role="tab"]');
+            if(!tabs||!tabs[command.index]||w.document.querySelectorAll('.st-key-keco_main_menu').length!==1){if(++attempts<40)w.setTimeout(navigate,100);return;}
+            if(w.__kecoWorkstationCommand===command.token)return;
+            w.__kecoWorkstationCommand=command.token;tabs[command.index].click();
+            w.setTimeout(()=>{const target=command.index===0?w.document.querySelector('.st-key-workstation_registration'):menu;
+                if(target)target.scrollIntoView({block:'start',behavior:'auto'});},150);
+        };w.setTimeout(navigate,150);})();</script>'''.replace('__COMMAND__', command)
+    with st.container(key='workstation_route_frame'):
+        components.html(script, height=0, scrolling=False)
+
+
+render_workstation_shell(logged_user_id)
+
 with st.container(key="keco_main_menu"):
     main_tab1, main_tab2, main_tab3, documents_tab, calendar_tab, risk_tab = st.tabs([
         "안전 점검 등록", "점검 기록 보기", "AI에게 물어보기", "안전자료실", "안전캘린더", "위험성평가"
@@ -5518,7 +5781,14 @@ def render_inspection_registration(logged_user_id):
 
 
 with main_tab1:
-    render_inspection_registration(logged_user_id)
+    with st.container(key="workstation_home"):
+        render_workstation_home(logged_user_id)
+    opened = st.session_state.get("ws_registration_open", False)
+    st.markdown('<div id="keco-workstation-view" data-registration="' + ('yes' if opened else 'no') + '" style="display:none"></div>', unsafe_allow_html=True)
+    with st.container(key="workstation_registration"):
+        with st.container(key="workstation_return"):
+            st.button('← 업무 대시보드', key='ws_return_home', on_click=workstation_navigate, args=(-1,))
+        render_inspection_registration(logged_user_id)
 
 
 # 대시보드 집계는 NHN 저장소의 점검 기록을 기준으로 합니다.
@@ -7549,7 +7819,7 @@ def ra_hub_register(actor):
         st.session_state.ra_hub_page_number = 1
         st.session_state.ra_hub_selection = []
         st.session_state.ra_hub_registration = {}
-        st.session_state.ra_notice = '등록했습니다. 목록의 평가명을 누르면 위험성평가를 시작할 수 있습니다.'
+        st.session_state.ra_notice = '등록했습니다. 해당 평가를 체크한 뒤 ‘선택한 평가 열기’를 눌러 작성을 시작하세요.'
     except (ValueError, PermissionError) as exc: st.session_state.ra_load_error = str(exc)
     except Exception: st.session_state.ra_load_error = '등록하지 못했습니다. 저장소 연결을 확인한 뒤 다시 등록해 주세요.'
 
@@ -7666,7 +7936,7 @@ def ra_render_guide():
             with st.container(border=True):
                 st.markdown('**'+title+'**')
                 st.write(description)
-        st.caption('목록에서 평가명 선택 → 단계별 작성 → 임시 저장 → 이후 같은 평가를 열어 이어서 작성')
+        st.caption('목록에서 평가 체크 → 선택한 평가 열기 → 단계별 작성 → 임시 저장 → 이후 같은 평가를 열어 이어서 작성')
     st.markdown('안내 참고: [사업장 위험성평가에 관한 지침](https://www.law.go.kr/행정규칙/사업장위험성평가에관한지침) · [고용노동부 산하기관 누리집 산업안전포털](https://portal.kosha.or.kr/kras/evaluation/kras-method)')
 
 
@@ -7675,7 +7945,7 @@ def ra_render_registration(actor):
     back, guide = st.columns(2)
     with back: st.button('← 목록', key='ra_hub_register_back', on_click=ra_hub_navigate, args=('list',))
     with guide: st.button('평가구분·평가방법 안내', key='ra_hub_register_guide', on_click=ra_hub_navigate, args=('guide',), width='stretch')
-    st.caption('기본 정보를 등록하면 목록에 새 평가가 생성됩니다. 이후 평가명을 눌러 작성하세요.')
+    st.caption('등록 후 목록에서 해당 평가를 체크하고 ‘선택한 평가 열기’를 누르면 작성 화면으로 이동합니다.')
     saved = st.session_state.get('ra_hub_registration', {})
     st.session_state.setdefault('ra_hub_new_name', saved.get('name', ''))
     st.session_state.setdefault('ra_hub_new_kind', saved.get('kind', RA_KINDS[0]))
@@ -7693,15 +7963,34 @@ def ra_render_registration(actor):
     st.button('등록', key='ra_hub_register_submit', type='primary', on_click=ra_hub_register, args=(actor,), width='stretch')
 
 
+def ra_hub_card_html(record, number):
+    """Render labelled details without Streamlit columns that stack on phones."""
+    from html import escape
+    def text(value):
+        return escape(str(value), quote=True)
+    fields = [('평가연도', str(record['assessment_year'])+'년'),
+              ('평가구분', record['kind']), ('평가방법', record['method']),
+              ('진행상태', record['status'])]
+    details = ''.join('<div class="ra-card-field"><dt>'+text(label)+'</dt><dd>'+text(value)+'</dd></div>'
+                      for label, value in fields)
+    return ('<section class="ra-evaluation-card" aria-label="평가 정보">'
+            '<div class="ra-card-meta"><span>평가 '+text(number)+'</span><span>등록일 '+text(record['created'][:10])+'</span></div>'
+            '<h3 class="ra-card-title">'+text(record['name'])+'</h3>'
+            '<div class="ra-card-site"><span>평가현장</span><strong>'+text(record['site'] or '현장 미입력')+'</strong></div>'
+            '<dl class="ra-card-details">'+details+'</dl>'
+            '<div class="ra-card-count">평가 항목 '+text(record['row_count'])+'개</div></section>')
+
+
 def ra_render_history(actor):
     with st.container(border=True, key='ra_hub_intro'):
         st.markdown('### 위험성평가란?')
         st.write('작업에서 다칠 수 있는 유해·위험요인을 찾아 위험성 수준을 판단하고, 위험을 낮출 대책을 마련해 실행하는 과정입니다.')
         st.caption('사업주가 주도하고 관리감독자·근로자·협력업체가 함께 참여합니다. 평가 결과와 대책은 TBM 등으로 공유하고 이행 여부를 확인합니다.')
-    title, guide, register = st.columns([2, 2, 1])
-    with title: st.subheader('위험성평가 목록')
-    with guide: st.button('평가구분·평가방법 안내', key='ra_hub_history_guide', on_click=ra_hub_navigate, args=('guide',), width='stretch')
-    with register: st.button('＋ 등록', type='primary', key='ra_hub_new', on_click=ra_hub_navigate, args=('registration',), width='stretch')
+    st.subheader('위험성평가 목록')
+    with st.container(key='ra_hub_list_toolbar'):
+        guide, register = st.columns([2, 1], gap='small')
+        with guide: st.button('평가구분·평가방법 안내', key='ra_hub_history_guide', on_click=ra_hub_navigate, args=('guide',), width='stretch')
+        with register: st.button('＋ 평가 등록', type='primary', key='ra_hub_new', on_click=ra_hub_navigate, args=('registration',), width='stretch')
     area = st.radio('보관 상태', ['평가 목록', '휴지통'], horizontal=True, key='ra_hub_area', on_change=ra_hub_filter_reset, label_visibility='collapsed')
     trashed = area == '휴지통'
     try: records = ra_record_list(actor, trashed)
@@ -7714,7 +8003,8 @@ def ra_render_history(actor):
     years = ['전체']+sorted({str(row['assessment_year']) for row in records}, reverse=True)
     with st.container(border=True, key='ra_hub_filters_box'):
         with st.form('ra_hub_search_form'):
-            year, kind, query, submit = st.columns([1, 1, 2, .7])
+            with st.container(key='ra_hub_filter_fields'):
+                year, kind = st.columns(2, gap='small')
             with year:
                 st.session_state.setdefault('ra_hub_filter_year', filters['year'] if filters['year'] in years else '전체')
                 if st.session_state.ra_hub_filter_year not in years: st.session_state.ra_hub_filter_year = '전체'
@@ -7722,18 +8012,18 @@ def ra_render_history(actor):
             with kind:
                 st.session_state.setdefault('ra_hub_filter_kind', filters['kind'])
                 st.selectbox('평가구분', ['전체']+RA_KINDS, key='ra_hub_filter_kind')
-            with query:
-                st.session_state.setdefault('ra_hub_filter_query', filters['query'])
-                st.text_input('평가명·현장명 검색', key='ra_hub_filter_query', placeholder='평가명 또는 현장명')
-            with submit:
-                st.write('')
-                st.form_submit_button('조회', on_click=ra_hub_filter, width='stretch')
-        st.button('검색 초기화', key='ra_hub_reset', on_click=ra_hub_filter_reset)
+            st.session_state.setdefault('ra_hub_filter_query', filters['query'])
+            st.text_input('평가명·현장명 검색', key='ra_hub_filter_query', placeholder='평가명 또는 현장명')
+            st.form_submit_button('검색 조건 적용', on_click=ra_hub_filter, width='stretch')
+        st.button('검색 초기화', key='ra_hub_reset', on_click=ra_hub_filter_reset, width='stretch')
     filters = st.session_state.get('ra_hub_filters', filters)
     visible = [r for r in records if (filters['year'] == '전체' or str(r['assessment_year']) == filters['year']) and
                (filters['kind'] == '전체' or r['kind'] == filters['kind']) and
                (not filters['query'] or filters['query'].casefold() in (r['name']+' '+r['site']).casefold())]
-    st.caption(f'총 {len(visible)}건 · 평가명을 누르면 이어서 작성할 수 있습니다.' if not trashed else f'휴지통 {len(visible)}건 · 선택 후 복원할 수 있습니다.')
+    st.caption(f'총 {len(visible)}건' if not trashed else f'휴지통 {len(visible)}건')
+    if visible:
+        st.info('① 해당 평가의 ‘이 평가 선택’을 체크하세요. ② 같은 카드 아래의 ‘선택한 평가 열기’를 누르세요.'
+                if not trashed else '복원할 평가를 체크한 뒤 목록 아래의 ‘선택 평가 복원’을 누르세요.')
     if not visible:
         st.info('조건에 맞는 평가가 없습니다.' if records else ('휴지통이 비어 있습니다.' if trashed else '아직 등록된 평가가 없습니다. ‘등록’을 눌러 첫 평가를 만들어 주세요.'))
     page_count = max(1, (len(visible)+9)//10)
@@ -7741,44 +8031,36 @@ def ra_render_history(actor):
     selected = set(st.session_state.get('ra_hub_selection', [])) & {r['id'] for r in visible}
     st.session_state.ra_hub_selection = sorted(selected)
     if visible:
-        with st.container(key='ra_hub_table_header'):
-            for col, label in zip(st.columns([.35, .5, .7, 1.1, 3, 1, 1.4, 1.2], gap='small'), ['선택', '번호', '연도', '등록일', '위험성평가명', '평가구분', '평가방법', '진행상태']):
-                with col: st.markdown('**'+label+'**')
         for number, record in enumerate(visible[(page-1)*10:page*10], (page-1)*10+1):
             record_id = record['id']
             with st.container(border=True, key='ra_hub_row_'+record_id):
-                check, no, year, date, name, kind, method, status = st.columns([.35, .5, .7, 1.1, 3, 1, 1.4, 1.2], gap='small')
-                with check:
-                    key = 'ra_hub_checked_'+record_id
-                    st.session_state[key] = record_id in selected
-                    st.checkbox('선택 '+record['name'], key=key, label_visibility='collapsed', on_change=ra_hub_select, args=(record_id, key))
-                with no: st.write(number)
-                with year: st.write(str(record['assessment_year']))
-                with date: st.caption(record['created'][:10])
-                with name:
-                    if trashed: st.markdown('**'+record['name'].replace('*', '')+'**')
-                    else: st.button(record['name'], key='ra_hub_open_'+record_id, on_click=ra_hub_open, args=(actor, record_id), type='tertiary', width='stretch')
-                    st.caption((record['site'] or '현장 미입력')+' · 항목 '+str(record['row_count'])+'개')
-                with kind: st.write(record['kind'])
-                with method: st.write(record['method'])
-                with status:
-                    st.write(record['status'])
-                    st.caption(f'작성 확인 {record["progress"]}/6')
+                key = 'ra_hub_checked_'+record_id
+                st.session_state[key] = record_id in selected
+                checked = st.checkbox('이 평가 선택', key=key, on_change=ra_hub_select, args=(record_id, key))
+                st.markdown(ra_hub_card_html(record, number), unsafe_allow_html=True)
+                progress = max(0, min(6, int(record['progress'])))
+                st.progress(progress/6, text=f'작성 진행 {progress}/6단계')
+                if not trashed:
+                    st.caption('선택되었습니다. 아래 버튼을 눌러 작성을 계속하세요.' if checked else '위의 ‘이 평가 선택’을 체크하면 아래 버튼이 활성화됩니다.')
+                    st.button('선택한 평가 열기', key='ra_hub_open_'+record_id, type='primary',
+                              disabled=not checked, on_click=ra_hub_open, args=(actor, record_id), width='stretch')
         with st.container(key='ra_hub_pagination'):
             left, label, right = st.columns([1, 2, 1], gap='small')
             with left: st.button('이전', key='ra_hub_page_previous', disabled=page == 1, on_click=ra_hub_page_move, args=(page-1,), width='stretch')
             with label: st.markdown(f'<div class="ra-page-counter">{page} / {page_count}페이지</div>', unsafe_allow_html=True)
             with right: st.button('다음', key='ra_hub_page_next', disabled=page == page_count, on_click=ra_hub_page_move, args=(page+1,), width='stretch')
     if selected:
-        with st.container(border=True):
+        with st.container(border=True, key='ra_hub_selection_actions'):
             st.write(f'선택한 평가 {len(selected)}건')
             if trashed:
-                st.button('선택 평가 복원', key='ra_hub_restore', on_click=ra_hub_change_trash, args=(actor, True))
+                st.button('선택 평가 복원', key='ra_hub_restore', on_click=ra_hub_change_trash, args=(actor, True), type='primary', width='stretch')
             else:
-                st.caption('평가 작성 이력을 휴지통으로 옮깁니다. 생성한 보고서는 보고서 보관함에서 별도로 관리합니다.')
-                confirmed = st.checkbox('선택한 평가를 휴지통으로 옮기는 것을 확인합니다.', key='ra_hub_delete_confirm')
-                st.button('선택 평가 삭제', key='ra_hub_delete', disabled=not confirmed, on_click=ra_hub_change_trash, args=(actor, False))
-    st.button('목록 새로고침', key='ra_hub_history_refresh')
+                st.caption('작성하려면 해당 카드의 ‘선택한 평가 열기’를 누르세요.')
+                with st.expander('선택한 평가 삭제'):
+                    st.caption('평가 작성 이력을 휴지통으로 옮깁니다. 생성한 보고서는 보고서 보관함에서 별도로 관리합니다.')
+                    confirmed = st.checkbox('선택한 평가를 휴지통으로 옮기는 것을 확인합니다.', key='ra_hub_delete_confirm')
+                    st.button('휴지통으로 이동', key='ra_hub_delete', disabled=not confirmed, on_click=ra_hub_change_trash, args=(actor, False), width='stretch')
+    st.button('목록 새로고침', key='ra_hub_history_refresh', width='stretch')
 
 
 def ra_apply_standard_models(trade, work, example_ids, include_measures=False):
@@ -7875,6 +8157,42 @@ def ra_render_writer(actor):
         st.button('저장된 내용 다시 불러오기', key='ra_hub_writer_reload', disabled=not confirmed, on_click=ra_hub_open, args=(actor, st.session_state.ra_active_record_id))
 
 
+def ra_hardware_back(actor):
+    """Use the same authenticated navigation and storage as the on-screen buttons."""
+    if not actor or not st.session_state.get('password_correct'):
+        return
+    page = st.session_state.get('ra_hub_page', 'list')
+    if page == 'guide':
+        ra_hub_navigate(st.session_state.get('ra_hub_return', 'list'))
+    elif page == 'registration':
+        ra_hub_registration_change()
+        ra_hub_navigate('list')
+    elif page == 'writer':
+        step = st.session_state.get('ra_step', RA_STEPS[0])
+        index = RA_STEPS.index(step) if step in RA_STEPS else 0
+        if index:
+            ra_go_step(index-1)
+            if not ra_hub_save(actor, quiet=True):
+                ra_go_step(index)
+        else:
+            ra_hub_back(actor)
+    elif st.session_state.get('ra_hub_area') == '휴지통':
+        st.session_state.ra_hub_area = '평가 목록'
+        ra_hub_filter_reset()
+    elif st.session_state.get('ra_hub_page_number', 1) > 1:
+        ra_hub_page_move(st.session_state.ra_hub_page_number-1)
+    st.session_state.keco_back_revision = st.session_state.get('keco_back_revision', 0)+1
+
+
+def render_risk_back_bridge(actor):
+    page = st.session_state.get('ra_hub_page', 'list')
+    can_back = page in ('writer', 'registration', 'guide') or st.session_state.get('ra_hub_area') == '휴지통' or st.session_state.get('ra_hub_page_number', 1) > 1
+    st.markdown('<style>.st-key-keco_hardware_back{display:none!important;}</style>', unsafe_allow_html=True)
+    with st.container(key='keco_hardware_back'):
+        st.markdown('<span id="keco-risk-navigation" data-back="'+('yes' if can_back else 'no')+'" data-revision="'+str(st.session_state.get('keco_back_revision', 0))+'"></span>', unsafe_allow_html=True)
+        st.button('휴대폰 뒤로가기 처리', key='keco_hardware_back_button', on_click=ra_hardware_back, args=(actor,))
+
+
 @st.fragment
 def render_risk_assessment(actor):
     if not actor or not st.session_state.get('password_correct'): return
@@ -7883,22 +8201,36 @@ def render_risk_assessment(actor):
     st.markdown('''<style>
     .st-key-ra_hub_intro {background:#f5f8fc;border:1px solid #e0e7ef;border-radius:12px;padding:6px 8px;}
     .st-key-ra_hub_filters_box {background:#f7f9fc;}
-    .st-key-ra_hub_table_header {background:#edf3f9;padding:10px 14px;border-radius:8px;margin-bottom:8px;}
-    [class*="st-key-ra_hub_row_"] {background:#fff;border-color:#e5eaf0;border-radius:6px;box-shadow:none;}
+    [class*="st-key-ra_hub_row_"] {background:#fff!important;border:1px solid #dce5df!important;border-radius:14px!important;box-shadow:none!important;}
+    [class*="st-key-ra_hub_row_"]:has([data-testid="stCheckbox"] input:checked) {border:2px solid #00845c!important;}
+    [class*="st-key-ra_hub_row_"] [data-testid="stVerticalBlock"] {gap:12px!important;}
     [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button {
-        background:transparent!important;background-image:none!important;color:#1e293b!important;
-        border:none!important;border-radius:0!important;box-shadow:none!important;
-        min-height:0!important;height:auto!important;padding:0!important;
-        text-align:left!important;justify-content:flex-start!important;font-weight:600!important;
+        width:100%!important;background:#007a4d!important;background-image:none!important;color:#fff!important;
+        border:1px solid #007a4d!important;border-radius:10px!important;box-shadow:none!important;
+        min-height:48px!important;height:auto!important;padding:12px 16px!important;
+        text-align:center!important;justify-content:center!important;font-weight:600!important;
         transform:none!important;transition:none!important;
     }
-    [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button:hover {background:transparent!important;box-shadow:none!important;text-decoration:underline;}
-    [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button:focus-visible {outline:2px solid #64748b!important;outline-offset:4px;}
+    [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button:hover:not(:disabled) {background:#00623e!important;box-shadow:none!important;}
+    [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button:focus-visible {outline:3px solid #00845c!important;outline-offset:3px;}
+    [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button:disabled {background:#e8eeeb!important;border-color:#dce5df!important;color:#64746b!important;opacity:1!important;}
     [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button p,
-    [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button span {color:#1e293b!important;-webkit-text-fill-color:#1e293b!important;font-size:16px!important;line-height:1.5!important;}
-    [class*="st-key-ra_hub_row_"] [data-testid="stCheckbox"] {background:transparent!important;border:none!important;min-height:0!important;padding:0!important;box-shadow:none!important;}
-    .st-key-ra_hub_pagination [data-testid="stHorizontalBlock"] {flex-wrap:nowrap!important;align-items:center!important;}
-    .st-key-ra_hub_pagination [data-testid="stColumn"] {min-width:0!important;}
+    [class*="st-key-ra_hub_row_"] [data-testid="stButton"] > button span {color:inherit!important;-webkit-text-fill-color:currentColor!important;font-size:16px!important;line-height:1.45!important;}
+    .st-key-risk_assessment [class*="st-key-ra_hub_row_"] [data-testid="stCheckbox"] {background:#f3f8f5!important;border:1px solid #dce8e0!important;min-height:44px!important;border-radius:8px!important;padding:8px 10px!important;box-shadow:none!important;}
+    [class*="st-key-ra_hub_row_"] [data-testid="stCheckbox"] label {min-height:28px!important;width:100%!important;align-items:center!important;}
+    .ra-evaluation-card {min-width:0;width:100%;text-align:left;color:#1e293b;}
+    .ra-card-meta {display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:#64748b;}
+    .ra-card-title {margin:10px 0 12px!important;padding:0!important;font-size:20px!important;line-height:1.5!important;text-align:left!important;color:#1e293b!important;word-break:keep-all;overflow-wrap:anywhere;}
+    .ra-card-site {display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:14px;line-height:1.5;}
+    .ra-card-site > span {font-size:13px;color:#64748b;flex-shrink:0;}
+    .ra-card-site > strong {font-size:14px;font-weight:500;word-break:keep-all;overflow-wrap:anywhere;}
+    .ra-card-details {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 16px;margin:0;padding:14px 0;border-top:1px solid #edf1ef;border-bottom:1px solid #edf1ef;}
+    .ra-card-field {min-width:0;text-align:left;}
+    .ra-card-field dt {font-size:12px;line-height:1.5;color:#64748b;margin:0 0 4px;}
+    .ra-card-field dd {font-size:15px;font-weight:600;line-height:1.5;color:#243b30;margin:0;word-break:keep-all;overflow-wrap:anywhere;}
+    .ra-card-count {margin-top:12px;font-size:13px;color:#64748b;}
+    .st-key-ra_hub_pagination [data-testid="stHorizontalBlock"] {flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;}
+    .st-key-ra_hub_pagination [data-testid="stColumn"], .st-key-ra_hub_pagination [data-testid="column"] {min-width:0!important;width:auto!important;flex:1 1 0!important;}
     .st-key-ra_hub_pagination [data-testid="stButton"] > button {
         background:#fff!important;background-image:none!important;color:#334155!important;
         border:1px solid #d7dce3!important;border-radius:6px!important;box-shadow:none!important;
@@ -7907,7 +8239,16 @@ def render_risk_assessment(actor):
     .st-key-ra_hub_pagination [data-testid="stButton"] > button p {color:#334155!important;-webkit-text-fill-color:#334155!important;font-size:15px!important;}
     .st-key-ra_hub_pagination [data-testid="stButton"] > button:disabled {opacity:.45!important;}
     .st-key-ra_hub_pagination .ra-page-counter {text-align:center;line-height:38px;font-size:15px;color:#64748b;}
-    @media(max-width:700px){.st-key-ra_hub_table_header{display:none;}}
+    @media(max-width:768px){
+        .ra-card-title {font-size:18px!important;}
+        .ra-card-details {grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;}
+        .st-key-ra_hub_filter_fields [data-testid="stHorizontalBlock"] {flex-direction:row!important;flex-wrap:nowrap!important;gap:12px!important;}
+        .st-key-ra_hub_filter_fields [data-testid="stColumn"], .st-key-ra_hub_filter_fields [data-testid="column"] {min-width:0!important;width:0!important;flex:1 1 0!important;}
+        .st-key-ra_hub_list_toolbar [data-testid="stHorizontalBlock"] {flex-direction:column!important;gap:8px!important;}
+        .st-key-ra_hub_list_toolbar [data-testid="stColumn"], .st-key-ra_hub_list_toolbar [data-testid="column"] {min-width:0!important;width:100%!important;flex:1 1 100%!important;}
+        .st-key-ra_hub_pagination .ra-page-counter {font-size:13px;white-space:nowrap;}
+        [class*="st-key-ra_hub_row_"] [data-testid="stCaptionContainer"] p {font-size:13px!important;line-height:1.6!important;word-break:keep-all;overflow-wrap:anywhere;}
+    }
     </style>''', unsafe_allow_html=True)
     notice = st.session_state.pop('ra_notice', None)
     if notice: st.success(notice)
@@ -7918,6 +8259,7 @@ def render_risk_assessment(actor):
     elif page == 'registration': ra_render_registration(actor)
     elif page == 'writer': ra_render_writer(actor)
     else: ra_render_history(actor)
+    render_risk_back_bridge(actor)
 
 with risk_tab:
     st.markdown("""<style>
@@ -7928,3 +8270,12 @@ with risk_tab:
     </style>""",unsafe_allow_html=True)
     with st.container(key="risk_assessment"):
         render_risk_assessment(logged_user_id)
+
+
+# Browser Back protection; no credentials or draft data are stored in browser history.
+
+
+
+
+
+render_workstation_route()
