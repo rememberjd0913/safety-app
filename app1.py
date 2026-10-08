@@ -6457,7 +6457,7 @@ def ra_default_meta(actor):
     today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date().isoformat()
     return dict(construction_type=None, department=str(st.session_state.get('selected_dept_box', '')),
                 site=str(st.session_state.get('selected_site_box', '')), address='', company='', date=today,
-                kind='최초평가', trigger='', evaluator=str(actor), reviewer='', workers='',
+                assessment_name='', method='빈도·강도법', kind='최초평가', trigger='', evaluator=str(actor), reviewer='', workers='',
                 worker_rep='', opinions='', education='', pre_shared='', work_scope='',
                 equipment='', materials='', information=[], information_note='', trades=[],
                 criteria_name=RA_PROCEDURE+' · 비사무업무 빈도·강도법',
@@ -6476,11 +6476,11 @@ def ra_default_row():
                 urgent=False, mandatory=False, measures='', control_types=[], budget=0,
                 budget_note='미정', owner='', deadline='', status='미착수',
                 residual_f=0, residual_s=0, verified_by='', verified_date='', evidence='',
-                followup='', before_photo='', after_photo='', source='', source_note='직접 입력')
+                followup='', before_photo='', after_photo='', source='', source_note='직접 입력', standard_model_id='')
 
 
-def ra_normalize_payload(payload, actor):
-    """Validate saved/backup content and reopen it as a draft requiring fresh review."""
+def ra_normalize_payload(payload, actor, require_review=True):
+    """Validate contents; imported backups require review, trusted history retains its review."""
     import uuid
     if not isinstance(payload, dict) or not isinstance(payload.get('meta'), dict) or not isinstance(payload.get('rows', []), list):
         raise ValueError('위험성평가 작성 내용의 형식을 확인해 주세요.')
@@ -6504,10 +6504,12 @@ def ra_normalize_payload(payload, actor):
     if meta['construction_type'] not in RA_CONSTRUCTION_TYPES: meta['construction_type'] = None
     for field in ('frequency_max', 'severity_max', 'frequency_labels', 'severity_labels', 'threshold', 'criteria_name', 'criteria_stamp'):
         meta[field] = ra_default_meta(actor)[field]
-    meta['criteria_confirmed'] = False
-    meta['review_confirmed'] = False
-    meta['review_sig'] = ''
-    meta['report_mode'] = '초안'
+    require_review = require_review or original.get('criteria_stamp') != RA_CRITERIA_STAMP
+    if require_review:
+        meta['criteria_confirmed'] = False
+        meta['review_confirmed'] = False
+        meta['review_sig'] = ''
+        meta['report_mode'] = '초안'
     rows, seen = [], set()
     for item in payload.get('rows', []):
         if not isinstance(item, dict): raise ValueError('평가 항목의 형식을 확인해 주세요.')
@@ -6534,10 +6536,10 @@ def ra_normalize_payload(payload, actor):
         if row['status'] not in ('미착수', '진행 중', '완료·현장 확인'): row['status'] = '미착수'
         if row['budget_note'] not in ('미정', '추가 비용 최소화', '50만원 이내', '100만원 이내', '500만원 이내', '직접 입력'): row['budget_note'] = '직접 입력'
         row['control_types'] = [v for v in row['control_types'] if v in RA_CONTROL_TYPES]
-        row['site_confirmed'] = False
+        if require_review: row['site_confirmed'] = False
         rows.append(row)
     meta['trades'] = list(dict.fromkeys(meta['trades']+[r['trade'] for r in rows if r['trade']]))
-    return dict(schema_version=2, meta=meta, rows=rows, final=False)
+    return dict(schema_version=3, meta=meta, rows=rows, final=bool(not require_review and payload.get('final') and meta.get('report_mode') == '현장 검토본'))
 
 
 def ra_initialize(actor):
@@ -6559,7 +6561,7 @@ def ra_initialize(actor):
     for row in st.session_state.ra_rows:
         for key, value in ra_default_row().items():
             if key not in row: row[key] = value.copy() if isinstance(value, list) else value
-    st.session_state.setdefault('ra_step', RA_STEPS[0])
+    st.session_state.setdefault('ra_step', st.session_state.get('ra_writer_step', RA_STEPS[0]))
 
 
 def ra_review_signature(meta, rows):
@@ -6625,6 +6627,11 @@ def ra_set_field(row_id, field, value):
 
 def ra_go_step(number):
     st.session_state.ra_step = RA_STEPS[max(0, min(5, number))]
+    st.session_state.ra_writer_step = st.session_state.ra_step
+
+
+def ra_remember_step():
+    st.session_state.ra_writer_step = st.session_state.ra_step
 
 
 def ra_select_tasks():
@@ -6816,12 +6823,21 @@ def ra_sharing_draft():
 
 
 def ra_payload():
-    return dict(schema_version=2, meta=st.session_state.ra_meta, rows=st.session_state.ra_rows,
-                final=st.session_state.ra_meta.get('report_mode') == '현장 검토본')
+    payload = dict(schema_version=3, meta=st.session_state.ra_meta, rows=st.session_state.ra_rows,
+                   final=st.session_state.ra_meta.get('report_mode') == '현장 검토본')
+    if st.session_state.get('ra_active_record_id'): payload['assessment_id'] = st.session_state.ra_active_record_id
+    return payload
 
 
 def ra_archive(owner, payload):
     owner = report_history_identity(owner)
+    if st.session_state.get('ra_active_record_id'):
+        step = RA_STEPS.index(st.session_state.ra_step)
+        revision = ra_record_save(owner, st.session_state.ra_active_record_id, payload, st.session_state.ra_record_revision, step)
+        st.session_state.ra_record_revision = revision
+        st.session_state.ra_last_saved_sig = ra_hash(payload)
+        st.session_state.ra_last_saved_step = step
+        return
     encoded = json.dumps(payload, ensure_ascii=False, allow_nan=False)
     db = inspection_store()
     try:
@@ -6899,13 +6915,15 @@ def ra_render_preparation(meta, actor):
         st.caption('주요작업 분석·안전보건상 위험정보: 절차서 붙임 10·11 / 참여·사전교육 기록: 붙임 5·7·8')
     left, right = st.columns(2)
     with left:
+        ra_field('위험성평가명', 'assessment_name', max_chars=120)
         ra_field('담당부서', 'department', placeholder='예: 시설사업1부')
         ra_field('평가현장', 'site', placeholder='현장명 입력', help='안전점검 등록에서 선택한 현장명이 처음 표시됩니다.')
         ra_field('현장 주소', 'address')
         ra_field('수행기관·시공사', 'company')
     with right:
         ra_field('평가일', 'date', kind='date')
-        ra_field('평가 구분', 'kind', kind='select', options=['최초평가', '정기평가', '수시평가', '상시평가 기록'])
+        ra_field('평가 구분', 'kind', kind='select', options=RA_KINDS)
+        st.caption('평가방법 · '+RA_METHOD)
         if meta['kind'] == '수시평가': ra_field('수시평가 실시 사유', 'trigger', kind='area', placeholder='예: 작업방법 변경, 새로운 위험요인 발견, 사고·아차사고')
         ra_field('평가 담당자', 'evaluator')
         ra_field('관리감독자·검토자', 'reviewer')
@@ -6951,19 +6969,7 @@ def ra_render_identification(meta):
     category = ra_field('위험분류', 'category', 'entry', 'select', [None]+RA_CATEGORIES, format_func=lambda v: v or '위험분류 선택')
     origin = ra_field('위험요인을 확인한 방법', 'origin', 'entry', 'select', RA_ORIGINS)
     examples = ra_examples_for(trade, meta['construction_type'])
-    with st.expander('공단 가이드 사례로 작성하기', expanded=True):
-        ids = [v['id'] for v in examples]
-        selected_id = ra_field('참고할 사례', 'example', 'entry', 'select', ids, format_func=lambda eid: next(v['title'] for v in examples if v['id'] == eid))
-        example = next(v for v in examples if v['id'] == selected_id)
-        st.write('**위험요인 예시:** '+example['factor'])
-        for kind, text in example['controls']: st.write('• '+kind+' / '+text)
-        st.caption(example['source']+' · 현장 조건과 실행 가능성을 확인해 수정합니다.')
-        if example.get('incident'): st.caption('사고사례 요약: '+example['incident'])
-        if st.button('이 사례를 평가 항목으로 추가', key='ra_add_example', disabled=not work.strip()):
-            hazards = [label for label in RA_HAZARDS if any(tag in label for tag in example['hazards'])]
-            before = len(st.session_state.ra_rows)
-            ra_add_factors(trade, work, hazards, example['category'], '공단 가이드 사례', [example['factor']], example['source'], '공단 가이드 예시 · 현장 확인 필요')
-            st.success('평가 항목을 추가했습니다. 아래에서 현장 문구를 확인하세요.' if len(st.session_state.ra_rows) > before else '같은 작업·위험요인이 이미 있습니다.')
+    example = ra_render_standard_models(meta, trade, work, examples)
     with st.expander('위험요인 직접 작성·AI 작성 도움'):
         hazards = ra_field('관련 위험유형', 'hazards', 'entry', 'multi', RA_HAZARDS)
         custom = ra_field('기타 위험유형', 'custom_hazard', 'entry')
@@ -7090,6 +7096,8 @@ def ra_render_execution(meta):
 
 def ra_report_sections(meta, rows, final):
     sections = [('사전준비 · 평가 개요', [
+        ('위험성평가명', meta.get('assessment_name', '') or '위험성평가'),
+        ('평가방법', meta.get('method', '빈도·강도법')),
         ('보고서 상태', '현장 검토본' if final else '초안 · 미확인 사항 포함'),
         ('공사종류 / 담당부서', (meta.get('construction_type') or '확인 필요')+' / '+meta.get('department', '')),
         ('현장명 / 주소', meta.get('site', '')+' / '+meta.get('address', '')),
@@ -7290,7 +7298,7 @@ def ra_render_sharing(meta, actor):
                 if (outputs.get('hwpx') or outputs.get('pdf')) and outputs.get('archived_files_sig') != file_sig:
                     try:
                         ra_archive(actor, payload)
-                        archive_generated_reports(actor, 'risk:'+str(actor)+':'+sig, outputs.get('hwpx'), outputs.get('pdf'), title='위험성평가 보고서', site=meta.get('site', ''), kind='위험성평가')
+                        archive_generated_reports(actor, 'risk:'+str(actor)+':'+sig, outputs.get('hwpx'), outputs.get('pdf'), title=(meta.get('assessment_name') or '위험성평가')+' 보고서', site=meta.get('site', ''), kind='위험성평가')
                         st.session_state.ra_last_saved_sig = sig
                         outputs['archived_files_sig'] = file_sig
                     except ValueError as exc: st.warning(str(exc))
@@ -7303,53 +7311,524 @@ def ra_render_sharing(meta, actor):
     elif outputs: st.caption('작성 내용이 바뀌었습니다. 보고서를 다시 만들어 주세요.')
 
 
-@st.fragment
-def render_risk_assessment(actor):
-    if not actor or not st.session_state.get('password_correct'): return
-    ra_initialize(actor)
-    meta, rows = st.session_state.ra_meta, st.session_state.ra_rows
-    st.subheader('공단 위험성평가 · 단계별 작성')
-    notice = st.session_state.pop('ra_notice', None)
-    if notice: st.success(notice)
-    error = st.session_state.pop('ra_load_error', None)
-    if error: st.error(error)
-    ra_field('공사종류', 'construction_type', kind='select', options=[None]+RA_CONSTRUCTION_TYPES,
-             format_func=lambda value: '공사종류를 선택하세요' if value is None else value)
-    if not meta['construction_type']:
-        st.info('공사종류를 선택하면 단계별 작성 화면이 열립니다.')
-        with st.expander('저장한 평가 이어서 작성'):
-            if st.button('저장 목록 확인', key='ra_load_initial'):
-                try: st.session_state.ra_saved_records = ra_saved_list(actor)
-                except (StorageError, PermissionError): st.error('저장 목록 연결 확인 필요.')
-            records = st.session_state.get('ra_saved_records', [])
-            if records:
-                st.selectbox('저장한 평가', [v[0] for v in records], format_func=lambda rid: next(v[1][:16]+' / '+v[2] for v in records if v[0] == rid), key='ra_saved_choice')
-                st.button('선택 평가 불러오기', on_click=ra_load_selected, args=(actor,), key='ra_load_initial_selected')
-        return
-    st.caption('필요한 단계로 이동할 수 있습니다. 입력값은 단계 이동 후에도 유지되며, 임시 저장하면 다시 접속해 이어서 작성할 수 있습니다.')
-    left, right = st.columns(2)
-    with left:
-        if st.button('작성 내용 임시 저장', key='ra_save', width='stretch'):
+RA_KINDS = ['최초평가', '정기평가', '수시평가']
+RA_METHOD = '빈도·강도법'
+RA_OTHER_METHODS = ['위험성 수준 3단계 판단법', '체크리스트법', '핵심요인 기술법', '산업별 평가']
+RA_KIND_GUIDE = [
+    ('최초평가', '현장의 위험을 처음 정리할 때', '사업장에 위험성평가를 처음 도입할 때 작업과 공정 전반의 유해·위험요인을 찾고, 적용할 평가기준과 감소대책을 정리합니다.', '새로 시작한 하수관로 공사의 굴착·인양·되메우기 작업 평가'),
+    ('정기평가', '기존 평가와 조치가 적절한지 재검토할 때', '기존 평가 결과와 그동안의 변경사항을 함께 살펴봅니다. 안전조치의 유지 상태, 새로운 위험요인, 근로자 의견 등을 반영해 내용을 갱신합니다.', '기존 평가표와 개선 이행기록을 토대로 전체 작업 재검토'),
+    ('수시평가', '새로운 위험이나 작업 변화가 생겼을 때', '설비·자재·작업방법 등의 변경이나 재해 발생 등으로 추가적인 위험요인이 생긴 경우, 관련 작업의 위험요인과 감소대책을 다시 검토합니다.', '굴착 깊이 또는 작업방법 변경에 따른 해당 작업 평가'),
+]
+RA_METHOD_GUIDE = [
+    (RA_METHOD, '가능성 × 중대성으로 위험성을 판단', '위험이 발생할 가능성(빈도)과 예상 피해의 크기(강도)를 정하고, 두 값을 곱한 점수로 위험성과 개선 우선순위를 판단합니다.', '현재 지원 · 공단 제공 절차서의 빈도 5단계 × 강도 4단계 사용'),
+    (RA_OTHER_METHODS[0], '위험성 수준을 저·중·고로 구분', '현장의 판단기준에 따라 위험성을 세 수준으로 나누고, 허용 가능한 수준인지 결정한 뒤 필요한 감소대책을 마련합니다.', '준비 중 · 이번 초안에서는 선택할 수 없습니다.'),
+    (RA_OTHER_METHODS[1], '점검항목으로 위험과 조치를 확인', '작업·설비에 맞는 점검항목을 만들어 충족 여부를 확인하고, 미흡한 항목의 위험요인과 개선조치를 정리합니다.', '준비 중 · 이번 초안에서는 선택할 수 없습니다.'),
+    (RA_OTHER_METHODS[2], '핵심 위험과 대책을 간결하게 정리', '핵심 유해·위험요인과 그 위험성, 현재 조치 및 필요한 감소대책을 한 장의 기록으로 정리하는 방식입니다. OPS(One Point Sheet)라고도 합니다.', '준비 중 · 이번 초안에서는 선택할 수 없습니다.'),
+    (RA_OTHER_METHODS[3], '업종·공정별 평가 모델을 참고', '산업과 공정에 맞는 위험요인·대책 예시를 활용하는 메뉴입니다. 구체적인 평가기법과 기준은 사용하는 모델에 따라 확인해야 합니다.', '준비 중 · 현재는 빈도·강도법 안에서 표준모델 작성 도움을 제공합니다.'),
+]
+
+
+def ra_record_schema(db):
+    db.execute('''CREATE TABLE IF NOT EXISTS risk_assessment_register (
+        id TEXT PRIMARY KEY, owner TEXT NOT NULL, created TEXT NOT NULL, updated TEXT NOT NULL,
+        assessment_year INTEGER NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL, method TEXT NOT NULL,
+        site TEXT NOT NULL, status TEXT NOT NULL, progress INTEGER NOT NULL, row_count INTEGER NOT NULL,
+        current_step INTEGER NOT NULL, payload TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1,
+        deleted_at TEXT NOT NULL DEFAULT '')''')
+    db.execute('CREATE INDEX IF NOT EXISTS risk_register_owner_updated ON risk_assessment_register(owner,deleted_at,updated)')
+    db.execute('CREATE TABLE IF NOT EXISTS risk_assessment_migrations (owner TEXT PRIMARY KEY, completed TEXT NOT NULL)')
+
+
+def ra_record_details(payload):
+    meta, rows = payload['meta'], payload['rows']
+    progress = sum(bool(value) for value in ra_progress(meta, rows))
+    if payload.get('final') and not ra_validate(meta, rows, True): status = '검토 완료'
+    elif rows or progress or meta.get('construction_type') or meta.get('work_scope'): status = '작성 중'
+    else: status = '등록'
+    return status, progress, len(rows)
+
+
+def ra_record_header(meta):
+    name = str(meta.get('assessment_name', '')).strip()
+    if not name or len(name) > 120: raise ValueError('위험성평가명은 1~120자로 입력해 주세요.')
+    if meta.get('kind') not in RA_KINDS: raise ValueError('평가구분은 최초·정기·수시평가 중에서 선택해 주세요.')
+    if meta.get('method') != RA_METHOD: raise ValueError('현재는 빈도·강도법만 등록할 수 있습니다.')
+    return name, meta['kind'], meta['method']
+
+
+def ra_record_migrate(db, owner):
+    """Keep old snapshots intact and give each one a stable, owner-scoped history entry."""
+    if db.execute('SELECT 1 FROM risk_assessment_migrations WHERE owner=?', (owner,)).fetchone(): return
+    now = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat()
+    if 'risk_assessments' in report_history_tables(db):
+        records = db.execute('SELECT id,created,site,payload FROM risk_assessments WHERE owner=? ORDER BY created,rowid', (owner,))
+        for old_id, created, site, encoded in records:
             try:
-                payload = ra_payload(); ra_archive(actor, payload)
-                st.session_state.ra_last_saved_sig = ra_hash(payload)
-                st.success('저장했습니다. ‘저장한 평가 이어서 작성’에서 불러올 수 있습니다.')
-            except Exception: st.error('저장소 연결 확인 필요. ⑥ 단계에서 JSON 백업을 내려받아 보관할 수 있습니다.')
-    with right:
-        with st.expander('저장한 평가 이어서 작성'):
-            st.caption('불러오면 현재 화면의 작성 내용이 선택한 평가로 바뀝니다.')
-            if st.button('저장 목록 확인', key='ra_saved_refresh'):
-                try: st.session_state.ra_saved_records = ra_saved_list(actor)
-                except (StorageError, PermissionError): st.error('저장 목록 연결 확인 필요.')
-            records = st.session_state.get('ra_saved_records', [])
-            if records:
-                st.selectbox('저장한 평가', [v[0] for v in records], format_func=lambda rid: next(v[1][:16]+' / '+v[2] for v in records if v[0] == rid), key='ra_saved_choice')
-                st.button('선택 평가 불러오기', on_click=ra_load_selected, args=(actor,), key='ra_load_selected')
-            st.file_uploader('작성 내용 JSON 백업 불러오기', type=['json'], key='ra_backup_file')
-            st.button('JSON 내용 불러오기', on_click=ra_load_backup, args=(actor,), disabled=not st.session_state.get('ra_backup_file'), key='ra_load_backup')
+                data = ra_normalize_payload(json.loads(encoded), owner)
+                meta = data['meta']
+                meta['assessment_name'] = meta.get('assessment_name') or f'{created[:10]} {site or "현장"} 위험성평가'[:120]
+                # Older continuous records remain available as drafts under the new supported workflow.
+                if meta['kind'] not in RA_KINDS:
+                    meta['trigger'] = '\n'.join(v for v in ('기존 평가구분: '+meta['kind'], meta.get('trigger', '')) if v)
+                    meta['kind'] = '수시평가'
+                meta['method'] = RA_METHOD
+                record_id = 'legacy_'+ra_hash([owner, old_id])
+                data['assessment_id'] = record_id
+                status, progress, count = ra_record_details(data)
+                try: year = datetime.date.fromisoformat(created[:10]).year
+                except (ValueError, TypeError): year = datetime.datetime.now(ZoneInfo('Asia/Seoul')).year
+                db.execute('''INSERT OR IGNORE INTO risk_assessment_register
+                    (id,owner,created,updated,assessment_year,name,kind,method,site,status,progress,row_count,current_step,payload,revision,deleted_at)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,'')''',
+                    (record_id, owner, created or now, created or now, year, meta['assessment_name'], meta['kind'], RA_METHOD,
+                     meta.get('site', ''), status, progress, count, 0, json.dumps(data, ensure_ascii=False, allow_nan=False)))
+            except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+                raise ValueError('기존 위험성평가의 작성 형식 확인이 필요합니다. 원본은 보존되어 있습니다.') from None
+    db.execute('INSERT INTO risk_assessment_migrations(owner,completed) VALUES (?,?)', (owner, now))
+
+
+def ra_record_list(owner, trashed=False):
+    owner = report_history_identity(owner)
+    db = inspection_store()
+    try:
+        with db:
+            ra_record_schema(db)
+            ra_record_migrate(db, owner)
+        condition = "deleted_at<>''" if trashed else "deleted_at=''"
+        cursor = db.execute('''SELECT id,created,updated,assessment_year,name,kind,method,site,status,progress,
+                              row_count,current_step,revision,deleted_at FROM risk_assessment_register
+                              WHERE owner=? AND '''+condition+' ORDER BY updated DESC,rowid DESC', (owner,))
+        names = [column[0] for column in cursor.description]
+        return [dict(zip(names, row)) for row in cursor.fetchall()]
+    finally: db.close()
+
+
+def ra_record_create(owner, name, kind, method=RA_METHOD, payload=None):
+    import uuid
+    owner = report_history_identity(owner)
+    data = ra_normalize_payload(payload, owner) if payload is not None else dict(schema_version=3, meta=ra_default_meta(owner), rows=[], final=False)
+    data['meta'].update(assessment_name=str(name).strip(), kind=kind, method=method)
+    name, kind, method = ra_record_header(data['meta'])
+    record_id = uuid.uuid4().hex
+    data.update(schema_version=3, assessment_id=record_id)
+    status, progress, count = ra_record_details(data)
+    now = datetime.datetime.now(ZoneInfo('Asia/Seoul'))
+    encoded = json.dumps(data, ensure_ascii=False, allow_nan=False)
+    db = inspection_store()
+    try:
+        with db:
+            ra_record_schema(db)
+            ra_record_migrate(db, owner)
+            db.execute('''INSERT INTO risk_assessment_register
+                (id,owner,created,updated,assessment_year,name,kind,method,site,status,progress,row_count,current_step,payload,revision,deleted_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,'')''',
+                (record_id, owner, now.isoformat(), now.isoformat(), now.year, name, kind, method,
+                 data['meta'].get('site', ''), status, progress, count, 0, encoded))
+    finally: db.close()
+    return record_id
+
+
+def ra_record_load(owner, record_id):
+    owner = report_history_identity(owner)
+    db = inspection_store()
+    try:
+        if 'risk_assessment_register' not in report_history_tables(db): raise PermissionError('저장된 평가를 확인해 주세요.')
+        row = db.execute('''SELECT payload,revision,current_step,updated FROM risk_assessment_register
+                            WHERE id=? AND owner=? AND deleted_at='' ''', (str(record_id), owner)).fetchone()
+        if not row: raise PermissionError('본인이 보관 중인 위험성평가만 열 수 있습니다.')
+        data = ra_normalize_payload(json.loads(row[0]), owner, require_review=False)
+        data.update(schema_version=3, assessment_id=str(record_id))
+        return dict(id=str(record_id), payload=data, revision=row[1], step=row[2], updated=row[3])
+    finally: db.close()
+
+
+def ra_record_save(owner, record_id, payload, revision, step=0):
+    owner = report_history_identity(owner)
+    name, kind, method = ra_record_header(payload['meta'])
+    data = ra_normalize_payload(payload, owner, require_review=False)
+    data.update(schema_version=3, assessment_id=str(record_id))
+    status, progress, count = ra_record_details(data)
+    encoded = json.dumps(data, ensure_ascii=False, allow_nan=False)
+    step = max(0, min(5, int(step)))
+    db = inspection_store()
+    try:
+        with db:
+            if 'risk_assessment_register' not in report_history_tables(db): raise PermissionError('먼저 평가를 등록해 주세요.')
+            current = db.execute('SELECT revision,deleted_at FROM risk_assessment_register WHERE id=? AND owner=?', (str(record_id), owner)).fetchone()
+            if not current or current[1]: raise PermissionError('본인이 보관 중인 평가만 저장할 수 있습니다.')
+            if current[0] != revision: raise ValueError('다른 창에서 이 평가가 변경되었습니다. JSON 백업을 내려받은 뒤 목록에서 다시 열어 주세요.')
+            updated = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat()
+            db.execute('''UPDATE risk_assessment_register SET updated=?,name=?,kind=?,method=?,site=?,status=?,
+                          progress=?,row_count=?,current_step=?,payload=?,revision=revision+1
+                          WHERE id=? AND owner=? AND revision=? AND deleted_at='' ''',
+                       (updated, name, kind, method, data['meta'].get('site', ''), status, progress, count, step,
+                        encoded, str(record_id), owner, revision))
+    finally: db.close()
+    return revision+1
+
+
+def ra_record_trash(owner, record_ids, restore=False):
+    owner = report_history_identity(owner)
+    ids = list(dict.fromkeys(str(v) for v in record_ids))
+    if not ids: raise ValueError('평가를 먼저 선택해 주세요.')
+    if len(ids) > 100: raise ValueError('한 번에 100건까지 처리할 수 있습니다.')
+    db = inspection_store()
+    try:
+        with db:
+            if 'risk_assessment_register' not in report_history_tables(db): raise PermissionError('저장된 평가를 확인해 주세요.')
+            for record_id in ids:
+                row = db.execute('SELECT deleted_at FROM risk_assessment_register WHERE id=? AND owner=?', (record_id, owner)).fetchone()
+                if not row or bool(row[0]) != bool(restore): raise PermissionError('선택한 평가의 소유자·보관 상태를 확인해 주세요.')
+            now = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat()
+            for record_id in ids:
+                db.execute('UPDATE risk_assessment_register SET deleted_at=?,updated=?,revision=revision+1 WHERE id=? AND owner=?',
+                           ('' if restore else now, now, record_id, owner))
+    finally: db.close()
+    return len(ids)
+
+
+def ra_hub_navigate(page):
+    if page == 'guide':
+        st.session_state.ra_hub_return = st.session_state.get('ra_hub_page', 'list')
+        if st.session_state.ra_hub_return == 'writer':
+            st.session_state.ra_working_view = {key: st.session_state[key] for key in st.session_state
+                if key in ('ra_step', 'ra_item_trade') or key.startswith(('ra_active_', 'ra_model_'))}
+    elif page == 'writer':
+        for key, value in st.session_state.get('ra_working_view', {}).items(): st.session_state[key] = value
+    st.session_state.ra_hub_page = page
+
+
+def ra_hub_save(actor, quiet=False):
+    try:
+        payload = ra_payload()
+        step = RA_STEPS.index(st.session_state.ra_step)
+        if st.session_state.get('ra_last_saved_sig') != ra_hash(payload) or st.session_state.get('ra_last_saved_step') != step:
+            ra_archive(actor, payload)
+        if not quiet: st.session_state.ra_notice = '작성 내용을 저장했습니다. 같은 평가에 계속 이어서 기록됩니다.'
+        return True
+    except (ValueError, PermissionError) as exc: st.session_state.ra_load_error = str(exc)
+    except Exception: st.session_state.ra_load_error = '저장소 연결 확인 필요. 입력 내용은 화면에 유지됩니다. JSON 백업을 내려받거나 다시 저장해 주세요.'
+    return False
+
+
+def ra_hub_back(actor):
+    if ra_hub_save(actor, quiet=True):
+        st.session_state.ra_hub_page = 'list'
+        st.session_state.ra_notice = '작성 내용을 저장하고 목록으로 돌아왔습니다.'
+
+
+def ra_hub_open(actor, record_id):
+    try:
+        record = ra_record_load(actor, record_id)
+        # Clear writer widgets before they are instantiated, while retaining list filters.
+        for key in list(st.session_state):
+            if key.startswith('ra_') and not key.startswith('ra_hub_'): del st.session_state[key]
+        data = record['payload']
+        st.session_state.ra_actor = str(actor)
+        st.session_state.ra_meta = data['meta']
+        st.session_state.ra_rows = data['rows']
+        st.session_state.ra_applied_tasks = list(data['meta']['trades'])
+        st.session_state.ra_active_record_id = record['id']
+        st.session_state.ra_record_revision = record['revision']
+        st.session_state.ra_step = RA_STEPS[record['step'] if record['step'] in range(6) else 0]
+        st.session_state.ra_writer_step = st.session_state.ra_step
+        st.session_state.ra_last_saved_sig = ra_hash(data)
+        st.session_state.ra_last_saved_step = RA_STEPS.index(st.session_state.ra_step)
+        st.session_state.ra_hub_page = 'writer'
+        st.session_state.ra_hub_reload_confirm = False
+    except (ValueError, PermissionError, json.JSONDecodeError) as exc: st.session_state.ra_load_error = str(exc)
+    except Exception: st.session_state.ra_load_error = '평가 불러오기 실패. 저장소 연결을 확인한 뒤 다시 열어 주세요.'
+
+
+def ra_hub_register(actor):
+    try:
+        record_id = ra_record_create(actor, st.session_state.get('ra_hub_new_name', ''), st.session_state.get('ra_hub_new_kind'), RA_METHOD)
+        st.session_state.ra_hub_created_id = record_id
+        st.session_state.ra_hub_page = 'list'
+        st.session_state.ra_hub_filters = dict(year='전체', kind='전체', query='')
+        st.session_state.ra_hub_page_number = 1
+        st.session_state.ra_hub_selection = []
+        st.session_state.ra_hub_registration = {}
+        st.session_state.ra_notice = '등록했습니다. 목록의 평가명을 누르면 위험성평가를 시작할 수 있습니다.'
+    except (ValueError, PermissionError) as exc: st.session_state.ra_load_error = str(exc)
+    except Exception: st.session_state.ra_load_error = '등록하지 못했습니다. 저장소 연결을 확인한 뒤 다시 등록해 주세요.'
+
+
+def ra_hub_registration_change():
+    st.session_state.ra_hub_registration = dict(name=st.session_state.get('ra_hub_new_name', ''), kind=st.session_state.get('ra_hub_new_kind', RA_KINDS[0]))
+
+
+def ra_hub_filter():
+    st.session_state.ra_hub_filters = dict(year=st.session_state.get('ra_hub_filter_year', '전체'), kind=st.session_state.get('ra_hub_filter_kind', '전체'), query=st.session_state.get('ra_hub_filter_query', '').strip())
+    st.session_state.ra_hub_page_number = 1
+    st.session_state.ra_hub_selection = []
+
+
+def ra_hub_filter_reset():
+    for key, value in [('year', '전체'), ('kind', '전체'), ('query', '')]: st.session_state['ra_hub_filter_'+key] = value
+    st.session_state.ra_hub_filters = dict(year='전체', kind='전체', query='')
+    st.session_state.ra_hub_page_number = 1
+    st.session_state.ra_hub_selection = []
+
+
+def ra_hub_select(record_id, key):
+    selected = set(st.session_state.get('ra_hub_selection', []))
+    if st.session_state.get(key): selected.add(record_id)
+    else: selected.discard(record_id)
+    st.session_state.ra_hub_selection = sorted(selected)
+    st.session_state.ra_hub_delete_confirm = False
+
+
+def ra_hub_change_trash(actor, restore):
+    try:
+        count = ra_record_trash(actor, st.session_state.get('ra_hub_selection', []), restore)
+        st.session_state.ra_hub_selection = []
+        st.session_state.ra_hub_delete_confirm = False
+        st.session_state.ra_notice = f'{count}건을 '+('복원했습니다.' if restore else '휴지통으로 옮겼습니다.')
+    except (ValueError, PermissionError) as exc: st.session_state.ra_load_error = str(exc)
+    except Exception: st.session_state.ra_load_error = '저장소 반영 확인 필요. 목록을 새로고침해 보관 상태를 확인해 주세요.'
+
+
+def ra_hub_import_backup(actor):
+    try:
+        uploaded = st.session_state.get('ra_hub_backup_file')
+        if not uploaded or uploaded.size > 40*1024*1024: raise ValueError('작성 내용 JSON 백업(40MB 이하)을 선택해 주세요.')
+        data = ra_normalize_payload(json.loads(uploaded.getvalue().decode('utf-8-sig')), actor)
+        meta = data['meta']
+        name = (meta.get('assessment_name') or (meta.get('site') or '현장')+' 위험성평가')[:110]+' (백업 복원)'
+        kind = meta.get('kind') if meta.get('kind') in RA_KINDS else '수시평가'
+        record_id = ra_record_create(actor, name, kind, payload=data)
+        st.session_state.ra_hub_created_id = record_id
+        ra_hub_filter_reset()
+        st.session_state.ra_notice = '백업을 별도 평가로 등록했습니다. 평가명을 누르고 적용 기준과 현장 상황을 다시 확인해 주세요.'
+    except (ValueError, UnicodeDecodeError, PermissionError, json.JSONDecodeError) as exc: st.session_state.ra_load_error = str(exc)
+    except Exception: st.session_state.ra_load_error = '백업 등록 실패. 저장소 연결을 확인해 주세요.'
+
+
+def ra_hub_page_move(page):
+    st.session_state.ra_hub_page_number = max(1, page)
+
+
+def ra_render_guide():
+    st.subheader('평가구분·평가방법 안내')
+    st.button('← 이전 화면', key='ra_hub_guide_back', on_click=ra_hub_navigate, args=(st.session_state.get('ra_hub_return', 'list'),))
+    categories, methods, writing = st.tabs(['평가구분', '평가방법', '작성 순서'])
+    with categories:
+        st.caption('언제, 어떤 범위를 평가하는지에 따라 평가구분을 선택합니다.')
+        for title, subtitle, description, example in RA_KIND_GUIDE:
+            with st.container(border=True):
+                st.markdown('### '+title)
+                st.markdown('**'+subtitle+'**')
+                st.write(description)
+                st.caption('현장 예시 · '+example)
+    with methods:
+        for title, subtitle, description, availability in RA_METHOD_GUIDE:
+            with st.container(border=True):
+                st.markdown('### '+title)
+                st.markdown('**'+subtitle+'**')
+                st.write(description)
+                st.caption(availability)
+        st.info('이 앱의 현재 평가척도는 공단 제공 절차서에 따른 빈도 1~5 × 강도 1~4입니다. 8점 이상은 감소대책, 16점 이상은 즉시 안전조치를 검토하며 현장의 적용 기준을 먼저 확인합니다.')
+    with writing:
+        descriptions = ['평가 대상·참여자·자료·점수 기준과 공종을 정합니다.', '실제 작업조건을 입력하고 표준모델·근로자 의견 등으로 위험요인을 찾습니다.', '현재 안전조치를 확인하고 빈도·강도와 판단 사유를 작성합니다.', '위험을 낮출 대책, 담당자, 기한과 필요한 예산을 정합니다.', '실제 이행 여부와 증빙을 기록하고 개선 후 위험성을 재평가합니다.', 'TBM 등 공유 내용과 후속 점검을 기록하고 보고서를 만듭니다.']
+        for title, description in zip(RA_STEPS, descriptions):
+            with st.container(border=True):
+                st.markdown('**'+title+'**')
+                st.write(description)
+        st.caption('목록에서 평가명 선택 → 단계별 작성 → 임시 저장 → 이후 같은 평가를 열어 이어서 작성')
+    st.markdown('안내 참고: [사업장 위험성평가에 관한 지침](https://www.law.go.kr/행정규칙/사업장위험성평가에관한지침) · [고용노동부 위험성평가 방법 안내](https://www.moel.go.kr/news/enews/report/enewsView.do?news_seq=15093)')
+    st.caption('공단 작성 기준: '+RA_PROCEDURE+'. 구체적인 실시 시기·적용 예외는 최신 지침과 현장 실시규정을 함께 확인하세요.')
+
+
+def ra_render_registration(actor):
+    st.subheader('위험성평가 등록')
+    back, guide = st.columns(2)
+    with back: st.button('← 목록', key='ra_hub_register_back', on_click=ra_hub_navigate, args=('list',))
+    with guide: st.button('평가구분·평가방법 안내', key='ra_hub_register_guide', on_click=ra_hub_navigate, args=('guide',), width='stretch')
+    st.caption('기본 정보를 등록하면 목록에 새 평가가 생성됩니다. 이후 평가명을 눌러 작성하세요.')
+    saved = st.session_state.get('ra_hub_registration', {})
+    st.session_state.setdefault('ra_hub_new_name', saved.get('name', ''))
+    st.session_state.setdefault('ra_hub_new_kind', saved.get('kind', RA_KINDS[0]))
+    with st.container(border=True):
+        st.text_input('위험성평가명 *', key='ra_hub_new_name', max_chars=120, placeholder='예: 2026년 ○○하수관로 공사 정기 위험성평가', on_change=ra_hub_registration_change)
+        st.selectbox('평가구분 *', RA_KINDS, key='ra_hub_new_kind', on_change=ra_hub_registration_change)
+        description = next(item for item in RA_KIND_GUIDE if item[0] == st.session_state.ra_hub_new_kind)
+        st.caption(description[1])
+        st.selectbox('평가방법 *', [RA_METHOD], key='ra_hub_new_method')
+        st.caption('현재 지원 · 공단 기준 빈도 5단계 × 강도 4단계')
+        st.markdown('**다른 평가방법**')
+        columns = st.columns(2)
+        for index, method in enumerate(RA_OTHER_METHODS):
+            with columns[index%2]: st.button(method+' · 준비 중', disabled=True, key='ra_hub_disabled_method_'+str(index), width='stretch')
+    st.button('등록', key='ra_hub_register_submit', type='primary', on_click=ra_hub_register, args=(actor,), width='stretch')
+
+
+def ra_render_history(actor):
+    with st.container(border=True, key='ra_hub_intro'):
+        st.markdown('### 위험성평가란?')
+        st.write('작업에서 다칠 수 있는 유해·위험요인을 찾아 위험성 수준을 판단하고, 위험을 낮출 대책을 마련해 실행하는 과정입니다.')
+        st.caption('사업주가 주도하고 관리감독자·근로자·협력업체가 함께 참여합니다. 평가 결과와 대책은 TBM 등으로 공유하고 이행 여부를 확인합니다.')
+    title, guide, register = st.columns([2, 2, 1])
+    with title: st.subheader('위험성평가 목록')
+    with guide: st.button('평가구분·평가방법 안내', key='ra_hub_history_guide', on_click=ra_hub_navigate, args=('guide',), width='stretch')
+    with register: st.button('＋ 등록', type='primary', key='ra_hub_new', on_click=ra_hub_navigate, args=('registration',), width='stretch')
+    area = st.radio('보관 상태', ['평가 목록', '휴지통'], horizontal=True, key='ra_hub_area', on_change=ra_hub_filter_reset, label_visibility='collapsed')
+    trashed = area == '휴지통'
+    try: records = ra_record_list(actor, trashed)
+    except (ValueError, PermissionError) as exc:
+        st.error(str(exc)); return
+    except Exception:
+        st.error('평가 목록을 불러오지 못했습니다. 저장소 연결을 확인한 뒤 새로고침해 주세요.')
+        st.button('목록 새로고침', key='ra_hub_list_retry'); return
+    filters = st.session_state.get('ra_hub_filters', dict(year='전체', kind='전체', query=''))
+    years = ['전체']+sorted({str(row['assessment_year']) for row in records}, reverse=True)
+    with st.container(border=True, key='ra_hub_filters_box'):
+        with st.form('ra_hub_search_form'):
+            year, kind, query, submit = st.columns([1, 1, 2, .7])
+            with year:
+                st.session_state.setdefault('ra_hub_filter_year', filters['year'] if filters['year'] in years else '전체')
+                if st.session_state.ra_hub_filter_year not in years: st.session_state.ra_hub_filter_year = '전체'
+                st.selectbox('연도', years, key='ra_hub_filter_year', format_func=lambda v: v if v == '전체' else v+'년')
+            with kind:
+                st.session_state.setdefault('ra_hub_filter_kind', filters['kind'])
+                st.selectbox('평가구분', ['전체']+RA_KINDS, key='ra_hub_filter_kind')
+            with query:
+                st.session_state.setdefault('ra_hub_filter_query', filters['query'])
+                st.text_input('평가명·현장명 검색', key='ra_hub_filter_query', placeholder='평가명 또는 현장명')
+            with submit:
+                st.write('')
+                st.form_submit_button('조회', on_click=ra_hub_filter, width='stretch')
+        st.button('검색 초기화', key='ra_hub_reset', on_click=ra_hub_filter_reset)
+    filters = st.session_state.get('ra_hub_filters', filters)
+    visible = [r for r in records if (filters['year'] == '전체' or str(r['assessment_year']) == filters['year']) and
+               (filters['kind'] == '전체' or r['kind'] == filters['kind']) and
+               (not filters['query'] or filters['query'].casefold() in (r['name']+' '+r['site']).casefold())]
+    st.caption(f'총 {len(visible)}건 · 평가명을 누르면 이어서 작성할 수 있습니다.' if not trashed else f'휴지통 {len(visible)}건 · 선택 후 복원할 수 있습니다.')
+    if not visible:
+        st.info('조건에 맞는 평가가 없습니다.' if records else ('휴지통이 비어 있습니다.' if trashed else '아직 등록된 평가가 없습니다. ‘등록’을 눌러 첫 평가를 만들어 주세요.'))
+    page_count = max(1, (len(visible)+9)//10)
+    page = max(1, min(page_count, st.session_state.get('ra_hub_page_number', 1)))
+    selected = set(st.session_state.get('ra_hub_selection', [])) & {r['id'] for r in visible}
+    st.session_state.ra_hub_selection = sorted(selected)
+    if visible:
+        with st.container(key='ra_hub_table_header'):
+            for col, label in zip(st.columns([.35, .5, .7, 1.1, 3, 1, 1.4, 1.2], gap='small'), ['선택', '번호', '연도', '등록일', '위험성평가명', '평가구분', '평가방법', '진행상태']):
+                with col: st.markdown('**'+label+'**')
+        for number, record in enumerate(visible[(page-1)*10:page*10], (page-1)*10+1):
+            record_id = record['id']
+            with st.container(border=True, key='ra_hub_row_'+record_id):
+                check, no, year, date, name, kind, method, status = st.columns([.35, .5, .7, 1.1, 3, 1, 1.4, 1.2], gap='small')
+                with check:
+                    key = 'ra_hub_checked_'+record_id
+                    st.session_state[key] = record_id in selected
+                    st.checkbox('선택 '+record['name'], key=key, label_visibility='collapsed', on_change=ra_hub_select, args=(record_id, key))
+                with no: st.write(number)
+                with year: st.write(str(record['assessment_year']))
+                with date: st.caption(record['created'][:10])
+                with name:
+                    if trashed: st.markdown('**'+record['name'].replace('*', '')+'**')
+                    else: st.button(record['name'], key='ra_hub_open_'+record_id, on_click=ra_hub_open, args=(actor, record_id), type='tertiary', width='stretch')
+                    st.caption((record['site'] or '현장 미입력')+' · 항목 '+str(record['row_count'])+'개')
+                with kind: st.write(record['kind'])
+                with method: st.write(record['method'])
+                with status:
+                    st.write(record['status'])
+                    st.caption(f'작성 확인 {record["progress"]}/6')
+        left, label, right = st.columns([1, 2, 1])
+        with left: st.button('이전', key='ra_hub_page_previous', disabled=page == 1, on_click=ra_hub_page_move, args=(page-1,))
+        with label: st.caption(f'{page} / {page_count}페이지')
+        with right: st.button('다음', key='ra_hub_page_next', disabled=page == page_count, on_click=ra_hub_page_move, args=(page+1,))
+    if selected:
+        with st.container(border=True):
+            st.write(f'선택한 평가 {len(selected)}건')
+            if trashed:
+                st.button('선택 평가 복원', key='ra_hub_restore', on_click=ra_hub_change_trash, args=(actor, True))
+            else:
+                st.caption('평가 작성 이력을 휴지통으로 옮깁니다. 생성한 보고서는 보고서 보관함에서 별도로 관리합니다.')
+                confirmed = st.checkbox('선택한 평가를 휴지통으로 옮기는 것을 확인합니다.', key='ra_hub_delete_confirm')
+                st.button('선택 평가 삭제', key='ra_hub_delete', disabled=not confirmed, on_click=ra_hub_change_trash, args=(actor, False))
+    if not trashed:
+        with st.expander('작성 내용 JSON 백업 복원'):
+            st.caption('백업 파일을 새로운 평가로 등록합니다. 적용 기준과 현장 확인은 다시 검토하세요.')
+            st.file_uploader('작성 내용 JSON 백업', type=['json'], key='ra_hub_backup_file')
+            st.button('백업을 새 평가로 등록', key='ra_hub_import', disabled=not st.session_state.get('ra_hub_backup_file'), on_click=ra_hub_import_backup, args=(actor,))
+    st.button('목록 새로고침', key='ra_hub_history_refresh')
+
+
+def ra_apply_standard_models(trade, work, example_ids, include_measures=False):
+    if not work.strip() or not example_ids: raise ValueError('실제 작업조건과 적용할 표준모델을 선택해 주세요.')
+    models = {model['id']: model for model in RA_KECO_EXAMPLES}
+    if any(eid not in models for eid in example_ids): raise ValueError('표준모델 선택을 확인해 주세요.')
+    pending = [models[eid] for eid in dict.fromkeys(example_ids) if not any(row['trade'] == trade and row['work'] == work and
+               (row.get('standard_model_id') == eid or row['factor'] == models[eid]['factor']) for row in st.session_state.ra_rows)]
+    if len(st.session_state.ra_rows)+len(pending) > 200: raise ValueError('한 평가에 최대 200개 항목까지 작성할 수 있습니다.')
+    added = 0
+    for model in pending:
+        hazards = [label for label in RA_HAZARDS if any(tag in label for tag in model['hazards'])]
+        before = len(st.session_state.ra_rows)
+        ra_add_factors(trade, work, hazards, model['category'], '공단 가이드 사례', [model['factor']], model['source'], '표준모델 작성 초안 · 현장 확인 필요')
+        if len(st.session_state.ra_rows) > before:
+            row = st.session_state.ra_rows[-1]
+            row['standard_model_id'] = model['id']
+            if include_measures:
+                row['measures'] = '\n'.join('['+kind+'] '+detail for kind, detail in model['controls'])
+                row['control_types'] = list(dict.fromkeys(kind for kind, _ in model['controls']))
+            added += 1
+    return added
+
+
+def ra_render_standard_models(meta, trade, work, examples):
+    with st.expander('표준모델로 작성하기', expanded=True):
+        st.caption('공단 가이드 사례에서 위험요인·감소대책 초안을 가져옵니다. 실제 작업조건에 맞게 수정하고 점수와 현장 확인을 작성하세요.')
+        search = st.text_input('표준모델 검색', key='ra_model_search', placeholder='예: 굴착, 인양, 밀폐공간')
+        options = [example for example in examples if not search.strip() or search.strip().casefold() in (example['title']+' '+example['factor']).casefold()]
+        ids = [example['id'] for example in options]
+        labels = {example['id']: example['title'] for example in examples}
+        pick_key = 'ra_model_picks_'+ra_hash([trade, ids])[:12]
+        picked = st.multiselect('적용할 표준모델 (여러 개 선택 가능)', ids, key=pick_key, format_func=labels.__getitem__)
+        if not options: st.info('검색 조건에 맞는 표준모델이 없습니다. 검색어를 바꾸거나 직접 작성해 주세요.')
+        selected_id = ra_field('참고할 사례', 'example', 'entry', 'select', [None]+ids, format_func=lambda eid: '미리볼 표준모델 선택' if eid is None else labels[eid])
+        preview_ids = picked or ([selected_id] if selected_id else [])
+        for eid in preview_ids:
+            model = next(v for v in examples if v['id'] == eid)
+            with st.container(border=True):
+                st.markdown('**'+model['title']+'**')
+                st.write('위험요인 · '+model['factor'])
+                for kind, text in model['controls']: st.write('• '+kind+' / '+text)
+                st.caption(model['source'])
+                if model.get('incident'): st.caption('사고사례 요약 · '+model['incident'])
+        include = st.checkbox('감소대책 예시도 함께 가져오기', value=True, key='ra_model_include_measures')
+        if st.button('선택한 표준모델 적용', key='ra_models_apply', type='primary', disabled=not (picked and work.strip())):
+            try:
+                count = ra_apply_standard_models(trade, work, picked, include)
+                st.success(f'{count}개 항목을 추가했습니다. 현장 조건에 맞게 확인·수정해 주세요.' if count else '같은 작업·조건·위험요인이 이미 있습니다. 기존 작성 내용은 유지했습니다.')
+            except ValueError as exc: st.warning(str(exc))
+        if selected_id and st.button('이 사례를 평가 항목으로 추가', key='ra_add_example', disabled=not work.strip()):
+            count = ra_apply_standard_models(trade, work, [selected_id], include)
+            st.success('평가 항목을 추가했습니다. 현장 조건을 확인·수정하세요.' if count else '같은 작업·조건·위험요인이 이미 있습니다.')
+        return next((example for example in examples if example['id'] == selected_id), examples[0])
+
+
+def ra_render_writer(actor):
+    if not st.session_state.get('ra_active_record_id'):
+        st.session_state.ra_hub_page = 'list'
+        st.info('목록에서 작성할 평가를 선택해 주세요.')
+        return
+    meta, rows = st.session_state.ra_meta, st.session_state.ra_rows
+    st.subheader(meta.get('assessment_name') or '위험성평가 작성')
+    st.caption(meta['kind']+' · '+RA_METHOD+' · 빈도 5단계 × 강도 4단계')
+    back, guide, save = st.columns([1, 2, 1])
+    with back: st.button('← 목록', key='ra_hub_writer_back', on_click=ra_hub_back, args=(actor,), width='stretch')
+    with guide: st.button('평가구분·평가방법 안내', key='ra_hub_writer_guide', on_click=ra_hub_navigate, args=('guide',), width='stretch')
+    with save: st.button('임시 저장', key='ra_save', on_click=ra_hub_save, args=(actor,), type='primary', width='stretch')
+    st.caption('입력은 단계 이동 중 유지됩니다. ‘임시 저장’ 또는 ‘목록’을 누르면 저장소에 반영됩니다.')
+    ra_field('공사종류', 'construction_type', kind='select', options=[None]+RA_CONSTRUCTION_TYPES, format_func=lambda value: '공사종류를 선택하세요' if value is None else value)
+    if not meta['construction_type']:
+        st.info('먼저 공사종류를 선택하면 단계별 작성 화면이 열립니다.')
+        return
     ready = ra_progress(meta, rows)
     st.progress(sum(ready)/6, text=f'작성 확인 {sum(ready)}/6단계 · 평가 항목 {len(rows)}개')
-    step = st.radio('작성 순서', RA_STEPS, horizontal=True, key='ra_step')
+    step = st.radio('작성 순서', RA_STEPS, horizontal=True, key='ra_step', on_change=ra_remember_step)
     index = RA_STEPS.index(step)
     st.markdown('### '+step)
     if index == 0: ra_render_preparation(meta, actor)
@@ -7362,8 +7841,36 @@ def render_risk_assessment(actor):
     previous, next_step = st.columns(2)
     with previous: st.button('이전 단계', on_click=ra_go_step, args=(index-1,), disabled=index == 0, key='ra_previous', width='stretch')
     with next_step: st.button('다음 단계', on_click=ra_go_step, args=(index+1,), disabled=index == 5, key='ra_next', width='stretch')
-    st.caption('AI는 후보 작성만 돕습니다. 점수와 현장 적용·이행 확인은 참여 근로자와 담당자가 결정합니다.')
+    st.caption('표준모델과 AI는 작성 후보를 제공합니다. 점수와 현장 적용·이행 여부는 참여 근로자와 담당자가 확인합니다.')
+    with st.expander('작성 내용 백업'):
+        st.download_button('작성 내용 JSON 내려받기', json.dumps(ra_payload(), ensure_ascii=False, indent=2).encode(), '위험성평가_작성내용.json', 'application/json', key='ra_hub_writer_json', on_click='ignore')
+        st.caption('다른 창에서 평가를 수정했다면 필요한 내용을 백업한 뒤 저장된 내용을 다시 불러오세요.')
+        confirmed = st.checkbox('현재 화면의 미저장 입력이 저장된 내용으로 바뀌는 것을 확인합니다.', key='ra_hub_reload_confirm')
+        st.button('저장된 내용 다시 불러오기', key='ra_hub_writer_reload', disabled=not confirmed, on_click=ra_hub_open, args=(actor, st.session_state.ra_active_record_id))
 
+
+@st.fragment
+def render_risk_assessment(actor):
+    if not actor or not st.session_state.get('password_correct'): return
+    ra_initialize(actor)
+    st.session_state.setdefault('ra_hub_page', 'list')
+    st.markdown('''<style>
+    .st-key-ra_hub_intro {background:#f5f8fc;border:1px solid #e0e7ef;border-radius:12px;padding:6px 8px;}
+    .st-key-ra_hub_filters_box {background:#f7f9fc;}
+    .st-key-ra_hub_table_header {background:#edf3f9;padding:10px 14px;border-radius:8px;margin-bottom:8px;}
+    [class*="st-key-ra_hub_row_"] {border-color:#e5eaf0;border-radius:8px;}
+    [class*="st-key-ra_hub_row_"] button[kind="tertiary"] {color:#146bb8;text-align:left;justify-content:flex-start;font-weight:600;}
+    @media(max-width:700px){.st-key-ra_hub_table_header{display:none;}}
+    </style>''', unsafe_allow_html=True)
+    notice = st.session_state.pop('ra_notice', None)
+    if notice: st.success(notice)
+    error = st.session_state.pop('ra_load_error', None)
+    if error: st.error(error)
+    page = st.session_state.ra_hub_page
+    if page == 'guide': ra_render_guide()
+    elif page == 'registration': ra_render_registration(actor)
+    elif page == 'writer': ra_render_writer(actor)
+    else: ra_render_history(actor)
 
 with risk_tab:
     st.markdown("""<style>
