@@ -3993,7 +3993,7 @@ class WeatherAPIError(RuntimeError):
 
 
 def wx_decode(raw):
-    """오류 XML/JSON을 분류하고 서버의 원문 URL·인증키를 사용자에게 노출하지 않습니다."""
+    """JSON·XML 정상 응답과 오류를 구분. 응답 URL·인증키는 표시하지 않음."""
     try:
         response = json.loads(raw).get('response', {})
         header = response.get('header', {})
@@ -4001,15 +4001,15 @@ def wx_decode(raw):
         body = response.get('body', {})
     except (ValueError, AttributeError, TypeError):
         try:
-            if b'<!DOCTYPE' in raw.upper() or b'<!ENTITY' in raw.upper():
-                raise ValueError()
+            if b'<!DOCTYPE' in raw.upper() or b'<!ENTITY' in raw.upper():raise ValueError()
             root = wx_et.fromstring(raw)
             code = root.findtext('.//returnReasonCode') or root.findtext('.//resultCode') or 'UNKNOWN'
+            nodes = root.findall('.//items/item')
+            values = [{child.tag: ''.join(child.itertext()) for child in node} for node in nodes]
+            body = {'items': {'item': values}}
         except (ValueError, wx_et.ParseError):
-            code = 'FORMAT'
-        body = {}
-    if code in ('03', '3'):
-        return []
+            code = 'FORMAT'; body = {}
+    if code in ('03', '3'):return []
     if code not in ('00', '0'):
         messages = {
             '30':'날씨 인증키를 확인해주세요.', '31':'인증키 사용 기간을 확인해주세요.',
@@ -4018,12 +4018,12 @@ def wx_decode(raw):
             '12':'신청한 API 서비스가 제공되는지 확인해주세요.',
         }
         raise WeatherAPIError(code, '기상청 조회 실패: '+messages.get(code, '서비스 응답을 확인하고 잠시 후 다시 조회해주세요.')+' (코드 '+re.sub(r'[^A-Za-z0-9_]', '', code)[:16]+')')
+    if not isinstance(body,dict):raise WeatherAPIError('FORMAT','기상청 자료 형식을 확인할 수 없습니다.')
     items = body.get('items', {}) or {}
     values = items.get('item', []) if isinstance(items, dict) else []
-    if isinstance(values, dict):
-        values = [values]
-    if not isinstance(values, list):
-        raise WeatherAPIError('FORMAT', '기상청 자료 형식을 확인할 수 없습니다.')
+    if isinstance(values, dict):values = [values]
+    if not isinstance(values,list) or any(not isinstance(value,dict) for value in values):
+        raise WeatherAPIError('FORMAT','기상청 자료 형식을 확인할 수 없습니다.')
     return values
 
 
@@ -4031,7 +4031,9 @@ def wx_decode(raw):
 def wx_api(service, operation, key, params, cache_slot):
     allowed = {('VilageFcstInfoService_2.0','getUltraSrtNcst'),
                ('VilageFcstInfoService_2.0','getUltraSrtFcst'),
-               ('WthrWrnInfoService','getWthrWrnList')}
+               ('WthrWrnInfoService','getWthrWrnList'),
+               ('WthrWrnInfoService','getWthrWrnMsg'),
+               ('WthrWrnInfoService','getPwnStatus')}
     if (service, operation) not in allowed:
         raise WeatherAPIError('CONFIG','날씨 요청 종류가 올바르지 않습니다.')
     # Encoding/Decoding 키 모두 1회 인코딩만 적용. '+' 문자는 보존합니다.
@@ -4101,6 +4103,452 @@ def wx_forecast_rows(items, now):
                      '기온(℃)':wx_number(values.get('T1H')), '습도(%)':wx_number(values.get('REH')),
                      '풍속(m/s)':wx_number(values.get('WSD')), '1시간 강수량':str(values.get('RN1','미제공'))})
     return rows
+
+
+# 기상청 공식 기상특보 조회서비스 활용가이드(2026.06.01)의 지점코드·응답 항목.
+WX_WARN_OFFICES = {
+    '108': ('서울 발표관서', '전국 통보'),
+    '109': ('서울 발표관서', '서울·인천·경기 통보'),
+    '159': ('부산 발표관서', '부산·울산·경남 통보'),
+    '143': ('대구 발표관서', '대구·경북 통보'),
+    '156': ('광주 발표관서', '광주·전남 통보'),
+    '146': ('전주 발표관서', '전북 통보'),
+    '133': ('대전 발표관서', '대전·세종·충남 통보'),
+    '131': ('청주 발표관서', '충북 통보'),
+    '105': ('강릉 발표관서', '강원 통보'),
+    '184': ('제주 발표관서', '제주 통보'),
+}
+WX_WARN_PROVINCES = {
+    '서울': ('서울', '서울시', '서울특별시'), '인천': ('인천', '인천시', '인천광역시'),
+    '부산': ('부산', '부산시', '부산광역시'), '대구': ('대구', '대구시', '대구광역시'),
+    '대전': ('대전', '대전시', '대전광역시'), '울산': ('울산', '울산시', '울산광역시'),
+    '세종': ('세종', '세종시', '세종특별자치시'), '경기': ('경기', '경기도'),
+    '강원': ('강원', '강원도', '강원특별자치도'), '충북': ('충북', '충청북도'),
+    '충남': ('충남', '충청남도'), '전북': ('전북', '전라북도', '전북자치도', '전북특별자치도'),
+    '전남': ('전남', '전라남도'), '광주': ('광주', '광주시', '광주광역시'),
+    '경북': ('경북', '경상북도'), '경남': ('경남', '경상남도'), '제주': ('제주', '제주도', '제주특별자치도'),
+}
+WX_WARN_WORKS = ['야외 일반작업', '굴착·맨홀·관로', '고소·양중·가설', '화기·용접', '해안·해상 작업']
+WX_WARN_LOCAL_NAMES = set(WX_CITIES) | {
+    value
+    for region in WX_REGIONS if region[1]
+    for token in region[1].split()
+    for value in (token, re.sub(r'[시군구]$', '', token))
+}
+WX_WARN_ACTIONS = {
+    '호우': dict(why='굴착부·맨홀 침수, 토사 유입·붕괴, 감전 및 미끄럼 위험을 미리 점검하기 위해 확인합니다.',
+        actions={'공통':'배수로·집수정·비상대피로를 확인하고 침수·붕괴 우려구역의 출입을 통제하세요.',
+            '굴착·맨홀·관로':'유입수·배수펌프와 흙막이·굴착면을 점검하고, 맨홀·지하 작업의 진행 여부와 대피체계를 재검토하세요.',
+            '고소·양중·가설':'미끄러운 발판·가설시설과 자재 적치상태를 확인하고 작업순서·시간을 재검토하세요.',
+            '화기·용접':'침수·젖은 전기설비의 사용을 통제하고 전원·누전방지 조치를 확인하세요.'}),
+    '강풍': dict(why='인양물 흔들림, 가설물 전도·자재 비산과 추락 위험을 점검하고 작업계획을 조정하기 위해 확인합니다.',
+        actions={'공통':'적치물·방진망·가설울타리의 고정상태와 비산물 발생 가능성을 확인하세요.',
+            '고소·양중·가설':'현장 풍속을 확인하고 장비별 사용기준·작업계획에 따라 고소·양중 작업의 진행 여부를 재검토하세요.',
+            '굴착·맨홀·관로':'굴착구간 주변 가설울타리·표지판과 장비·자재 고정상태를 확인하세요.',
+            '해안·해상 작업':'강풍·파랑에 노출되는 작업구역과 접근로를 확인하고 작업시간·대피계획을 재검토하세요.'}),
+    '태풍': dict(why='강풍과 호우가 함께 영향을 줄 수 있어 양중·가설·배수·대피계획을 종합적으로 점검하기 위해 확인합니다.',
+        actions={'공통':'배수·비상전원·대피연락망과 가설물·적치물 고정상태를 확인하세요.',
+            '고소·양중·가설':'현장 기상·장비기준과 작업계획을 확인하고 고소·양중·가설 작업의 진행 여부를 재검토하세요.',
+            '굴착·맨홀·관로':'굴착·지하 작업구역의 침수·붕괴 우려와 대피동선, 펌프·비상전원을 확인하세요.',
+            '해안·해상 작업':'해수면·파랑·대피경로를 확인하고 위험해안의 출입·작업 통제계획을 점검하세요.'}),
+    '대설': dict(why='작업발판·가설구조물의 적설하중, 미끄럼·낙설과 장비 이동 위험을 점검하기 위해 확인합니다.',
+        actions={'공통':'통로의 제설·미끄럼 방지와 낙설 위험구역의 출입통제를 확인하세요.',
+            '고소·양중·가설':'가설시설·작업발판의 적설과 구조 안전상태를 확인하고 고소·양중 작업계획을 재검토하세요.',
+            '굴착·맨홀·관로':'굴착부 주변 적설·결빙과 장비 이동로·출입통로를 확인하세요.'}),
+    '한파': dict(why='근로자 한랭 노출, 통로 결빙·미끄럼과 배관·설비 동파 위험에 대비하기 위해 확인합니다.',
+        actions={'공통':'방한용품·온열 휴게시설과 통로 결빙, 노출 시간·휴식계획을 확인하세요.',
+            '굴착·맨홀·관로':'배수배관·펌프·임시 급수의 동파방지와 출입통로 결빙상태를 확인하세요.',
+            '고소·양중·가설':'발판·사다리·장비의 결빙과 작동상태를 확인하고 작업계획을 재검토하세요.'}),
+    '폭염': dict(why='온열질환 예방을 위한 작업시간·휴식·물·냉방 또는 그늘 준비를 검토하기 위해 확인합니다.',
+        actions={'공통':'현장 체감온도와 근로자 상태를 확인하고 물·그늘 또는 냉방·휴식 및 응급대응을 준비하세요.',
+            '야외 일반작업':'더운 시간대 작업배치와 휴식계획을 조정하고 근로자 상태를 서로 확인하세요.',
+            '굴착·맨홀·관로':'환기·휴식·연락체계를 확인하고 고온 노출이 큰 작업의 시간·인원 배치를 검토하세요.'}),
+    '건조': dict(why='불티·가연물로 인한 화재 위험을 점검하고 화기작업의 방호·감시 계획을 검토하기 위해 확인합니다.',
+        actions={'공통':'가연물 적치와 소화설비·비상연락망을 확인하세요.',
+            '화기·용접':'가연물 제거·불티 비산방지와 화재감시·잔불 확인계획을 점검하고 작업허가 조건을 재확인하세요.'}),
+    '풍랑': dict(why='해안·해상 작업의 파랑, 추락·월파와 장비·선박 운용 위험에 대비하기 위해 확인합니다.',
+        actions={'공통':'해안·해상 작업 유무와 작업구역 접근·대피동선을 확인하세요.',
+            '해안·해상 작업':'파고·월파·선박 및 장비 운용기준을 확인하고 작업시간·출입 통제계획을 재검토하세요.'}),
+    '폭풍해일': dict(why='해안 저지대 침수·월파로 인한 작업자 고립과 장비 침수에 대비하기 위해 확인합니다.',
+        actions={'공통':'해안 저지대의 침수 우려, 장비 이동과 대피·출입 통제계획을 확인하세요.',
+            '해안·해상 작업':'만조·해수면 정보와 안전한 대피경로를 확인하고 해안 접근·작업계획을 재검토하세요.'}),
+    '지진해일': dict(why='해안 작업자의 대피·출입 통제와 장비·작업구역의 안전확인을 위해 확인합니다.',
+        actions={'공통':'공식 대피안내를 확인하고 해안에서 벗어나 지정된 안전장소로 이동할 준비를 하세요.',
+            '해안·해상 작업':'해안 출입을 통제하고 현장 비상연락·대피절차에 따라 대응하세요.'}),
+    '황사': dict(why='야외 작업자의 분진 노출과 시야 저하에 따른 장비·이동 위험을 점검하기 위해 확인합니다.',
+        actions={'공통':'현장 대기상태와 시야, 작업자 노출을 확인하고 작업시간·적합한 보호구·휴식계획을 검토하세요.'}),
+    '안개': dict(why='시야 저하로 인한 장비·차량 충돌과 이동·양중 위험을 점검하기 위해 확인합니다.',
+        actions={'공통':'현장 시야·조명·유도자·차량동선을 확인하고 작업속도와 진행 여부를 재검토하세요.',
+            '고소·양중·가설':'장비 운전원과 신호수의 시야·연락수단을 확인하고 양중계획을 재검토하세요.'}),
+    '열대야': dict(why='야간 작업의 고온 노출과 충분한 휴식·회복 여건을 검토하기 위해 확인합니다.',
+        actions={'공통':'야간 체감온도·근로자 상태와 물·냉방·휴식계획을 확인하세요.'}),
+}
+WX_WARN_SOURCE = 'https://www.data.go.kr/data/15000415/openapi.do'
+WX_WARN_OFFICIAL = 'https://www.weather.go.kr/w/special-report/overall.do'
+WX_WARN_SAFETY = 'https://www.moel.go.kr/local/pyeongtaek/info/dataroom/view.do?bbs_seq=20260501172'
+WX_WARN_CSS = '''<style>
+.wx-warning-intro{background:#f0f6f1;border:1px solid #d6e5d9;border-radius:10px;padding:15px 18px;margin:10px 0;color:#254431;line-height:1.8;}
+.wx-warning-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0;}
+.wx-warning-stat{background:#fff;border:1px solid #dde6df;border-radius:10px;padding:14px;min-width:0;}
+.wx-warning-stat b{display:block;font-size:24px;color:#176146;}.wx-warning-stat span{font-size:13px;color:#5f7266;line-height:1.5;}
+.wx-warning-card{background:#fff;border:1px solid #dce5df;border-left:4px solid #e2a12e;border-radius:9px;padding:15px 18px;margin:10px 0;overflow-wrap:anywhere;}
+.wx-warning-card.current{border-left-color:#b76325;}.wx-warning-card.preliminary{border-left-color:#3b779a;}.wx-warning-card.release{border-left-color:#97a99b;}
+.wx-warning-card h4{font-size:17px!important;color:#263c2e!important;margin:0 0 6px!important;padding:0!important;line-height:1.6!important;}
+.wx-warning-card p{font-size:14px!important;color:#475b4d!important;line-height:1.7!important;margin:4px 0!important;white-space:pre-line;}
+.wx-warning-card .wx-small{font-size:12px!important;color:#6d7b70!important;}
+@media(max-width:640px){.wx-warning-stats{grid-template-columns:1fr;}.wx-warning-stat{padding:11px 14px;}.wx-warning-stat b{display:inline-block;margin-right:9px;font-size:21px;}.wx-warning-card{padding:13px 14px;}}
+</style>'''
+
+
+def wx_warn_text(value):
+    from html import unescape
+    text = unescape(str(value or '')).replace('\\r\\n','\n').replace('\\n','\n').replace('\r','\n')
+    return re.sub(r'<br\s*/?>','\n',text,flags=re.I).strip()
+
+
+def wx_warn_time(value):
+    text = wx_warn_text(value)
+    if 'T' in text or re.match(r'^\d{4}-\d{2}-\d{2}',text):
+        try:
+            when=datetime.datetime.fromisoformat(text)
+            return (when.replace(tzinfo=ZoneInfo('Asia/Seoul')) if when.tzinfo is None else when.astimezone(ZoneInfo('Asia/Seoul')))
+        except ValueError:pass
+    digits = re.sub(r'\D','',text)
+    for length,fmt in ((14,'%Y%m%d%H%M%S'),(12,'%Y%m%d%H%M')):
+        if len(digits)==length:
+            try:return datetime.datetime.strptime(digits,fmt).replace(tzinfo=ZoneInfo('Asia/Seoul'))
+            except ValueError:pass
+    return None
+
+
+def wx_warn_time_label(value):
+    when=wx_warn_time(value)
+    return when.strftime('%Y-%m-%d %H:%M') if when else '시각 확인 필요'
+
+
+def wx_warn_office(value):
+    code=str(value or '').strip()
+    name=WX_WARN_OFFICES.get(code)
+    return ' · '.join(name) if name else '발표관서 이름 확인 필요'
+
+
+def wx_warn_context(location):
+    # 기본 선택의 '광주'는 기존 WX_CITIES의 경기도 광주시 격자를 뜻함.
+    if location in WX_CITIES:
+        if location in ('서울','인천'):
+            return dict(label=location,province=location,city='',district='',metro=True)
+        return dict(label='경기도 '+location+'시' if location not in ('가평','양평','연천') else '경기도 '+location+'군',
+                    province='경기',city=location,district='',metro=False)
+    region=next((r for r in WX_REGIONS if wx_place_name(r)==location),None)
+    if not region:return dict(label=location,province='',city='',district='',metro=False)
+    province,local,_,_=region
+    if province=='전남광주통합특별시':
+        short='광주' if local.endswith('구') else '전남'
+    else:
+        short=next((p for p,aliases in WX_WARN_PROVINCES.items() if province in aliases),'')
+    match=re.fullmatch(r'(.+?)시\s*(.+구)',local)
+    if match:city,district=match.groups()
+    elif local.endswith('구'):city,district='',local
+    else:city,district=re.sub(r'[시군]$','',local),''
+    return dict(label=location,province=short,city=city,district=district,metro=short in ('서울','인천','부산','대구','대전','울산','광주','세종'))
+
+
+def wx_warn_segments(text):
+    result=[];part=[];depth=0
+    for char in wx_warn_text(text):
+        if char in '(（':depth+=1
+        elif char in ')）':depth=max(0,depth-1)
+        if depth==0 and char in ',，·.\n':
+            if ''.join(part).strip():result.append(''.join(part).strip())
+            part=[]
+        else:part.append(char)
+    if ''.join(part).strip():result.append(''.join(part).strip())
+    return result
+
+
+def wx_warn_area_match(area,context):
+    """0=별도 지역/명시 제외, 1=넓은·조건부 범위, 2=지역명이 포함된 범위. 관서코드로 판단하지 않음."""
+    province=context['province'];city=context['city'];district=context['district']
+    if not province:return 1,'조회 지역의 특보구역 연결 확인 필요'
+    names={n for n in (city,city+'시' if city else '',city+'군' if city else '',district,re.sub(r'구$','',district)) if n}
+    if city=='울릉':names.update(('울릉도','울릉군'))
+    best=(0,'선택 지역이 해당구역에 명시되지 않음')
+    for segment in wx_warn_segments(area):
+        clean=segment.replace('（','(').replace('）',')')
+        prefix=clean.split('(',1)[0].strip()
+        compact=wx_place_normalize(prefix)
+        head=next((p for p,aliases in WX_WARN_PROVINCES.items() if compact in {wx_place_normalize(a) for a in aliases}),None)
+        # 광주·고성처럼 같은 이름이 있는 지역을 다른 시·도에 연결하지 않음.
+        if head and head!=province:continue
+        tokens=set(re.findall(r'[가-힣]+',clean))
+        body=clean[clean.find('(')+1:clean.rfind(')')] if '(' in clean and ')' in clean else ''
+        body_tokens=set(re.findall(r'[가-힣]+',body))
+        has_name=bool(names & tokens)
+        national=compact in ('전국','전국육상','전국내륙')
+        relevant_head=head==province or national
+        if not head and not national:
+            head_aliases=WX_WARN_PROVINCES[province]
+            broad=any(compact.startswith(wx_place_normalize(a)) for a in head_aliases)
+            if broad and not has_name and not (tokens & WX_WARN_LOCAL_NAMES):best=max(best,(1,'시·도 일부 범위 · 세부구역 확인 필요'))
+        if '제외' in clean:
+            # 중첩 괄호/해안·산지 등 세부 제외는 시 전체로 단정하지 않음.
+            nested=clean.count('(')>1
+            specific=any(q in clean for q in ('일부','해안','산지','도서','내륙'))
+            explicit=any(re.search(r'(?<![가-힣])'+re.escape(n)+r'(?:를|는)?\s*제외',body) for n in names)
+            province_excluded=national and bool(set(WX_WARN_PROVINCES[province]) & body_tokens)
+            if not nested and (explicit or names & body_tokens or province_excluded) and relevant_head:
+                if specific:best=max(best,(1,'선택 지역 일부 제외 · 현장 위치 확인 필요'))
+                continue
+            if relevant_head:
+                if (context['metro'] and not district and not national) or nested or not body:
+                    best=max(best,(1,'제외·세부구역 조건 확인 필요'));continue
+                if has_name:best=max(best,(1,'제외·세부구역 조건 확인 필요'));continue
+                # 시·도 전체에서 다른 시·군·구만 제외한 경우.
+                best=max(best,(2,'시·도 전체 범위 · 제외구역 원문 확인'));continue
+            if has_name:best=max(best,(1,'제외·세부구역 조건 확인 필요'))
+            continue
+        if has_name:
+            if head is None and province=='경기' and city=='광주' and compact in ('광주','광주시','광주광역시'):
+                continue
+            if any(q in clean for q in ('일부','해안','산지','도서','내륙')):
+                best=max(best,(1,'선택 지역의 일부 범위 · 세부구역 확인 필요'))
+            else:best=max(best,(2,'선택 지역명 포함'))
+        elif relevant_head:
+            if not body:best=max(best,(2,'전국 또는 시·도 전체 범위'))
+            elif context['metro'] and not district:best=max(best,(1,'선택 시·도의 일부구역 · 현장 위치 확인 필요'))
+            elif not body_tokens or all(t in {'전체','전역'} for t in body_tokens):best=max(best,(2,'시·도 전체 범위'))
+            elif not (body_tokens & WX_WARN_LOCAL_NAMES):
+                best=max(best,(1,'시·도 세부구역 확인 필요'))
+    return best
+
+
+def wx_warn_kind(label):
+    return next((kind for kind in sorted(WX_WARN_ACTIONS,key=len,reverse=True) if kind in label),'기상특보')
+
+
+def wx_warn_groups(text,preliminary=False):
+    """통보문을 특보별로 분리. 한 통보문의 발표·해제·지역을 서로 섞지 않음."""
+    groups=[];current=None;heading=''
+    for line in wx_warn_text(text).splitlines():
+        line=line.strip()
+        if not line:continue
+        if preliminary and ':' not in line and '예비특보' in line:
+            heading=re.sub(r'^\(?\d+\)?[.)]?\s*','',line).strip();continue
+        if ':' in line:
+            left,right=line.split(':',1)
+            left=re.sub(r'^(?:[oO○●•]|\(?\d+\)?[.)]?)\s*','',left).strip()
+            if preliminary and heading:
+                title=heading;effect=left
+            else:title=left;effect=''
+            if wx_warn_kind(title)=='기상특보':
+                # 미지원 특보를 이전 특보의 해당구역에 붙이지 않음.
+                current=dict(heading=title,kind='기상특보',area=right.strip(),effect=effect,
+                             phase='내용 확인',level='특보',unknown=True)
+                groups.append(current)
+                continue
+            current=dict(heading=title,kind=wx_warn_kind(title),area=right.strip(),effect=effect,
+                         phase='해제' if '해제' in title else ('예비' if preliminary or '예비' in title else '발효현황'),
+                         level='경보' if '경보' in title else ('주의보' if '주의보' in title else '예비특보' if preliminary else '특보'))
+            groups.append(current)
+        elif current:current['area']+='\n'+line
+    return groups
+
+
+def wx_warn_snapshot(items,context,now):
+    values=[v for v in items if isinstance(v,dict) and wx_warn_time(v.get('tmFc'))]
+    if not values:return dict(valid=False,rows=[],preliminary=[],unparsed=False,none=False)
+    latest=max(values,key=lambda v:wx_warn_time(v['tmFc']))
+    issue=wx_warn_time(latest.get('tmFc'));effective=wx_warn_time(latest.get('tmEf'))
+    if issue>now+datetime.timedelta(minutes=5):
+        return dict(valid=False,rows=[],preliminary=[],unparsed=True,none=False)
+    active_text=wx_warn_text(latest.get('t6'));preview_text=wx_warn_text(latest.get('t7'))
+    groups=wx_warn_groups(active_text);preview=wx_warn_groups(preview_text,True)
+    none=bool(re.fullmatch(r'(?:[oO○●•]\s*)?(?:없\s*음|해당\s*없음)\.?',active_text))
+    unparsed=len(values)!=len(items) or any(g.get('unknown') for g in groups+preview) or bool(active_text and not groups and not none) or bool(preview_text and not preview and not re.fullmatch(r'(?:[oO○●•]\s*)?없\s*음\.?',preview_text))
+    for row in groups+preview:
+        row['match'],row['match_note']=wx_warn_area_match(row['area'],context)
+        row['issued']=latest.get('tmFc');row['office']='기상청 전국 특보 현황'
+        if row['phase']!='예비':
+            row['effect']=wx_warn_time_label(latest.get('tmEf'))
+            if effective and effective>now:row['phase']='발효 예정'
+    return dict(valid=bool(active_text) and effective is not None,rows=groups,preliminary=preview,
+                none=none,unparsed=unparsed,issue=latest.get('tmFc'),effect=latest.get('tmEf'),
+                raw=latest,stale=effective is not None and now-effective>datetime.timedelta(hours=24))
+
+
+def wx_warn_history(messages,context):
+    rows=[];seen=set()
+    for item in sorted((v for v in messages if isinstance(v,dict)),key=lambda v:str(v.get('tmFc','')),reverse=True):
+        groups=wx_warn_groups(item.get('t2'))
+        if not groups:
+            groups=[dict(heading=wx_warn_text(item.get('t1') or item.get('title')) or '발표내용 확인 필요',
+                         kind=wx_warn_kind(wx_warn_text(item.get('t1') or item.get('title'))),area='',effect='',phase='내용 확인',level='특보')]
+        effect_groups={re.sub(r'\s','',g['heading']):g['area'] for g in wx_warn_groups(item.get('t3'))}
+        for group in groups:
+            group['match'],group['match_note']=wx_warn_area_match(group['area'],context) if group['area'] else (1,'해당구역 자료 확인 필요')
+            if group['phase']!='해제':
+                group['phase']='변경' if any(t in group['heading'] for t in ('변경','대치')) else '발표' if '발표' in group['heading'] else '발표 이력'
+            group['issued']=item.get('tmFc');group['office']=wx_warn_office(item.get('stnId'))
+            group['effect']=effect_groups.get(re.sub(r'\s','',group['heading']),wx_warn_text(item.get('t3')))
+            group['raw']=item
+            identity=(str(item.get('stnId')),str(item.get('tmFc')),str(item.get('tmSeq')),group['heading'],group['area'])
+            if identity in seen:continue
+            seen.add(identity);rows.append(group)
+    return rows
+
+
+def wx_warn_fetch(key,now):
+    """현황·통보문·목록을 독립 조회. 조회 실패를 특보 없음으로 처리하지 않음."""
+    dates={'fromTmFc':(now-datetime.timedelta(days=2)).strftime('%Y%m%d'),'toTmFc':now.strftime('%Y%m%d'),'stnId':'108'}
+    jobs={'status':('getPwnStatus',{}),'messages':('getWthrWrnMsg',dates),'list':('getWthrWrnList',dates)}
+    bundle=dict(fetched=now.isoformat(),errors={})
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        pending={executor.submit(wx_api,'WthrWrnInfoService',op,key,params,int(now.timestamp()//300)):part for part,(op,params) in jobs.items()}
+        for future in as_completed(pending):
+            part=pending[future]
+            try:bundle[part]=future.result()
+            except WeatherAPIError as exc:bundle['errors'][part]=str(exc)
+            except Exception:bundle['errors'][part]='자료를 가져오지 못했습니다. 잠시 후 다시 조회해 주세요.'
+    return bundle
+
+
+def wx_warn_action_lines(kind,works):
+    data=WX_WARN_ACTIONS.get(kind)
+    if not data:return ['공식 통보문과 현장 작업계획·안전대책을 확인하세요.']
+    actions=data['actions'];lines=[actions['공통']]
+    for work in works:
+        if work in actions and actions[work] not in lines:lines.append(actions[work])
+    return lines
+
+
+def wx_warn_card(row,works,history=False):
+    from html import escape
+    state=row['phase'];css='release' if state=='해제' else 'preliminary' if state in ('예비','발효 예정') else 'current'
+    badge='최근 발표 · '+state if history else '예비특보 · 사전대비' if state=='예비' else '발효현황 · 기준시각 확인' if state=='발효현황' else state
+    effect=row.get('effect') or '발효시각 확인 필요'
+    area=row['area'] or '해당구역 확인 필요'
+    parts=[f'<div class="wx-warning-card {css}"><h4>{escape(row["kind"]+" "+row["level"])} · {escape(badge)}</h4>',
+           '<p><b>해당구역</b> '+escape(area)+'</p>',
+           '<p><b>현장 관련성</b> '+escape(row['match_note'])+'</p>',
+           '<p class="wx-small">발표 '+escape(wx_warn_time_label(row.get('issued')))+' · '+escape(row.get('office',''))+'</p>',
+           '<p class="wx-small">발효 또는 예상시각 '+escape(effect)+'</p>']
+    if state=='해제':
+        parts.append('<p><b>작업 재개 전 확인</b> 해제 발표만으로 현장 안전상태가 확인되는 것은 아닙니다. 침수·굴착면·가설물·전기설비 등을 점검하고 현장 절차에 따라 작업 재개를 검토하세요.</p>')
+    elif history:
+        parts.append('<p class="wx-small">발표 이력입니다. 현재 발효 여부는 위의 특보 현황과 공식 원문에서 확인하세요.</p>')
+    else:
+        data=WX_WARN_ACTIONS.get(row['kind'])
+        if data:parts.append('<p><b>확인하는 이유</b> '+escape(data['why'])+'</p>')
+        parts.append('<p><b>현장 확인사항</b>\n'+escape('\n'.join('• '+line for line in wx_warn_action_lines(row['kind'],works)))+'</p>')
+    parts.append('</div>');st.markdown(''.join(parts),unsafe_allow_html=True)
+
+
+def wx_warn_brief(location,site,snapshot,history,works,fetched):
+    lines=['작업 전 기상특보 공유',f'현장: {site}',f'조회 지역: {location}',f'조회 시각(한국): {wx_warn_time_label(fetched)}',
+           '오늘 작업: '+(' / '.join(works) or '작업 종류 미선택')]
+    if snapshot['valid']:
+        lines.append('특보 현황 기준: '+wx_warn_time_label(snapshot['effect']))
+        matches=[r for r in snapshot['rows']+snapshot['preliminary'] if r['match']>0]
+        if matches:
+            for row in matches:
+                lines.append(f'- {row["kind"]} {row["level"]} / {row["phase"]} / {row["match_note"]}')
+                lines.append('  해당구역: '+row['area']);lines.append('  발효·예상시각: '+row['effect'])
+                lines.extend('  확인: '+line for line in wx_warn_action_lines(row['kind'],works))
+        else:lines.append('- 제공된 현황에서 선택 지역과 일치하는 특보를 찾지 못했습니다. 이는 작업 안전을 보장하지 않습니다.')
+        if snapshot.get('stale'):lines.append('※ 현황 기준시각이 오래되었습니다. 최신 공식 현황을 재확인하세요.')
+    else:lines.append('- 현재 특보 현황 확인 필요. 조회 실패·미제공을 특보 없음으로 해석하지 마세요.')
+    if snapshot.get('unparsed'):lines.append('※ 원문 중 자동 구분하지 못한 내용이 있습니다. 공식 원문을 함께 확인하세요.')
+    relevant=[r for r in history if r['match']>0][:5]
+    if relevant:
+        lines.append('최근 발표 이력(현재 상태 아님):')
+        lines.extend('- '+wx_warn_time_label(r['issued'])+' / '+r['heading']+' / '+(r['area'] or '구역 확인 필요') for r in relevant)
+    lines.append('작업 진행·중지·재개 판단은 현장 기상 실측, 장비 사용기준, 작업계획 및 현장 안전절차에 따라 확인합니다.')
+    lines.append('출처: 기상청 기상특보 조회서비스 / 공식 현황: '+WX_WARN_OFFICIAL)
+    return '\n'.join(lines)
+
+
+def wx_render_warning_panel(key,location,site,scope,now):
+    st.markdown(WX_WARN_CSS,unsafe_allow_html=True)
+    st.markdown('### 현장 기상특보·작업 대비')
+    st.markdown('<div class="wx-warning-intro"><b>왜 확인하나요?</b><br>호우·강풍 등 위험기상에 앞서 작업시간·양중·굴착·배수·근로자 보호조치를 검토하고, 작업 전 회의에서 같은 내용을 공유하기 위해 확인합니다.<br>발표지점은 공지를 낸 곳입니다. 현장 관련 여부는 실제 <b>해당구역</b>으로 확인합니다.</div>',unsafe_allow_html=True)
+    context=wx_warn_context(location)
+    suffix=scope[:12]
+    st.caption('특보 확인 지역: '+context['label'])
+    works=st.multiselect('오늘 작업을 선택하면 확인사항을 맞춰 보여드립니다',WX_WARN_WORKS,
+                        default=['야외 일반작업'],key='wx_warn_works_'+suffix)
+    if st.button('현장 특보·대비사항 조회 / 새로고침',key='wx_warning_load',type='primary',width='stretch'):
+        st.session_state.pop('wx_warnings',None)
+        with st.spinner('기상청 현황과 최근 발표의 해당구역을 확인하고 있습니다…'):
+            st.session_state.wx_warnings=wx_warn_fetch(key,now)
+    st.markdown('[기상청 공식 특보 현황 확인]('+WX_WARN_OFFICIAL+') · [사업장 호우·태풍 안전점검 참고자료]('+WX_WARN_SAFETY+')')
+    bundle=st.session_state.get('wx_warnings')
+    if not bundle or 'errors' not in bundle:
+        st.caption('위 조회 버튼을 누르면 발효현황·예비특보·최근 발표와 현장 확인사항을 함께 볼 수 있습니다.');return
+    fetched=wx_warn_time(bundle['fetched'])
+    st.caption('조회 시각(한국): '+wx_warn_time_label(bundle['fetched'])+' · 같은 기상청 응답이 최대 5분간 표시될 수 있습니다.')
+    if fetched is None or now-fetched>datetime.timedelta(minutes=15):st.warning('조회 후 15분 이상 경과했거나 시각 확인이 필요합니다. 새로고침하여 최신 자료를 확인하세요.')
+    names={'status':'특보 현황','messages':'최근 발표 상세','list':'발표 목록'}
+    for part,error in bundle['errors'].items():st.warning(names.get(part,part)+' · '+error)
+    snapshot=wx_warn_snapshot(bundle.get('status',[]),context,now)
+    history=wx_warn_history(bundle.get('messages',[]),context)
+    marine='해안·해상 작업' in works
+    def show_row(row):return marine or row['kind']!='풍랑'
+    current=[r for r in snapshot['rows'] if r['match']>0 and show_row(r)]
+    preliminary=[r for r in snapshot['preliminary'] if r['match']>0 and show_row(r)]
+    relevant_history=[r for r in history if r['match']>0 and show_row(r)]
+    certain=sum(r['match']==2 for r in current)
+    possible=sum(r['match']==1 for r in current)
+    status_count=str(len(current))+'건' if snapshot['valid'] and not snapshot['unparsed'] else '확인 필요'
+    preview_count=str(len(preliminary))+'건' if snapshot['valid'] and not snapshot['unparsed'] else '확인 필요'
+    history_count=str(len(relevant_history))+'건' if 'messages' not in bundle['errors'] else '확인 필요'
+    st.markdown('<div class="wx-warning-stats"><div class="wx-warning-stat"><b>'+status_count+'</b><span>현장 지역 관련 특보 현황</span></div><div class="wx-warning-stat"><b>'+preview_count+'</b><span>관련 예비특보 · 사전대비</span></div><div class="wx-warning-stat"><b>'+history_count+'</b><span>최근 3일 관련 발표 이력</span></div></div>',unsafe_allow_html=True)
+    if possible:st.caption('관련 특보 중 '+str(possible)+'건은 일부·제외 등 구역조건 확인이 필요합니다. 현장 위치를 원문의 해당구역과 대조하세요.')
+    st.markdown('**선택 지역 관련 특보 현황**')
+    if not snapshot['valid']:
+        st.warning('현재 특보 현황을 확인하지 못했습니다. 아래 발표 이력만으로 특보 없음·현재 발효를 판단하지 말고 공식 현황을 확인하세요.')
+    else:
+        st.caption('발표 '+wx_warn_time_label(snapshot['issue'])+' · 현황 기준 '+wx_warn_time_label(snapshot['effect']))
+        if snapshot.get('stale'):st.warning('현황 기준시각이 24시간 이상 지났습니다. 최신 공식 현황을 함께 확인하세요.')
+        if snapshot['unparsed']:st.warning('자동 구분하지 못한 원문이 있어 지역 일치 여부는 추가 확인이 필요합니다.')
+        if not current:
+            st.info('제공된 현황에서 선택 지역과 일치하는 특보를 찾지 못했습니다. 특보가 없더라도 현장 기상·침수·가설물 상태는 확인하세요.')
+        for row in current:wx_warn_card(row,works)
+    if preliminary:
+        st.markdown('**관련 예비특보 · 다음 작업을 미리 준비하세요**')
+        for row in preliminary:wx_warn_card(row,works)
+    if not marine:st.caption('풍랑 등 해상 작업 확인사항은 ‘해안·해상 작업’을 선택하면 함께 표시됩니다.')
+    st.markdown('**최근 발표·변경·해제 이력**')
+    nationwide=st.checkbox('전국 발표 이력도 함께 보기',key='wx_warn_nationwide_'+suffix)
+    selected=[r for r in history if (nationwide or r['match']>0) and show_row(r)]
+    if selected:
+        for row in selected[:10]:wx_warn_card(row,works,True)
+        if len(selected)>10:st.caption('최근 10개 상세 내용을 표시했습니다. 원문 목록에서 추가 발표를 확인할 수 있습니다.')
+    elif 'messages' not in bundle['errors']:
+        st.info('최근 3일 발표 상세에서 선택 지역과 일치하는 기록을 찾지 못했습니다. 현재 현황과 예비특보를 함께 확인하세요.')
+    if bundle.get('messages') and len(bundle['messages'])>=1000:st.warning('발표 조회 상한에 도달했습니다. 최근 발표를 모두 표시하지 못할 수 있으므로 공식 현황을 확인하세요.')
+    if st.checkbox('기상청 원문·발표관서 목록 보기',key='wx_warn_raw_'+suffix):
+        if snapshot.get('raw'):
+            st.markdown('**발효현황 원문**');st.text(wx_warn_text(snapshot['raw'].get('t6')))
+            st.markdown('**예비특보 원문**');st.text(wx_warn_text(snapshot['raw'].get('t7')) or '원문 미제공')
+            other=wx_warn_text(snapshot['raw'].get('other'))
+            if other:st.text('기상청 참고사항: '+other)
+        if history:
+            options=list(range(min(len(history),100)))
+            if st.session_state.get('wx_warn_raw_choice_'+suffix) not in options:st.session_state['wx_warn_raw_choice_'+suffix]=options[0]
+            chosen=st.selectbox('상세 발표 원문',options,format_func=lambda i:wx_warn_time_label(history[i]['issued'])+' · '+history[i]['heading'],key='wx_warn_raw_choice_'+suffix)
+            raw=history[chosen]['raw']
+            for field,label in [('t1','제목'),('t2','해당구역'),('t3','발효시각'),('t4','내용'),('other','참고사항')]:
+                st.markdown('**'+label+'**');st.text(wx_warn_text(raw.get(field)) or '미제공')
+        items=sorted((v for v in bundle.get('list',[]) if isinstance(v,dict)),key=lambda v:str(v.get('tmFc','')),reverse=True)[:30]
+        if items:st.dataframe(pd.DataFrame([{'발표 시각':wx_warn_time_label(v.get('tmFc')),'발표 제목':wx_warn_text(v.get('title')),'발표관서':wx_warn_office(v.get('stnId'))} for v in items]),hide_index=True,width='stretch')
+        st.caption('발표관서 이름은 기상청 활용가이드의 지점코드 표를 기준으로 표시합니다. 발표관서와 특보 대상지역은 서로 다릅니다.')
+    st.markdown('**작업 전 공유 문구**')
+    export_snapshot=dict(snapshot,rows=[r for r in snapshot['rows'] if show_row(r)],preliminary=[r for r in snapshot['preliminary'] if show_row(r)])
+    brief=wx_warn_brief(context['label'],site,export_snapshot,relevant_history,works,bundle['fetched'])
+    st.code(brief,language=None)
+    st.download_button('작업 전 공유 문구 다운로드 (.txt)',brief.encode('utf-8-sig'),file_name='현장_기상특보_작업전공유.txt',mime='text/plain',key='wx_warn_brief_download_'+suffix)
+    st.caption('현장 확인사항은 작업계획 검토를 돕는 참고사항입니다. 작업 진행·중지·재개는 실측, 장비기준과 현장 안전절차에 따라 판단합니다.')
+    st.markdown('[자료 출처: 기상청 기상특보 조회서비스]('+WX_WARN_SOURCE+')')
 
 
 def render_weather_panel(dept, site):
@@ -4175,30 +4623,8 @@ def render_weather_panel(dept, site):
                     st.dataframe(pd.DataFrame(table),hide_index=True,width='stretch')
                 else:
                     st.warning('현재 시각 이후의 예보가 없습니다. 새로고침해주세요.')
-        st.markdown('**기상특보 확인**')
-        st.caption('아래 목록은 전국의 최근 발표 이력입니다. 선택 지역의 현재 발효 여부는 공식 특보 현황에서 확인하세요.')
-        st.markdown('[기상청 현재 특보 현황 열기](https://www.weather.go.kr/w/special-report/overall.do)')
-        if st.button('최근 특보 발표 목록 조회',key='wx_warning_load'):
-            st.session_state.pop('wx_warnings',None)
-            try:
-                with st.spinner('기상특보 발표 목록 조회 중…'):
-                    items=wx_api('WthrWrnInfoService','getWthrWrnList',key,
-                        {'fromTmFc':(now-datetime.timedelta(days=2)).strftime('%Y%m%d'),
-                         'toTmFc':now.strftime('%Y%m%d')},int(now.timestamp()//300))
-                st.session_state.wx_warnings={'items':items,'fetched':now.isoformat()}
-            except WeatherAPIError as exc:
-                st.warning(str(exc))
-        warning=st.session_state.get('wx_warnings')
-        if warning:
-            st.caption('특보 목록 조회 시각(한국): '+datetime.datetime.fromisoformat(warning['fetched']).strftime('%Y-%m-%d %H:%M'))
-            if now-datetime.datetime.fromisoformat(warning['fetched'])>datetime.timedelta(minutes=15):
-                st.warning('특보 목록 조회 후 15분 이상 경과했습니다. 다시 조회해주세요.')
-            items=sorted(warning['items'],key=lambda v:str(v.get('tmFc','')),reverse=True)[:20]
-            if not items:
-                st.info('조회 기간에 반환된 발표 기록이 없습니다. 현재 특보가 없다는 뜻은 아닙니다.')
-            else:
-                st.caption('최근 발표 최대 20건 · 제목에 해제·변경 내용이 포함될 수 있습니다.')
-                st.dataframe(pd.DataFrame([{'발표 시각':str(v.get('tmFc','')), '발표 제목':str(v.get('title','')), '발표 지점':str(v.get('stnId',''))} for v in items]),hide_index=True,width='stretch')
+        wx_render_warning_panel(key,location,site,scope,now)
+
 
 
 # --- 메인 탭 확장 ---
@@ -5204,7 +5630,7 @@ def render_safety_calendar(actor):
 
 st.markdown("""<style>
 
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(6)::before {content:"✓"!important;background:none!important;font-size:28px!important;line-height:32px!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(2)::before {content:"✓"!important;background:none!important;font-size:28px!important;line-height:32px!important;}
 /* Main navigation only: scoped overrides beat legacy global tab styles. */
 .st-key-keco_main_menu {overflow:visible!important;}
 .st-key-keco_main_menu [role="tablist"] {display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:12px!important;padding:12px 5px 24px!important;height:auto!important;overflow:visible!important;background:transparent!important;border:0!important;}
@@ -5225,18 +5651,18 @@ st.markdown("""<style>
 .st-key-keco_main_menu [role="tablist"] [role="tab"] {min-height:78px!important;padding:14px 8px!important;border-radius:13px!important;gap:9px!important;}
 .st-key-keco_main_menu [role="tablist"] [role="tab"] p,.st-key-keco_main_menu [role="tablist"] [role="tab"] span {font-size:16px!important;}
 .st-key-keco_main_menu [role="tablist"] [role="tab"]::before {width:27px!important;height:27px!important;flex-basis:27px!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(5) {grid-column:auto;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(6) {grid-column:auto;}
 }
 @media(prefers-reduced-motion:reduce) {
 .st-key-keco_main_menu [role="tablist"] [role="tab"],.st-key-keco_main_menu [role="tablist"] [role="tab"]:hover,.st-key-keco_main_menu [role="tablist"] [role="tab"]:active {transition:none!important;transform:none!important;}
 }
 .st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(1)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%226%22%20y%3D%224%22%20width%3D%2220%22%20height%3D%2225%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M12%204V2h8v2M11%2013l3%203%207-7M11%2022h10%22%2F%3E%3C%2Fsvg%3E")!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(2)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%203v26h25M11%2023v-7M18%2023V9M25%2023V5%22%2F%3E%3C%2Fsvg%3E")!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(3)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%224%22%20y%3D%227%22%20width%3D%2224%22%20height%3D%2220%22%20rx%3D%226%22%2F%3E%3Cpath%20d%3D%22M16%203v4M10%2014v3M22%2014v3M11%2022h10M1%2013v8M31%2013v8%22%2F%3E%3C%2Fsvg%3E")!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(4)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%208h10l3%204h13v16H3zM3%208V5h11l3%203h12v4%22%2F%3E%3C%2Fsvg%3E")!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(5)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%226%22%20width%3D%2226%22%20height%3D%2223%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M9%202v8M23%202v8M3%2014h26M9%2020h3M19%2020h3M9%2025h3%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(7)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%203v26h25M11%2023v-7M18%2023V9M25%2023V5%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(4)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%224%22%20y%3D%227%22%20width%3D%2224%22%20height%3D%2220%22%20rx%3D%226%22%2F%3E%3Cpath%20d%3D%22M16%203v4M10%2014v3M22%2014v3M11%2022h10M1%2013v8M31%2013v8%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(5)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%208h10l3%204h13v16H3zM3%208V5h11l3%203h12v4%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(6)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%226%22%20width%3D%2226%22%20height%3D%2223%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M9%202v8M23%202v8M3%2014h26M9%2020h3M19%2020h3M9%2025h3%22%2F%3E%3C%2Fsvg%3E")!important;}
 
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(6)::before {content:"✓"!important;background:none!important;font-size:28px!important;line-height:32px!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(2)::before {content:"✓"!important;background:none!important;font-size:28px!important;line-height:32px!important;}
 </style>""", unsafe_allow_html=True)
 
 from html import escape as workstation_escape
@@ -5472,7 +5898,7 @@ def render_workstation_home(actor):
     for number, (column, title, description, button, index, mode) in enumerate(zip(
             st.columns(3), ['현장 점검 등록', '점검 기록 확인', 'AI 안전 가이드'],
             ['조치 전·후 사진과 점검내용을 기록합니다.', '저장한 보고서와 현장별 점검현황을 살펴봅니다.', '현장 상황과 참고자료를 바탕으로 질문합니다.'],
-            ['점검 등록', '점검 기록 보기', 'AI에게 물어보기'], [0, 1, 2], [None, '점검 현황', None])):
+            ['점검 등록', '점검 기록 보기', 'AI에게 물어보기'], [0, 6, 3], [None, '점검 현황', None])):
         with column:
             with st.container(key=f'workstation_quick_{number}'):
                 st.markdown(f'<div class="ws-quick"><h3>{title}</h3><p>{description}</p></div>', unsafe_allow_html=True)
@@ -5482,7 +5908,7 @@ def render_workstation_home(actor):
         tasks = ''.join(f'<div class="ws-task"><div><strong>{workstation_escape(row["detail"])}</strong><small>{workstation_escape(row["site"])} · {workstation_escape(row["day"])}</small></div><span class="ws-badge">{row["status"]}</span></div>' for row in data['tasks'][:3])
         empty = '점검 기록을 불러오지 못했습니다.' if error else ('아직 저장된 점검 기록이 없습니다.' if not data['total'] else '등록된 모든 점검에 조치 후 사진·설명이 있습니다.')
         st.markdown('<section class="ws-panel"><h3>후속 자료 확인</h3>'+(tasks or f'<div class="ws-empty">{empty}</div>')+'</section>', unsafe_allow_html=True)
-        st.button('저장한 보고서 확인', key='ws_open_reports', on_click=workstation_navigate, args=(1, '내 리포트'))
+        st.button('저장한 보고서 확인', key='ws_open_reports', on_click=workstation_navigate, args=(6, '내 리포트'))
     with completion:
         rate = '—' if error or data['rate'] is None else str(data['rate'])+'%'
         progress = 0 if error or data['rate'] is None else data['rate']
@@ -5529,8 +5955,8 @@ def render_workstation_route():
 render_workstation_shell(logged_user_id)
 
 with st.container(key="keco_main_menu"):
-    main_tab1, main_tab2, main_tab3, documents_tab, calendar_tab, risk_tab, permit_tab = st.tabs([
-        "안전 점검 등록", "점검 기록 보기", "AI에게 물어보기", "안전자료실", "안전캘린더", "위험성평가", "작업허가제"
+    main_tab1, risk_tab, permit_tab, main_tab3, documents_tab, calendar_tab, main_tab2 = st.tabs([
+        "안전 점검 등록", "위험성평가", "작업허가제", "AI에게 물어보기", "안전자료실", "안전캘린더", "점검 기록 보기"
     ])
 
 @st.fragment
@@ -8580,7 +9006,7 @@ PTW_TRADES = {
 }
 PTW_HAZARDS = ['추락', '낙하·비래', '매몰·붕괴', '충돌·협착', '전도', '감전', '질식·중독', '화재·폭발', '화상', '기타']
 PTW_CSS = '''<style>
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(7)::before {content:""!important;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%226%22%20y%3D%224%22%20width%3D%2220%22%20height%3D%2225%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M12%204V2h8v2M11%2013h10M11%2018h6M11%2023l3%203%207-7%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(3)::before {content:""!important;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%226%22%20y%3D%224%22%20width%3D%2220%22%20height%3D%2225%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M12%204V2h8v2M11%2013h10M11%2018h6M11%2023l3%203%207-7%22%2F%3E%3C%2Fsvg%3E")!important;}
 .st-key-work_permit {color:#20352b;}
 .ptw-intro {background:#f4f8f1;border:1px solid #d7e4d1;border-radius:12px;padding:18px 22px;margin:0 0 10px;}
 .ptw-intro h2 {font-size:24px!important;font-weight:700!important;color:#203d2c!important;margin:0 0 8px!important;padding:0!important;}
