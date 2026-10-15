@@ -45,6 +45,155 @@ st.set_page_config(
 
 
 
+# Shared local-only loading UI. No image fetches or timing-based percentages.
+from contextvars import ContextVar
+from html import escape as _loading_escape
+
+_KECO_LOADING_STACK = ContextVar('keco_loading_stack', default=())
+
+KECO_LOADING_CSS = '''<style>
+.keco-loading-overlay,.keco-run-loading {font-family:inherit;color:#173d30;box-sizing:border-box}
+.keco-loading-overlay {position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(31,47,38,.32);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);cursor:progress}
+/* A stopped rerun can discard its last UI delta. Tie visibility to the real
+   running state too, so a cancelled operation can never leave a blocking card. */
+body:not(:has([data-testid="stStatusWidgetRunningIcon"])) .keco-loading-overlay {display:none}
+[data-testid="stElementContainer"][data-stale="true"] .keco-loading-overlay {display:none!important}
+.keco-loading-card {box-sizing:border-box;width:min(430px,100%);max-height:90dvh;overflow:auto;text-align:center;padding:34px 28px 28px;border:1px solid rgba(223,231,224,.9);border-radius:22px;background:#fff;box-shadow:0 18px 65px rgba(20,50,36,.18)}
+.keco-loading-card h3 {margin:20px 0 8px!important;padding:0!important;color:#173d30!important;font-size:20px!important;font-weight:750!important;line-height:1.55!important;word-break:keep-all}
+.keco-loading-card p {margin:8px 0!important;color:#66776d!important;font-size:14px!important;line-height:1.7!important;word-break:keep-all}
+.keco-loading-card .keco-loading-detail {min-height:23px;color:#087f57!important;font-size:13px!important}
+.keco-loader-circle {width:82px;height:82px;position:relative;margin:2px auto 10px}
+.keco-loader-circle::before {content:'';position:absolute;inset:0;border:7px solid #e1eee5;border-top-color:#09835b;border-right-color:#48a975;border-radius:50%;animation:keco-loader-spin 1s linear infinite}
+.keco-loader-leaf {position:absolute;left:26px;top:25px;width:30px;height:30px}
+.keco-loader-helmet {width:118px;height:94px;display:block;margin:0 auto 8px;filter:drop-shadow(0 5px 5px rgba(22,61,41,.1))}
+.keco-loading-dots {display:flex;justify-content:center;gap:9px;height:22px;align-items:center;margin-top:12px}
+.keco-loading-dots i {display:block;width:9px;height:9px;border-radius:50%;background:#0b8158;animation:keco-loader-dot 1.2s ease-in-out infinite}
+.keco-loading-dots i:nth-child(2) {animation-delay:.16s;background:#4ba774}
+.keco-loading-dots i:nth-child(3) {animation-delay:.32s;background:#a9cfb3}
+.keco-loading-stage-icon {position:relative;width:48px;height:48px;margin:0 auto}
+.keco-loading-stage-icon svg {width:48px;height:48px}
+.keco-loading-track {height:8px;border-radius:8px;background:#e5ece7;overflow:hidden;margin:23px 0 21px}
+.keco-loading-track::after {content:'';display:block;height:100%;width:36%;border-radius:8px;background:linear-gradient(90deg,#0c9b91,#43ad70);animation:keco-loader-track 1.6s ease-in-out infinite}
+.keco-loading-steps {display:flex;gap:8px;justify-content:center;margin:0;padding:0;list-style:none}
+.keco-loading-step {flex:1;min-width:0;display:flex;align-items:center;flex-direction:column;gap:8px;color:#8a948e!important;font-size:12px!important;line-height:1.5!important;word-break:keep-all}
+.keco-loading-step b {display:flex;align-items:center;justify-content:center;width:25px;height:25px;border:2px solid #d5ddd7;border-radius:50%;font-size:13px;box-sizing:border-box;background:#fff;color:#7a8980}
+.keco-loading-step.is-done {color:#146548!important}
+.keco-loading-step.is-done b {background:#146548;border-color:#146548;color:white}
+.keco-loading-step.is-current {color:#087f57!important;font-weight:700}
+.keco-loading-step.is-current b {border-color:#087f57;color:#087f57;box-shadow:0 0 0 4px #e4f2e9}
+.keco-run-loading {display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2147482900;align-items:center;gap:12px;width:max-content;max-width:calc(100vw - 32px);padding:13px 20px;border:1px solid #dce8df;border-radius:16px;background:#fff;box-shadow:0 8px 30px #183a2926;pointer-events:none;font-size:14px;font-weight:650}
+.keco-run-loading::before {content:'';display:block;width:22px;height:22px;flex-shrink:0;border:3px solid #dfeee4;border-top-color:#087f57;border-radius:50%;animation:keco-loader-spin 1s linear infinite}
+body:has([data-testid="stStatusWidgetRunningIcon"]):not(:has([data-testid="stElementContainer"][data-stale="false"] .keco-loading-overlay)) .keco-run-loading {display:flex}
+@keyframes keco-loader-spin {to{transform:rotate(360deg)}}
+@keyframes keco-loader-dot {0%,80%,100%{opacity:.35;transform:translateY(0)}40%{opacity:1;transform:translateY(-5px)}}
+@keyframes keco-loader-track {0%{transform:translateX(-110%)}100%{transform:translateX(390%)}}
+@media(max-width:480px){.keco-loading-overlay{padding:18px}.keco-loading-card{padding:28px 20px 22px;border-radius:18px}.keco-loading-card h3{font-size:18px!important}.keco-loading-steps{gap:6px}.keco-run-loading{bottom:18px;font-size:13px}}
+@media(prefers-reduced-motion:reduce){.keco-loader-circle::before,.keco-run-loading::before,.keco-loading-dots i,.keco-loading-track::after{animation:none}.keco-loading-dots i{opacity:1}}
+</style>'''
+
+_KECO_LOADING_LEAF = '''<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 39C6 37 5 26 5 16c13 1 22 9 19 23" fill="#14875c"/><path d="M25 35C18 15 28 6 44 3c0 17-5 29-19 32" fill="#70b86d"/><path d="M25 40 37 14M24 38 12 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>'''
+_KECO_LOADING_HELMET = '''<svg class="keco-loader-helmet" viewBox="0 0 140 108" aria-hidden="true"><defs><linearGradient id="keco-helmet-white" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#e4eae6"/></linearGradient></defs><path d="M23 78V66c0-27 20-46 47-46s47 19 47 46v12" fill="url(#keco-helmet-white)" stroke="#b7c9be" stroke-width="2"/><path d="M62 21V10h16v11l4 56H58z" fill="#fff" stroke="#c6d5cb" stroke-width="2"/><path d="m20 75-9 8c-3 3-1 9 4 10 37 9 73 9 110 0 5-1 7-7 4-10l-9-8c-31 6-69 6-100 0" fill="#f8fbf8" stroke="#b7c9be" stroke-width="2"/><path d="M71 69c-16-1-22-9-22-19 13 1 22 7 22 19" fill="#16845b"/><path d="M72 67c-4-14 3-23 18-25 0 14-6 23-18 25" fill="#70b86d"/></svg>'''
+
+
+class _KecoLoading:
+    """A temporary, session-local overlay cleaned up on success, error or stop."""
+    def __init__(self, message, kind='circle', steps=()):
+        self.message = str(message)
+        self.kind = kind if kind in ('circle', 'helmet', 'steps') else 'circle'
+        self.steps = tuple(str(value) for value in steps)
+        self.index = 0
+        self.detail = ''
+        self.slot = None
+        self.closed = False
+        self.token = None
+        self.parents = ()
+
+    def _html(self):
+        esc = _loading_escape
+        if self.kind == 'helmet':
+            visual = _KECO_LOADING_HELMET + '<div class="keco-loading-dots" aria-hidden="true"><i></i><i></i><i></i></div>'
+        elif self.kind == 'steps':
+            visual = '<div class="keco-loading-stage-icon">' + _KECO_LOADING_LEAF + '</div>'
+        else:
+            visual = '<div class="keco-loader-circle" aria-hidden="true"><div class="keco-loader-leaf">' + _KECO_LOADING_LEAF + '</div></div>'
+        stages = ''
+        if self.kind == 'steps':
+            items = []
+            for i, label in enumerate(self.steps):
+                state = 'is-done' if i < self.index else 'is-current' if i == self.index else ''
+                current = ' aria-current="step"' if i == self.index else ''
+                mark = '✓' if i < self.index else str(i + 1)
+                items.append('<li class="keco-loading-step ' + state + '"' + current + '><b>' + mark + '</b><span>' + esc(label) + '</span></li>')
+            stages = '<div class="keco-loading-track" aria-hidden="true"></div><ol class="keco-loading-steps">' + ''.join(items) + '</ol>'
+        return ('<div class="keco-loading-overlay" role="status" aria-live="polite" aria-atomic="true" aria-busy="true" data-loading-kind="' + self.kind + '"><div class="keco-loading-card">' + visual +
+                '<h3>' + esc(self.message) + '</h3><p>잠시만 기다려 주세요.</p>' +
+                ('<p class="keco-loading-detail">' + esc(self.detail) + '</p>' if self.detail else '') + stages + '</div></div>')
+
+    def _render(self):
+        if self.slot is not None and not self.closed:
+            self.slot.markdown(self._html(), unsafe_allow_html=True)
+
+    def __enter__(self):
+        self.parents = _KECO_LOADING_STACK.get()
+        if self.parents:
+            self.parents[-1].slot.empty()
+        self.slot = st.empty()
+        self.token = _KECO_LOADING_STACK.set(self.parents + (self,))
+        self._render()
+        return self
+
+    def stage(self, index, detail=None):
+        self.index = max(0, min(int(index), max(0, len(self.steps) - 1)))
+        if detail is not None:
+            self.detail = str(detail)
+        self._render()
+
+    def progress(self, done, total):
+        self.detail = f'사진 {total}장 중 {done}장 처리 완료'
+        self._render()
+
+    def update(self, label=None, state=None, **kwargs):
+        if label is not None:
+            self.message = str(label)
+        if state in ('complete', 'error'):
+            self.closed = True
+            if self.slot is not None:
+                self.slot.empty()
+        else:
+            self._render()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            if self.slot is not None:
+                self.slot.empty()
+        finally:
+            self.closed = True
+            if self.token is not None:
+                _KECO_LOADING_STACK.reset(self.token)
+            if self.parents:
+                self.parents[-1]._render()
+        return False
+
+
+def keco_loading(message, kind='circle', steps=()):
+    return _KecoLoading(message, kind, steps)
+
+
+def keco_loading_stage(index, detail=None):
+    active = _KECO_LOADING_STACK.get()
+    if active and active[-1].kind == 'steps':
+        active[-1].stage(index, detail)
+
+
+def render_loading_foundation():
+    st.markdown(KECO_LOADING_CSS, unsafe_allow_html=True)
+    # Driven by Streamlit's real script-running indicator, rather than a timer.
+    # Nonblocking so entering text or scrolling is never interrupted by a rerun.
+    st.markdown('<div class="keco-run-loading" role="status" aria-live="polite">화면을 불러오고 있습니다.</div>', unsafe_allow_html=True)
+
+
+render_loading_foundation()
+
 # Apply the desktop shell before any login or main-screen elements are sent.
 WORKSTATION_CSS = '''<style>
 .st-key-workstation_route_frame,.st-key-workstation_gallery_frame {display:none!important}
@@ -3615,7 +3764,7 @@ with st.sidebar.expander('AI 연결 확인', expanded=False):
     st.caption('짧은 테스트 문장으로 AI 응답을 확인합니다.')
     if st.button('AI 연결 시험', key='ai_connection_test', width='stretch'):
         try:
-            with st.spinner('AI 연결을 확인하고 있습니다…'):
+            with keco_loading('AI 연결을 확인하고 있습니다…'):
                 result, used_model = _ai_request(api_key,'연결 확인용입니다. 확인됨 한 단어만 답하세요.',
                     _ai_model_candidates('photo'),30000,return_model=True)
                 _ai_response_text(result)
@@ -4713,10 +4862,12 @@ def wx_weather_ai_analyze(data):
     schema = {'type': 'OBJECT', 'properties': {'summary': {'type': 'STRING'},
         'checks': {'type': 'ARRAY', 'items': {'type': 'OBJECT', 'properties': properties, 'required': fields}}},
         'required': ['summary', 'checks']}
+    keco_loading_stage(1)
     response = _ai_request(key, 'DATA\n' + json.dumps(data, ensure_ascii=False, default=str),
         _ai_model_candidates('weather'), 45000, config={
             'system_instruction': WX_WEATHER_AI_INSTRUCTION,
             'response_mime_type': 'application/json', 'response_schema': schema, 'max_output_tokens': 8192})
+    keco_loading_stage(2)
     raw = _ai_response_text(response)
     try:
         if len(raw) > 24000:
@@ -4767,7 +4918,7 @@ def wx_render_warning_panel(key, location, site, scope, now, nx, ny):
     if load and ready:
         for name in ('wx_warnings', 'wx_result', 'wx_weather_ai'):
             st.session_state.pop(name, None)
-        with st.spinner('현장 날씨와 기상특보를 조회하고 있습니다…'):
+        with keco_loading('현장 날씨와 기상특보를 조회하고 있습니다…'):
             with ThreadPoolExecutor(max_workers=2) as executor:
                 weather_job = executor.submit(wx_weather_fetch, key, nx, ny, now)
                 warning_job = executor.submit(wx_warn_fetch, key, now)
@@ -4798,7 +4949,7 @@ def wx_render_warning_panel(key, location, site, scope, now, nx, ny):
         data = wx_weather_ai_data(context['label'], site, works, weather, bundle, snapshot, history, now)
         analysis = {'identity': identity, 'generated': now.isoformat(), 'data': data}
         try:
-            with st.spinner('AI가 현장 날씨와 오늘 작업을 검토하여 안전점검사항을 작성하고 있습니다…'):
+            with keco_loading('AI가 현장 날씨와 오늘 작업을 검토하여 안전점검사항을 작성하고 있습니다…', kind='steps', steps=('기상자료 확인', 'AI 분석', '결과 정리')):
                 analysis['result'] = wx_weather_ai_analyze(data)
         except ValueError as exc:
             analysis['error'] = str(exc)
@@ -4871,7 +5022,7 @@ def render_weather_panel(dept, site):
         now=datetime.datetime.now(ZoneInfo('Asia/Seoul'))
         refresh = st.button('날씨 조회 / 새로고침',key='wx_load')
         if load_now or refresh:
-            with st.spinner('기상청 자료를 조회하고 있습니다…'):
+            with keco_loading('기상청 자료를 조회하고 있습니다…'):
                 st.session_state.wx_result=wx_weather_fetch(key,nx,ny,now)
             st.session_state.pop('wx_weather_ai',None)
         # 같은 버튼으로 조회한 새 날씨를 특보 영역 위에도 즉시 표시합니다.
@@ -5186,8 +5337,10 @@ quote는 반드시 DATA 본문에서 그대로 복사한 10~700자이며, 생략
 근거 없음: {"found":false,"answers":[]}'''
     data = json.dumps({'QUESTION':question, 'DATA':chosen}, ensure_ascii=False)
     try:
+        keco_loading_stage(1)
         response = _ai_request(key,data,_ai_model_candidates('document'),
             config={'system_instruction':instruction,'response_mime_type':'application/json'})
+        keco_loading_stage(2)
         result = safety_qa_validate(json.loads(_ai_response_text(response)), chosen)
     except ValueError:
         raise
@@ -5224,7 +5377,7 @@ def render_safety_doc_questions(actor, doc):
             st.info('외부 AI 전송 동의를 확인해주세요.')
         else:
             try:
-                with st.spinner('자료에서 근거를 찾고 있습니다…'):
+                with keco_loading('자료에서 근거를 찾고 있습니다…', kind='steps', steps=('자료 읽기', 'AI 분석', '근거 확인')):
                     st.session_state.safety_qa_result = safety_qa_answer(actor, doc['id'], question)
             except ValueError as exc:
                 st.error(str(exc))
@@ -5280,7 +5433,7 @@ def render_safety_documents(actor):
                 st.info('먼저 파일을 선택해 주세요.')
             else:
                 try:
-                    with st.spinner('자료를 저장하고 있습니다. 용량이 큰 자료는 잠시 기다려 주세요.'):
+                    with keco_loading('자료를 저장하고 있습니다. 용량이 큰 자료는 잠시 기다려 주세요.', kind='helmet'):
                         saved = safety_doc_save(actor, uploaded, title, category, note, shared)
                     if saved:
                         st.success('저장했습니다. 아래 ‘저장한 자료 찾기’에서 확인하세요.')
@@ -6228,14 +6381,10 @@ def render_inspection_registration(logged_user_id):
                             refresh_clicked = st.button('같은 사진 새로 분석', key=f'btn_ai_refresh_{idx}')
                     if analyze_clicked or refresh_clicked:
                         started = time.perf_counter()
-                        indicator = st.progress(0, text='사진 분석을 준비하고 있습니다…')
-                        def update_progress(done, total):
-                            indicator.progress(done/max(total, 1), text=f'사진 {total}장 중 {done}장 분석 완료')
-                        with st.spinner("푸루 AI가 조치 전 사진들의 위험요인을 분석 중..."):
+                        with keco_loading('사진의 위험요인을 분석하고 있습니다', kind='helmet') as loading:
                             results, reused = analyze_hazards_batch(api_key, before_img_files,
-                                force=refresh_clicked, progress=update_progress)
+                                force=refresh_clicked, progress=loading.progress)
                             st.session_state.ai_results[idx] = results
-                        indicator.empty()
                         st.caption(f'분석 처리 {time.perf_counter()-started:.1f}초 · 기존 결과 사용 {reused}장')
 
                 if idx in st.session_state.ai_results and st.session_state.ai_results[idx]:
@@ -6342,13 +6491,13 @@ def render_inspection_registration(logged_user_id):
     if st.button("보고서 만들기 · 내용 수정 후 다시 만들기", type="primary", disabled=not form_data, width="stretch"):
         started = time.perf_counter()
         try:
-            with st.status("점검 보고서를 준비하고 있습니다…", expanded=True) as status:
+            with keco_loading('점검 보고서를 만들고 있습니다', kind='steps', steps=('한글 작성', 'PDF 작성', '사진·보고서 보관')) as status:
                 ready = (st.session_state.get('inspection_report_key') == current_report_key and
                          st.session_state.get('inspection_report_bytes') and st.session_state.get('inspection_pdf_bytes'))
                 if not ready:
-                    st.write('1/3 한글 보고서 작성')
+                    status.stage(0)
                     report_data = generate_inspection_hwpx(selected_dept, selected_site, logged_user_id, form_data)
-                    st.write('2/3 출력용 PDF 작성')
+                    status.stage(1)
                     pdf_data = generate_inspection_pdf(selected_dept, selected_site, logged_user_id, form_data)
                     safe_site = re.sub(r'[\\/:*?"<>|\r\n]', "_", str(selected_site))[:60]
                     report_name = f"안전점검_{safe_site}_{datetime.datetime.now(ZoneInfo('Asia/Seoul')):%Y%m%d_%H%M%S}.hwpx"
@@ -6360,7 +6509,7 @@ def render_inspection_registration(logged_user_id):
                 else:
                     st.write('작성 내용이 같아 이미 만든 한글·PDF를 사용합니다.')
                 if st.session_state.get('inspection_report_archived_key') != current_report_key:
-                    st.write('3/3 사진과 보고서 저장')
+                    status.stage(2)
                     try:
                         archive_inspection(selected_dept, selected_site, logged_user_id, form_data,
                                            st.session_state.inspection_report_bytes, st.session_state.inspection_pdf_bytes)
@@ -6408,7 +6557,7 @@ def render_inspection_registration(logged_user_id):
         if not form_data:
             st.warning("최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
         else:
-            with st.spinner("보고서 첨부·이메일 전송 중입니다…"):
+            with keco_loading('보고서 첨부·이메일 전송 중입니다…', kind='helmet'):
                 try:
                     email_success,email_msg=send_inspection_email(selected_dept,selected_site,logged_user_id,form_data,report_bytes,report_name,pdf_bytes,delivery_key)
                 except StorageError as exc:
@@ -6885,7 +7034,7 @@ def render_law_panel():
     if docs and any(datetime.datetime.now().timestamp() - d.get('fetched_at', 0) > 3600 for d in docs):
         docs = []; st.session_state.pop('law_all_documents', None)
     if refresh:
-        with st.spinner('등록 법령 전체를 조회하고 있습니다…'):
+        with keco_loading('등록 법령 전체를 조회하고 있습니다…'):
             docs, errors = law_collect_all(key, datetime.datetime.now().isoformat())
         st.session_state.law_all_documents = docs
         st.session_state.law_all_errors = errors
@@ -6934,7 +7083,7 @@ def render_ai_guide_panel(logged_user_id):
             law_key = str(st.secrets.get('public_api', {}).get('law_oc', '')).strip()
             if not law_key:
                 st.warning('법령 API 연결 설정이 필요합니다. 관리자에게 문의하세요.'); st.stop()
-            with st.spinner('등록 법령 전체에서 질문과 관련된 조문을 검토하고 있습니다…'):
+            with keco_loading('등록 법령 전체에서 질문과 관련된 조문을 검토하고 있습니다…', kind='steps', steps=('법령 조회', '관련 조문 검토', '근거 정리')):
                 try:
                     docs = st.session_state.get('law_all_documents', [])
                     if len(docs) != len(LAW_CHOICES) or st.session_state.get('law_all_errors'):
@@ -6943,6 +7092,7 @@ def render_ai_guide_panel(logged_user_id):
                         st.session_state.law_all_errors = errors
                         if errors:
                             raise ValueError('법령 조회 미완료: ' + ', '.join(errors) + '. 전체 법령 최신 내용 다시 조회를 눌러주세요.')
+                    keco_loading_stage(1)
                     law_models = _ai_model_candidates('law')
                     def select_law_articles(prompt):
                         result = _ai_request(api_key,prompt,law_models,config={
@@ -6957,6 +7107,7 @@ def render_ai_guide_panel(logged_user_id):
                     if selected is None:
                         selected = law_question_context(docs, user_query, select_law_articles)
                         _perf_cache_put('law_selection', selection_sig, selected, ttl=900)
+                    keco_loading_stage(2)
                     law_context, law_sources = selected
                 except ValueError as exc:
                     st.warning('전체 법령 검토를 완료하지 못했습니다. '+str(exc)); st.stop()
@@ -6967,7 +7118,7 @@ def render_ai_guide_panel(logged_user_id):
             st.markdown(user_query)
 
         with st.chat_message("assistant"):
-            with st.spinner("관련 안전 규정을 검토 중입니다..."):
+            with keco_loading('관련 안전 규정을 검토 중입니다...', kind='steps', steps=('질문 확인', 'AI 답변 작성', '출처 정리')):
                 try:
                     data_dir = "DATA"
                     context_text = ""
@@ -7066,7 +7217,9 @@ def render_ai_guide_panel(logged_user_id):
                         rag_prompt += grounding + "[API로 조회한 조문]\n" + law_context
                     else:
                         rag_prompt += "\n공식 법령 API 근거를 사용하지 않는 일반 상담입니다. 법령·조항·법정 수치는 확인 필요로 표시하십시오."
+                    keco_loading_stage(1)
                     response = _ai_request(api_key,rag_prompt,_ai_model_candidates('guide'),90000)
+                    keco_loading_stage(2)
                     answer_text = _ai_response_text(response)
                     
                     if law_use:
@@ -7094,8 +7247,10 @@ def render_ai_guide_panel(logged_user_id):
             try:
                 report = st.session_state.get('qa_hwpx_output', {})
                 if report.get('sig') != answer_sig:
-                    with st.spinner('답변을 한글 문서로 정리하고 있습니다…'):
+                    with keco_loading('답변을 한글 문서로 정리하고 있습니다…', kind='steps', steps=('내용 확인', '한글 작성', '파일 준비')):
+                        keco_loading_stage(1)
                         data = generate_hwpx('KECO 현장 안전 점검 및 규정 검토 보고서', answer_text)
+                        keco_loading_stage(2)
                     st.session_state.qa_hwpx_output = {'sig': answer_sig, 'data': data}
             except Exception as exc:
                 st.error(f'한글 파일 생성 중 오류가 발생했습니다: {exc}')
@@ -7198,9 +7353,11 @@ def ra_ai(kind, data, source):
     cache_key = ra_hash([hashlib.sha256(key.encode()).hexdigest(), models, 'suggestions-json-v2', prompt])
     cached = _perf_cache_get('risk_ai', cache_key)
     if cached is not None: return list(cached)
+    keco_loading_stage(1)
     result = _ai_request(key,prompt,models,config={'response_mime_type':'application/json',
         'response_schema':{'type':'OBJECT','properties':{
             'suggestions':{'type':'ARRAY','items':{'type':'STRING'}}},'required':['suggestions']}})
+    keco_loading_stage(2)
     raw=re.sub(r'^```(?:json)?\s*|\s*```$','',_ai_response_text(result))
     choices=json.loads(raw).get('suggestions')
     if not isinstance(choices,list) or not choices or len(choices)>8 or any(not isinstance(x,str) or not x.strip() or len(x)>1600 for x in choices):
@@ -7895,7 +8052,7 @@ def ra_render_identification(meta):
         cache = st.session_state.get('ra_factors', {})
         if st.button('AI 위험요인 후보 받기', disabled=not(consent and work.strip() and hazards), key='ra_factor_ai'):
             try:
-                with st.spinner('입력한 현장 조건을 참고하고 있습니다…'):
+                with keco_loading('입력한 현장 조건을 참고하고 있습니다…', kind='steps', steps=('현장조건 확인', '위험요인 분석', '후보 정리')):
                     cache = {'sig': sig, 'items': ra_ai('factor', dict(construction_type=meta['construction_type'], trade=trade, work=work, hazards=hazards), source)}
                 st.session_state.ra_factors = cache
             except Exception: st.error('AI 연결 확인 필요. 공단 사례 또는 직접 입력으로 작성할 수 있습니다.')
@@ -7976,7 +8133,7 @@ def ra_render_measures(meta):
         cache = st.session_state.get(cache_key, {})
         if st.button('AI 개선대책 후보 받기', disabled=not consent, key='ra_measure_ai_button_'+row['id']):
             try:
-                with st.spinner('대책 후보를 작성하고 있습니다…'): cache = {'sig': sig, 'items': ra_ai('measures', data, source)}
+                with keco_loading('대책 후보를 작성하고 있습니다…', kind='steps', steps=('위험요인 확인', '감소대책 분석', '후보 정리')): cache = {'sig': sig, 'items': ra_ai('measures', data, source)}
                 st.session_state[cache_key] = cache
             except Exception: st.error('AI 연결 확인 필요. 공단 예시와 직접 입력을 이용해 주세요.')
         options = cache.get('items', []) if cache.get('sig') == sig else []
@@ -8199,16 +8356,19 @@ def ra_render_sharing(meta, actor):
         else:
             previous = st.session_state.get('ra_output', {})
             outputs = dict(previous) if previous.get('sig') == sig else {'sig': sig}
-            with st.spinner('평가표와 상세기록을 보고서로 만들고 있습니다…'):
+            with keco_loading('평가표와 상세기록을 보고서로 만들고 있습니다…', kind='steps', steps=('PDF 작성', '한글 작성', '보고서 보관')):
                 if not outputs.get('pdf'):
+                    keco_loading_stage(0)
                     try: outputs['pdf'] = ra_pdf(meta, st.session_state.ra_rows, payload['final'])
                     except Exception: st.error('PDF 생성 실패. 글꼴·문서 라이브러리 확인 필요.')
                 if not outputs.get('hwpx'):
+                    keco_loading_stage(1)
                     try: outputs['hwpx'] = ra_hwpx(meta, st.session_state.ra_rows, payload['final'])
                     except Exception: st.error('한글 생성 실패. HWPX 라이브러리 확인 필요.')
                 file_sig = ra_hash([sig, bool(outputs.get('hwpx')), bool(outputs.get('pdf'))])
                 if (outputs.get('hwpx') or outputs.get('pdf')) and outputs.get('archived_files_sig') != file_sig:
                     try:
+                        keco_loading_stage(2)
                         ra_archive(actor, payload)
                         archive_generated_reports(actor, 'risk:'+str(actor)+':'+sig, outputs.get('hwpx'), outputs.get('pdf'), title=(meta.get('assessment_name') or '위험성평가')+' 보고서', site=meta.get('site', ''), kind='위험성평가')
                         st.session_state.ra_last_saved_sig = sig
@@ -9620,12 +9780,15 @@ def ptw_build_report(actor, submission=False):
     if not _perf_actor_allowed(actor): return
     data = st.session_state.ptw_data
     try:
-        raw = ptw_hwpx(data,submission)
-        name = re.sub(r'[\\/:*?"<>|\r\n]','_',data['meta']['project'] or '현장')[:60]
-        filename = f'작업계획서_{name}_{data["meta"]["date"]}_{"검토제출본" if submission else "초안"}.hwpx'
-        st.session_state.ptw_report = dict(data=raw,name=filename,fingerprint=ptw_fingerprint(data))
-        ptw_try_save(actor)
-        st.session_state.ptw_notice = '한글 보고서를 만들었습니다. 아래 다운로드 버튼을 눌러 주세요.'
+        with keco_loading('작업계획서를 만들고 있습니다', kind='steps', steps=('작성내용 확인', '한글 작성', '저장·파일 준비')) as loading:
+            loading.stage(1)
+            raw = ptw_hwpx(data,submission)
+            loading.stage(2)
+            name = re.sub(r'[\\/:*?"<>|\r\n]','_',data['meta']['project'] or '현장')[:60]
+            filename = f'작업계획서_{name}_{data["meta"]["date"]}_{"검토제출본" if submission else "초안"}.hwpx'
+            st.session_state.ptw_report = dict(data=raw,name=filename,fingerprint=ptw_fingerprint(data))
+            ptw_try_save(actor)
+            st.session_state.ptw_notice = '한글 보고서를 만들었습니다. 아래 다운로드 버튼을 눌러 주세요.'
     except Exception as exc:
         st.session_state.pop('ptw_report',None)
         st.session_state.ptw_action_error = '보고서 생성 실패: '+str(exc)
