@@ -7522,11 +7522,90 @@ RA_CHECK_ITEMS = [
 ]
 
 
+def ra_current_year():
+    return datetime.datetime.now(ZoneInfo('Asia/Seoul')).year
+
+
+def ra_assessment_year(value=None):
+    if value in (None, ''):
+        return ra_current_year()
+    text = str(value).strip()
+    if not re.fullmatch(r'\d{4}', text) or not 1900 <= int(text) <= 9999:
+        raise ValueError('평가연도를 다시 선택해 주세요.')
+    return int(text)
+
+
+def ra_year_options(records=(), extra=(), current_year=None):
+    current = ra_current_year() if current_year is None else int(current_year)
+    years = set(range(current - 5, current + 2))
+    for value in [row.get('assessment_year') for row in records] + list(extra):
+        if value not in (None, '', '전체'):
+            try:
+                years.add(ra_assessment_year(value))
+            except ValueError:
+                pass
+    return sorted(years, reverse=True)
+
+
+def ra_managed_sites():
+    return list(dict.fromkeys(site for sites in department_sites_map.values() for site in sites if site))
+
+
+def ra_site_options(records=(), extra=()):
+    sites = ra_managed_sites()
+    for site in [row.get('site', '') for row in records] + list(extra):
+        if site and site != '전체' and site not in sites:
+            sites.append(site)
+    return sites
+
+
+def ra_site_department(site):
+    return next((department for department, sites in department_sites_map.items() if site in sites), '')
+
+
+def ra_assessment_names(site, year, kind, existing=''):
+    if not site:
+        return [existing] if existing else []
+    label = kind.removesuffix('평가') if isinstance(kind, str) else ''
+    base = f'{ra_assessment_year(year)}년 {site} {label} 위험성평가'.strip()[:110]
+    names = [base] + [f'{base} ({number}차)' for number in range(1, 5)]
+    if existing and existing not in names:
+        names.append(existing)
+    return names
+
+
+def ra_hub_search_names(records, year='전체', kind='전체', site='전체'):
+    return sorted({row['name'] for row in records
+                   if (year == '전체' or str(row['assessment_year']) == str(year))
+                   and (kind == '전체' or row['kind'] == kind)
+                   and (site == '전체' or row['site'] == site)})
+
+
+def ra_hub_filter_context_change():
+    st.session_state.ra_hub_filter_name = '전체'
+    ra_hub_filter()
+
+
+def ra_hub_new_context_change():
+    names = ra_assessment_names(st.session_state.get('ra_hub_new_site'),
+                                st.session_state.get('ra_hub_new_year'),
+                                st.session_state.get('ra_hub_new_kind', RA_KINDS[0]))
+    st.session_state.ra_hub_new_name = names[0] if names else None
+    ra_hub_registration_change()
+
+
+def ra_hub_edit_context_change():
+    names = ra_assessment_names(st.session_state.get('ra_hub_edit_site'),
+                                st.session_state.get('ra_hub_edit_year'),
+                                st.session_state.get('ra_hub_edit_kind', RA_KINDS[0]))
+    st.session_state.ra_hub_edit_name = names[0] if names else None
+
+
 def ra_default_meta(actor):
     today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date().isoformat()
     return dict(construction_type=None, department=str(st.session_state.get('selected_dept_box', '')),
                 site=str(st.session_state.get('selected_site_box', '')), address='', company='', date=today,
-                assessment_name='', method='빈도·강도법', kind='최초평가', trigger='', evaluator=str(actor), reviewer='', workers='',
+                assessment_name='', assessment_year=str(ra_current_year()), method='빈도·강도법', kind='최초평가', trigger='', evaluator=str(actor), reviewer='', workers='',
                 worker_rep='', opinions='', education='', pre_shared='', work_scope='',
                 equipment='', materials='', information=[], information_note='', trades=[],
                 criteria_name=RA_PROCEDURE+' · 비사무업무 빈도·강도법',
@@ -7570,6 +7649,7 @@ def ra_normalize_payload(payload, actor, require_review=True):
         elif isinstance(default, str):
             if not isinstance(value, str) or len(value) > 30000: raise ValueError('문자 입력의 형식을 확인해 주세요.')
         meta[key] = value
+    meta['assessment_year'] = str(ra_assessment_year(original.get('assessment_year', str(original.get('date', ''))[:4] or None)))
     if meta['construction_type'] not in RA_CONSTRUCTION_TYPES: meta['construction_type'] = None
     for field in ('frequency_max', 'severity_max', 'frequency_labels', 'severity_labels', 'threshold', 'criteria_name', 'criteria_stamp'):
         meta[field] = ra_default_meta(actor)[field]
@@ -7653,11 +7733,22 @@ def ra_target(row_id=None):
 
 def ra_commit(row_id, field, key):
     target = ra_target(row_id)
+    previous_names = ra_assessment_names(target.get('site'), target.get('assessment_year'), target.get('kind')) if row_id is None else []
     value = st.session_state[key]
     if isinstance(value, (datetime.date, datetime.datetime)): value = value.isoformat()
     if value is None and field in ('date', 'sharing_date'): value = ''
     changed = target.get(field) != value
     target[field] = value
+    if row_id is None and field == 'site':
+        department = ra_site_department(value)
+        if department:
+            target['department'] = department
+            st.session_state.ra_edit_meta_department = department
+    if row_id is None and field in ('site', 'assessment_year', 'kind') and target.get('assessment_name') in previous_names:
+        names = ra_assessment_names(target.get('site'), target.get('assessment_year'), target.get('kind'))
+        if names:
+            target['assessment_name'] = names[0]
+            st.session_state.ra_edit_meta_assessment_name = names[0]
     if field == 'review_confirmed':
         target['review_sig'] = ra_review_signature(target, st.session_state.ra_rows) if value else ''
     elif changed and field != 'report_mode':
@@ -7984,12 +8075,13 @@ def ra_render_preparation(meta, actor):
         st.caption('주요작업 분석·안전보건상 위험정보: 절차서 붙임 10·11 / 참여·사전교육 기록: 붙임 5·7·8')
     left, right = st.columns(2)
     with left:
-        ra_field('위험성평가명', 'assessment_name', max_chars=120)
+        ra_field('위험성평가명', 'assessment_name', kind='select', options=ra_assessment_names(meta.get('site'), meta.get('assessment_year'), meta.get('kind'), meta.get('assessment_name')) or [''])
         ra_field('담당부서', 'department', placeholder='예: 시설사업1부')
-        ra_field('평가현장', 'site', placeholder='현장명 입력', help='안전점검 등록에서 선택한 현장명이 처음 표시됩니다.')
+        ra_field('평가현장', 'site', kind='select', options=([''] if not meta.get('site') else []) + ra_site_options(extra=[meta.get('site')]))
         ra_field('현장 주소', 'address')
         ra_field('수행기관·시공사', 'company')
     with right:
+        ra_field('평가연도', 'assessment_year', kind='select', options=[str(v) for v in ra_year_options(extra=[meta.get('assessment_year')])])
         ra_field('평가일', 'date', kind='date')
         ra_field('평가 구분', 'kind', kind='select', options=RA_KINDS)
         st.caption('평가방법 · '+RA_METHOD)
@@ -8449,6 +8541,7 @@ def ra_record_migrate(db, owner):
                 status, progress, count = ra_record_details(data)
                 try: year = datetime.date.fromisoformat(created[:10]).year
                 except (ValueError, TypeError): year = datetime.datetime.now(ZoneInfo('Asia/Seoul')).year
+                meta['assessment_year'] = str(year)
                 db.execute('''INSERT OR IGNORE INTO risk_assessment_register
                     (id,owner,created,updated,assessment_year,name,kind,method,site,status,progress,row_count,current_step,payload,revision,deleted_at)
                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,'')''',
@@ -8481,6 +8574,7 @@ def ra_record_create(owner, name, kind, method=RA_METHOD, payload=None):
     data = ra_normalize_payload(payload, owner) if payload is not None else dict(schema_version=3, meta=ra_default_meta(owner), rows=[], final=False)
     data['meta'].update(assessment_name=str(name).strip(), kind=kind, method=method)
     name, kind, method = ra_record_header(data['meta'])
+    year = ra_assessment_year(data['meta'].get('assessment_year'))
     record_id = uuid.uuid4().hex
     data.update(schema_version=3, assessment_id=record_id)
     status, progress, count = ra_record_details(data)
@@ -8494,7 +8588,7 @@ def ra_record_create(owner, name, kind, method=RA_METHOD, payload=None):
             db.execute('''INSERT INTO risk_assessment_register
                 (id,owner,created,updated,assessment_year,name,kind,method,site,status,progress,row_count,current_step,payload,revision,deleted_at)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,'')''',
-                (record_id, owner, now.isoformat(), now.isoformat(), now.year, name, kind, method,
+                (record_id, owner, now.isoformat(), now.isoformat(), year, name, kind, method,
                  data['meta'].get('site', ''), status, progress, count, 0, encoded))
     finally: db.close()
     return record_id
@@ -8505,10 +8599,12 @@ def ra_record_load(owner, record_id):
     db = inspection_store()
     try:
         if 'risk_assessment_register' not in report_history_tables(db): raise PermissionError('저장된 평가를 확인해 주세요.')
-        row = db.execute('''SELECT payload,revision,current_step,updated FROM risk_assessment_register
+        row = db.execute('''SELECT payload,revision,current_step,updated,assessment_year FROM risk_assessment_register
                             WHERE id=? AND owner=? AND deleted_at='' ''', (str(record_id), owner)).fetchone()
         if not row: raise PermissionError('본인이 보관 중인 위험성평가만 열 수 있습니다.')
-        data = ra_normalize_payload(json.loads(row[0]), owner, require_review=False)
+        payload = json.loads(row[0])
+        payload['meta'].setdefault('assessment_year', str(row[4]))
+        data = ra_normalize_payload(payload, owner, require_review=False)
         data.update(schema_version=3, assessment_id=str(record_id))
         return dict(id=str(record_id), payload=data, revision=row[1], step=row[2], updated=row[3])
     finally: db.close()
@@ -8530,10 +8626,10 @@ def ra_record_save(owner, record_id, payload, revision, step=0):
             if not current or current[1]: raise PermissionError('본인이 보관 중인 평가만 저장할 수 있습니다.')
             if current[0] != revision: raise ValueError('다른 창에서 이 평가가 변경되었습니다. JSON 백업을 내려받은 뒤 목록에서 다시 열어 주세요.')
             updated = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat()
-            db.execute('''UPDATE risk_assessment_register SET updated=?,name=?,kind=?,method=?,site=?,status=?,
+            db.execute('''UPDATE risk_assessment_register SET updated=?,assessment_year=?,name=?,kind=?,method=?,site=?,status=?,
                           progress=?,row_count=?,current_step=?,payload=?,revision=revision+1
                           WHERE id=? AND owner=? AND revision=? AND deleted_at='' ''',
-                       (updated, name, kind, method, data['meta'].get('site', ''), status, progress, count, step,
+                       (updated, ra_assessment_year(data['meta'].get('assessment_year')), name, kind, method, data['meta'].get('site', ''), status, progress, count, step,
                         encoded, str(record_id), owner, revision))
     finally: db.close()
     return revision+1
@@ -8614,10 +8710,17 @@ def ra_hub_open(actor, record_id):
 
 def ra_hub_register(actor):
     try:
-        record_id = ra_record_create(actor, st.session_state.get('ra_hub_new_name', ''), st.session_state.get('ra_hub_new_kind'), RA_METHOD)
+        site = st.session_state.get('ra_hub_new_site')
+        if site not in ra_managed_sites():
+            raise ValueError('관리현장 목록에서 사업장을 선택해 주세요.')
+        meta = ra_default_meta(actor)
+        meta.update(site=site, department=ra_site_department(site),
+                    assessment_year=str(ra_assessment_year(st.session_state.get('ra_hub_new_year'))))
+        payload = dict(schema_version=3, meta=meta, rows=[], final=False)
+        record_id = ra_record_create(actor, st.session_state.get('ra_hub_new_name') or '', st.session_state.get('ra_hub_new_kind'), RA_METHOD, payload=payload)
         st.session_state.ra_hub_created_id = record_id
         st.session_state.ra_hub_page = 'list'
-        st.session_state.ra_hub_filters = dict(year='전체', kind='전체', query='')
+        ra_hub_filter_reset()
         st.session_state.ra_hub_page_number = 1
         st.session_state.ra_hub_selection = []
         st.session_state.ra_hub_registration = {}
@@ -8627,18 +8730,28 @@ def ra_hub_register(actor):
 
 
 def ra_hub_registration_change():
-    st.session_state.ra_hub_registration = dict(name=st.session_state.get('ra_hub_new_name', ''), kind=st.session_state.get('ra_hub_new_kind', RA_KINDS[0]))
+    st.session_state.ra_hub_registration = dict(
+        name=st.session_state.get('ra_hub_new_name') or '',
+        kind=st.session_state.get('ra_hub_new_kind', RA_KINDS[0]),
+        year=st.session_state.get('ra_hub_new_year', ra_current_year()),
+        site=st.session_state.get('ra_hub_new_site') or '')
 
 
 def ra_hub_filter():
-    st.session_state.ra_hub_filters = dict(year=st.session_state.get('ra_hub_filter_year', '전체'), kind=st.session_state.get('ra_hub_filter_kind', '전체'), query=st.session_state.get('ra_hub_filter_query', '').strip())
+    st.session_state.ra_hub_filters = dict(
+        year=str(st.session_state.get('ra_hub_filter_year', '전체')),
+        kind=st.session_state.get('ra_hub_filter_kind', '전체'),
+        site=st.session_state.get('ra_hub_filter_site', '전체'),
+        name=st.session_state.get('ra_hub_filter_name', '전체'), query='')
     st.session_state.ra_hub_page_number = 1
     st.session_state.ra_hub_selection = []
 
 
 def ra_hub_filter_reset():
-    for key, value in [('year', '전체'), ('kind', '전체'), ('query', '')]: st.session_state['ra_hub_filter_'+key] = value
-    st.session_state.ra_hub_filters = dict(year='전체', kind='전체', query='')
+    for key in ('year', 'kind', 'site', 'name'):
+        st.session_state['ra_hub_filter_' + key] = '전체'
+    st.session_state.ra_hub_filter_query = ''
+    st.session_state.ra_hub_filters = dict(year='전체', kind='전체', site='전체', name='전체', query='')
     st.session_state.ra_hub_page_number = 1
     st.session_state.ra_hub_selection = []
 
@@ -8743,17 +8856,38 @@ def ra_render_guide():
 
 
 def ra_render_registration(actor):
+    st.markdown(RA_REGISTER_LIST_CSS, unsafe_allow_html=True)
     st.subheader('위험성평가 등록')
     back, guide = st.columns(2)
-    with back: st.button('← 목록', key='ra_hub_register_back', on_click=ra_hub_navigate, args=('list',))
-    with guide: st.button('평가구분·평가방법 안내', key='ra_hub_register_guide', on_click=ra_hub_navigate, args=('guide',), width='stretch')
-    st.caption('등록 후 목록에서 해당 평가를 체크하고 ‘선택한 평가 열기’를 누르면 작성 화면으로 이동합니다.')
+    with back:
+        st.button('← 목록', key='ra_hub_register_back', on_click=ra_hub_navigate, args=('list',))
+    with guide:
+        st.button('평가구분·평가방법 안내', key='ra_hub_register_guide', on_click=ra_hub_navigate, args=('guide',), width='stretch')
+    st.caption('관리현장을 선택하면 담당부서와 평가명이 연결됩니다. 등록 후 목록에서 평가를 열어 작성하세요.')
     saved = st.session_state.get('ra_hub_registration', {})
-    st.session_state.setdefault('ra_hub_new_name', saved.get('name', ''))
+    st.session_state.setdefault('ra_hub_new_year', saved.get('year', ra_current_year()))
     st.session_state.setdefault('ra_hub_new_kind', saved.get('kind', RA_KINDS[0]))
-    with st.container(border=True):
-        st.text_input('위험성평가명 *', key='ra_hub_new_name', max_chars=120, placeholder='예: 2026년 ○○하수관로 공사 정기 위험성평가', on_change=ra_hub_registration_change)
-        st.selectbox('평가구분 *', RA_KINDS, key='ra_hub_new_kind', on_change=ra_hub_registration_change)
+    initial_site = saved.get('site') or st.session_state.get('selected_site_box')
+    st.session_state.setdefault('ra_hub_new_site', initial_site if initial_site in ra_managed_sites() else None)
+    if st.session_state.ra_hub_new_site not in ra_managed_sites():
+        st.session_state.ra_hub_new_site = None
+    with st.container(border=True, key='ra_hub_registration_card'):
+        year, kind = st.columns(2)
+        with year:
+            st.selectbox('평가연도 *', ra_year_options(extra=[st.session_state.ra_hub_new_year]),
+                         key='ra_hub_new_year', format_func=lambda v: str(v)+'년', on_change=ra_hub_new_context_change)
+        with kind:
+            st.selectbox('평가구분 *', RA_KINDS, key='ra_hub_new_kind', on_change=ra_hub_new_context_change)
+        st.selectbox('사업장명 *', ra_managed_sites(), index=None, placeholder='관리현장을 선택하세요',
+                     key='ra_hub_new_site', on_change=ra_hub_new_context_change)
+        names = ra_assessment_names(st.session_state.ra_hub_new_site, st.session_state.ra_hub_new_year,
+                                    st.session_state.ra_hub_new_kind, saved.get('name', ''))
+        if st.session_state.get('ra_hub_new_name') not in names:
+            st.session_state.ra_hub_new_name = names[0] if names else None
+        st.selectbox('위험성평가명 *', names, index=None, key='ra_hub_new_name', disabled=not bool(names),
+                     placeholder='사업장을 먼저 선택하세요', on_change=ra_hub_registration_change)
+        if st.session_state.ra_hub_new_site:
+            st.caption('담당부서 · '+ra_site_department(st.session_state.ra_hub_new_site))
         description = next(item for item in RA_KIND_GUIDE if item[0] == st.session_state.ra_hub_new_kind)
         st.caption(description[1])
         st.selectbox('평가방법 *', [RA_METHOD], key='ra_hub_new_method')
@@ -8761,8 +8895,10 @@ def ra_render_registration(actor):
         st.markdown('**다른 평가방법**')
         columns = st.columns(2)
         for index, method in enumerate(RA_OTHER_METHODS):
-            with columns[index%2]: st.button(method+' · 준비 중', disabled=True, key='ra_hub_disabled_method_'+str(index), width='stretch')
-    st.button('등록', key='ra_hub_register_submit', type='primary', on_click=ra_hub_register, args=(actor,), width='stretch')
+            with columns[index % 2]:
+                st.button(method+' · 준비 중', disabled=True, key='ra_hub_disabled_method_'+str(index), width='stretch')
+    st.button('등록', key='ra_hub_register_submit', type='primary', on_click=ra_hub_register,
+              args=(actor,), disabled=not bool(st.session_state.ra_hub_new_site), width='stretch')
 
 
 def ra_hub_card_html(record, number):
@@ -8783,52 +8919,7 @@ def ra_hub_card_html(record, number):
             '<div class="ra-card-count">평가 항목 '+text(record['row_count'])+'개</div></section>')
 
 
-RA_REGISTER_LIST_CSS = '''<style>
-.st-key-ra_register_title h2 {font-size:27px!important;font-weight:700!important;color:#17212b!important;line-height:1.4!important;margin:0!important;padding:0!important;}
-.st-key-ra_hub_list_toolbar [data-testid="stHorizontalBlock"],.st-key-ra_hub_actions [data-testid="stHorizontalBlock"] {align-items:center!important;gap:8px!important;}
-.st-key-ra_hub_filters_box {background:#f3f5f4!important;border:1px solid #e1e5e2!important;border-radius:10px!important;padding:18px!important;}
-.st-key-ra_hub_filters_box [data-testid="stForm"] {border:0!important;padding:0!important;}
-.st-key-ra_hub_filter_fields [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:1.05fr 1.05fr 2.8fr .8fr .8fr!important;align-items:end!important;gap:12px!important;}
-.st-key-ra_hub_filter_fields [data-testid="stColumn"] {width:auto!important;min-width:0!important;flex:initial!important;}
-.st-key-ra_hub_filter_fields [data-testid="stWidgetLabel"] p {font-size:14px!important;font-weight:600!important;}
-.st-key-ra_hub_filter_fields [data-testid="stButton"] button,.st-key-ra_hub_filter_fields [data-testid="stFormSubmitButton"] button {height:42px!important;min-height:42px!important;padding:8px 12px!important;}
-.st-key-ra_hub_actions [data-testid="stButton"] button,.st-key-ra_hub_list_toolbar [data-testid="stButton"] button {height:42px!important;min-height:42px!important;border-radius:7px!important;padding:8px 10px!important;box-shadow:none!important;transform:none!important;}
-.st-key-ra_hub_actions [data-testid="stButton"] button p,.st-key-ra_hub_list_toolbar [data-testid="stButton"] button p {font-size:14px!important;line-height:1.4!important;white-space:nowrap!important;}
-.st-key-ra_hub_actions .st-key-ra_hub_new button,.st-key-ra_hub_actions .st-key-ra_hub_edit_selected button,.st-key-ra_hub_actions .st-key-ra_hub_request_delete button {background:#fff!important;background-image:none!important;color:#294334!important;-webkit-text-fill-color:#294334!important;border:1px solid #cdd8d0!important;}
-.st-key-ra_hub_actions [data-testid="stButton"] button:disabled {background:#e5eae6!important;background-image:none!important;color:#78847b!important;-webkit-text-fill-color:#78847b!important;border:1px solid #dce2dd!important;opacity:1!important;}
-.st-key-ra_hub_actions [data-testid="stButton"] button p {color:inherit!important;-webkit-text-fill-color:currentColor!important;}
-.ra-register-count {font-size:17px!important;font-weight:700!important;color:#202b25!important;margin:0!important;line-height:1.7!important;}
-.ra-register-count small {font-size:13px!important;font-weight:400!important;color:#6b766f!important;margin-left:8px;}
-.st-key-ra_hub_table {overflow-x:auto!important;width:100%!important;max-width:100%!important;border:1px solid #d7dfe0!important;border-radius:8px!important;background:#fff!important;gap:0!important;}
-.st-key-ra_hub_table > [data-testid="stVerticalBlock"],.st-key-ra_hub_table [data-testid="stVerticalBlock"] {gap:0!important;}
-.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:44px 38px 108px minmax(160px,1.25fr) minmax(210px,1.6fr) 100px 110px 100px 92px!important;min-width:1000px!important;gap:0!important;align-items:center!important;flex-wrap:nowrap!important;}
-.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stColumn"] {width:auto!important;min-width:0!important;flex:initial!important;padding:8px 9px!important;box-sizing:border-box!important;}
-.st-key-risk_assessment .st-key-ra_hub_table .st-key-ra_table_header {background:#eef2f4!important;border-bottom:1px solid #d2dce0!important;min-width:1000px!important;}
-.st-key-risk_assessment .st-key-ra_hub_table .st-key-ra_table_header p {font-size:14px!important;font-weight:700!important;text-align:center!important;color:#25343c!important;white-space:nowrap!important;}
-.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"] {border:0!important;border-bottom:1px solid #e5e9e7!important;border-radius:0!important;box-shadow:none!important;padding:0!important;min-width:1000px!important;background:#fff!important;}
-.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"]:has(input:checked) {background:#f0f7f3!important;}
-.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stCheckbox"] {background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;min-height:28px!important;height:28px!important;box-shadow:none!important;}
-.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stCheckbox"] label {padding:0!important;min-height:28px!important;align-items:center!important;}
-.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stButton"] button {background:#fff!important;background-image:none!important;border:1px solid #d6ded9!important;border-radius:5px!important;box-shadow:none!important;transform:none!important;color:#315341!important;min-height:34px!important;height:34px!important;padding:5px 8px!important;}
-.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stButton"] button p {color:#315341!important;-webkit-text-fill-color:#315341!important;font-size:13px!important;white-space:nowrap!important;}
-.ra-table-cell {font-size:14px!important;line-height:1.55!important;margin:0!important;color:#26332c!important;word-break:keep-all!important;overflow-wrap:anywhere!important;}
-.ra-table-cell.center {text-align:center!important;white-space:nowrap!important;}
-.ra-table-cell.name {font-weight:600!important;}
-.ra-table-status {display:block;text-align:center;font-size:12px;color:#355c46;background:#eef5f0;border-radius:5px;padding:4px 5px;white-space:nowrap;}
-.ra-table-empty {min-width:1000px;text-align:center;padding:58px 18px;color:#758079;font-size:14px;}
-.st-key-ra_hub_pagination [data-testid="stHorizontalBlock"] {display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;gap:10px!important;}
-@media(max-width:768px){
- .st-key-ra_hub_list_toolbar [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;}
- .st-key-ra_hub_list_toolbar [data-testid="stColumn"]:first-child {grid-column:1/-1!important;}
- .st-key-ra_hub_list_toolbar [data-testid="stColumn"],.st-key-ra_hub_actions [data-testid="stColumn"] {width:auto!important;min-width:0!important;}
- .st-key-ra_hub_filters_box {padding:14px!important;}
- .st-key-ra_hub_filter_fields [data-testid="stHorizontalBlock"] {grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;}
- .st-key-ra_hub_filter_fields [data-testid="stColumn"]:nth-child(3) {grid-column:1/-1!important;}
- .st-key-ra_hub_actions [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;}
- .st-key-ra_hub_actions [data-testid="stColumn"]:first-child {grid-column:1/-1!important;}
- .st-key-ra_register_title h2 {font-size:23px!important;}
-}
-</style>'''
+RA_REGISTER_LIST_CSS = '<style>\n.st-key-ra_register_title h2 {font-size:27px!important;font-weight:700!important;color:#17212b!important;line-height:1.4!important;margin:0!important;padding:0!important;}\n.st-key-ra_hub_list_toolbar [data-testid="stHorizontalBlock"],.st-key-ra_hub_actions [data-testid="stHorizontalBlock"] {align-items:center!important;gap:8px!important;}\n.st-key-ra_hub_filters_box {background:#fffdf8!important;border:1px solid #dedfd3!important;border-radius:10px!important;padding:18px!important;}\n.st-key-ra_hub_filters_box [data-testid="stForm"] {border:0!important;padding:0!important;}\n.st-key-ra_hub_filter_fields [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:1fr 1.05fr 2.4fr 2.4fr .75fr .75fr!important;align-items:end!important;gap:12px!important;}\n.st-key-ra_hub_filter_fields [data-testid="stColumn"] {width:auto!important;min-width:0!important;flex:initial!important;}\n.st-key-ra_hub_filter_fields [data-testid="stWidgetLabel"] p {font-size:14px!important;font-weight:600!important;}\n.st-key-ra_hub_filter_fields [data-testid="stButton"] button,.st-key-ra_hub_filter_fields [data-testid="stFormSubmitButton"] button {height:42px!important;min-height:42px!important;padding:8px 12px!important;}\n.st-key-ra_hub_actions [data-testid="stButton"] button,.st-key-ra_hub_list_toolbar [data-testid="stButton"] button {height:42px!important;min-height:42px!important;border-radius:7px!important;padding:8px 10px!important;box-shadow:none!important;transform:none!important;}\n.st-key-ra_hub_actions [data-testid="stButton"] button p,.st-key-ra_hub_list_toolbar [data-testid="stButton"] button p {font-size:14px!important;line-height:1.4!important;white-space:nowrap!important;}\n.st-key-ra_hub_actions .st-key-ra_hub_new button,.st-key-ra_hub_actions .st-key-ra_hub_edit_selected button,.st-key-ra_hub_actions .st-key-ra_hub_request_delete button {background:#fff!important;background-image:none!important;color:#294334!important;-webkit-text-fill-color:#294334!important;border:1px solid #cdd8d0!important;}\n.st-key-ra_hub_actions [data-testid="stButton"] button:disabled {background:#e5eae6!important;background-image:none!important;color:#78847b!important;-webkit-text-fill-color:#78847b!important;border:1px solid #dce2dd!important;opacity:1!important;}\n.st-key-ra_hub_actions [data-testid="stButton"] button p {color:inherit!important;-webkit-text-fill-color:currentColor!important;}\n.ra-register-count {font-size:17px!important;font-weight:700!important;color:#202b25!important;margin:0!important;line-height:1.7!important;}\n.ra-register-count small {font-size:13px!important;font-weight:400!important;color:#6b766f!important;margin-left:8px;}\n.st-key-ra_hub_table {overflow-x:auto!important;width:100%!important;max-width:100%!important;border:1px solid #d7dfe0!important;border-radius:8px!important;background:#fff!important;gap:0!important;}\n.st-key-ra_hub_table > [data-testid="stVerticalBlock"],.st-key-ra_hub_table [data-testid="stVerticalBlock"] {gap:0!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:44px 38px 108px minmax(160px,1.25fr) minmax(210px,1.6fr) 100px 110px 100px 92px!important;min-width:1000px!important;gap:0!important;align-items:center!important;flex-wrap:nowrap!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stColumn"] {width:auto!important;min-width:0!important;flex:initial!important;padding:8px 9px!important;box-sizing:border-box!important;}\n.st-key-risk_assessment .st-key-ra_hub_table .st-key-ra_table_header {background:#173f36!important;border-bottom:1px solid #173f36!important;min-width:1000px!important;}\n.st-key-risk_assessment .st-key-ra_hub_table .st-key-ra_table_header p {font-size:14px!important;font-weight:700!important;text-align:center!important;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;white-space:nowrap!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"] {border:0!important;border-bottom:1px solid #e5e9e7!important;border-radius:0!important;box-shadow:none!important;padding:0!important;min-width:1000px!important;background:#fff!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"]:has(input:checked) {background:#e6f3eb!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stCheckbox"] {background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;min-height:28px!important;height:28px!important;box-shadow:none!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stCheckbox"] label {padding:0!important;min-height:28px!important;align-items:center!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stButton"] button {background:#fff!important;background-image:none!important;border:1px solid #d6ded9!important;border-radius:5px!important;box-shadow:none!important;transform:none!important;color:#315341!important;min-height:34px!important;height:34px!important;padding:5px 8px!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stButton"] button p {color:#315341!important;-webkit-text-fill-color:#315341!important;font-size:13px!important;white-space:nowrap!important;}\n.ra-table-cell {font-size:14px!important;line-height:1.55!important;margin:0!important;color:#26332c!important;word-break:keep-all!important;overflow-wrap:anywhere!important;}\n.ra-table-cell.center {text-align:center!important;white-space:nowrap!important;}\n.ra-table-cell.name {font-weight:600!important;}\n.ra-table-status {display:block;text-align:center;font-size:12px;color:#14644d;background:#e6f2e9;border-radius:5px;padding:4px 5px;white-space:nowrap;}\n.ra-table-empty {min-width:1000px;text-align:center;padding:58px 18px;color:#758079;font-size:14px;}\n.st-key-ra_hub_pagination [data-testid="stHorizontalBlock"] {display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;gap:10px!important;}\n@media(max-width:768px){\n .st-key-ra_hub_list_toolbar [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;}\n .st-key-ra_hub_list_toolbar [data-testid="stColumn"]:first-child {grid-column:1/-1!important;}\n .st-key-ra_hub_list_toolbar [data-testid="stColumn"],.st-key-ra_hub_actions [data-testid="stColumn"] {width:auto!important;min-width:0!important;}\n .st-key-ra_hub_filters_box {padding:14px!important;}\n .st-key-ra_hub_filter_fields [data-testid="stHorizontalBlock"] {grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;}\n .st-key-ra_hub_filter_fields [data-testid="stColumn"]:nth-child(3),.st-key-ra_hub_filter_fields [data-testid="stColumn"]:nth-child(4) {grid-column:1/-1!important;}\n .st-key-ra_hub_actions [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;}\n .st-key-ra_hub_actions [data-testid="stColumn"]:first-child {grid-column:1/-1!important;}\n .st-key-ra_register_title h2 {font-size:23px!important;}\n}\n\n.st-key-risk_assessment .st-key-ra_hub_filters_box,\n.st-key-risk_assessment .st-key-ra_hub_registration_card,\n.st-key-risk_assessment .st-key-ra_hub_edit_card {background:#fffdf8!important;border:1px solid #dedfd3!important;border-radius:14px!important;box-shadow:0 4px 18px #3c4a3910!important;}\n.st-key-risk_assessment .st-key-ra_hub_filters_box [data-testid="stWidgetLabel"] p,\n.st-key-risk_assessment .st-key-ra_hub_registration_card [data-testid="stWidgetLabel"] p,\n.st-key-risk_assessment .st-key-ra_hub_edit_card [data-testid="stWidgetLabel"] p {color:#29483b!important;-webkit-text-fill-color:#29483b!important;font-weight:650!important;}\n.st-key-risk_assessment .st-key-ra_hub_filters_box [data-baseweb="select"]>div,\n.st-key-risk_assessment .st-key-ra_hub_registration_card [data-baseweb="select"]>div,\n.st-key-risk_assessment .st-key-ra_hub_edit_card [data-baseweb="select"]>div {background:#fff!important;border-color:#d2dbd1!important;border-radius:9px!important;color:#233f34!important;-webkit-text-fill-color:#233f34!important;min-height:44px!important;box-shadow:none!important;}\n.st-key-risk_assessment .st-key-ra_hub_filters_box [data-baseweb="select"]:focus-within>div,\n.st-key-risk_assessment .st-key-ra_hub_registration_card [data-baseweb="select"]:focus-within>div,\n.st-key-risk_assessment .st-key-ra_hub_edit_card [data-baseweb="select"]:focus-within>div {border-color:#16825d!important;box-shadow:0 0 0 3px #16825d18!important;}\n.st-key-risk_assessment .st-key-ra_hub_filter_fields [data-testid="stButton"] {padding-top:27px!important;}\n.st-key-risk_assessment .st-key-ra_hub_filter_fields button,\n.st-key-risk_assessment .st-key-ra_hub_actions button,\n.st-key-risk_assessment .st-key-ra_hub_list_toolbar button {background:#fffdf8!important;background-image:none!important;border:1px solid #cdd9cd!important;color:#284b3b!important;-webkit-text-fill-color:#284b3b!important;border-radius:9px!important;box-shadow:none!important;}\n.st-key-risk_assessment .st-key-ra_hub_filter_fields button[kind="primary"],\n.st-key-risk_assessment .st-key-ra_hub_actions button[kind="primary"],\n.st-key-risk_assessment .st-key-ra_hub_register_submit button,\n.st-key-risk_assessment .st-key-ra_hub_edit_save button {background:#167451!important;background-image:none!important;border:1px solid #167451!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-radius:9px!important;box-shadow:none!important;}\n.st-key-risk_assessment .st-key-ra_hub_filter_fields button p,\n.st-key-risk_assessment .st-key-ra_hub_actions button p,\n.st-key-risk_assessment .st-key-ra_hub_list_toolbar button p,\n.st-key-risk_assessment .st-key-ra_hub_register_submit button p,\n.st-key-risk_assessment .st-key-ra_hub_edit_save button p {color:inherit!important;-webkit-text-fill-color:currentColor!important;}\n.st-key-risk_assessment .st-key-ra_hub_request_delete button {color:#a7463c!important;-webkit-text-fill-color:#a7463c!important;border-color:#e0c9be!important;}\n.st-key-risk_assessment .st-key-ra_hub_table {border-color:#d5dfd4!important;border-radius:12px!important;box-shadow:0 4px 18px #3c4a390a!important;}\n.st-key-risk_assessment .st-key-ra_hub_table .st-key-ra_table_header p {color:#fff!important;-webkit-text-fill-color:#fff!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"]:hover {background:#f4f8f2!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"]:has(input:checked),\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"]:has([role="checkbox"][aria-checked="true"]) {background:#e6f3eb!important;}\n.st-key-risk_assessment .st-key-ra_hub_table .ra-table-cell {color:#263f33!important;-webkit-text-fill-color:#263f33!important;}\n.st-key-risk_assessment .ra-register-count {color:#173f36!important;-webkit-text-fill-color:#173f36!important;}\n.st-key-risk_assessment .ra-table-status {color:#14644d!important;-webkit-text-fill-color:#14644d!important;background:#e6f2e9!important;border:1px solid #cde3d3!important;border-radius:20px!important;}\n.st-key-risk_assessment .st-key-ra_hub_registration_card [data-testid="stCaptionContainer"] p,\n.st-key-risk_assessment .st-key-ra_hub_edit_card [data-testid="stCaptionContainer"] p {color:#647365!important;-webkit-text-fill-color:#647365!important;}\n.st-key-risk_assessment .st-key-ra_hub_actions button:disabled,\n.st-key-risk_assessment .st-key-ra_hub_register_submit button:disabled,\n.st-key-risk_assessment .st-key-ra_hub_edit_save button:disabled {background:#e7ebe3!important;background-image:none!important;border-color:#dce2d7!important;color:#829083!important;-webkit-text-fill-color:#829083!important;opacity:1!important;}\n@media(max-width:768px){.st-key-risk_assessment .st-key-ra_hub_filter_fields [data-testid="stButton"]{padding-top:0!important;}}\n\n</style>'
 
 
 def ra_hub_select_page(record_ids, key):
@@ -8867,6 +8958,7 @@ def ra_hub_edit_selected(actor):
         st.session_state.ra_hub_edit_name = meta.get('assessment_name', '')
         st.session_state.ra_hub_edit_site = meta.get('site', '')
         st.session_state.ra_hub_edit_kind = meta.get('kind', RA_KINDS[0])
+        st.session_state.ra_hub_edit_year = ra_assessment_year(meta.get('assessment_year'))
         st.session_state.ra_hub_page = 'edit'
     except (ValueError, PermissionError, json.JSONDecodeError) as exc:
         st.session_state.ra_load_error = str(exc)
@@ -8880,9 +8972,12 @@ def ra_hub_commit_edit(actor):
         record = st.session_state.get('ra_hub_edit_record')
         if not record: raise ValueError('목록에서 수정할 평가를 다시 선택해 주세요.')
         data = copy.deepcopy(record['payload'])
-        data['meta'].update(assessment_name=st.session_state.get('ra_hub_edit_name', '').strip(),
+        data['meta'].update(assessment_name=(st.session_state.get('ra_hub_edit_name') or '').strip(),
+                            assessment_year=str(ra_assessment_year(st.session_state.get('ra_hub_edit_year'))),
                             site=st.session_state.get('ra_hub_edit_site', '').strip(),
                             kind=st.session_state.get('ra_hub_edit_kind'))
+        department = ra_site_department(data['meta']['site'])
+        if department: data['meta']['department'] = department
         if data['meta'] != record['payload']['meta']:
             data['meta']['review_confirmed'] = False
             data['meta']['review_sig'] = ''
@@ -8899,16 +8994,30 @@ def ra_hub_commit_edit(actor):
 
 
 def ra_render_record_edit(actor):
+    st.markdown(RA_REGISTER_LIST_CSS, unsafe_allow_html=True)
     record = st.session_state.get('ra_hub_edit_record')
     if not record:
         st.warning('목록에서 수정할 평가를 선택해 주세요.')
         st.button('← 목록', key='ra_hub_edit_missing_back', on_click=ra_hub_navigate, args=('list',))
         return
     st.subheader('위험성평가 정보 수정')
-    st.text_input('위험성평가명 *', key='ra_hub_edit_name', max_chars=120)
-    st.text_input('사업장명', key='ra_hub_edit_site', max_chars=240, placeholder='평가 대상 현장명')
-    st.selectbox('평가구분 *', RA_KINDS, key='ra_hub_edit_kind')
-    st.caption('평가방법 · '+record['payload']['meta'].get('method', RA_METHOD))
+    meta = record['payload']['meta']
+    st.session_state.setdefault('ra_hub_edit_year', ra_assessment_year(meta.get('assessment_year')))
+    with st.container(border=True, key='ra_hub_edit_card'):
+        year, kind = st.columns(2)
+        with year:
+            st.selectbox('평가연도 *', ra_year_options(extra=[st.session_state.ra_hub_edit_year]),
+                         key='ra_hub_edit_year', format_func=lambda v: str(v)+'년', on_change=ra_hub_edit_context_change)
+        with kind:
+            st.selectbox('평가구분 *', RA_KINDS, key='ra_hub_edit_kind', on_change=ra_hub_edit_context_change)
+            st.selectbox('사업장명', ([''] if not meta.get('site') else []) + ra_site_options(extra=[meta.get('site'), st.session_state.get('ra_hub_edit_site')]),
+                     key='ra_hub_edit_site', index=None, on_change=ra_hub_edit_context_change)
+        names = ra_assessment_names(st.session_state.get('ra_hub_edit_site'), st.session_state.ra_hub_edit_year,
+                                    st.session_state.ra_hub_edit_kind, meta.get('assessment_name', ''))
+        if st.session_state.get('ra_hub_edit_name') not in names:
+            st.session_state.ra_hub_edit_name = names[0] if names else None
+        st.selectbox('위험성평가명 *', names, key='ra_hub_edit_name', index=None)
+        st.caption('평가방법 · '+meta.get('method', RA_METHOD))
     save, cancel = st.columns(2)
     with save:
         st.button('수정 저장', key='ra_hub_edit_save', type='primary', on_click=ra_hub_commit_edit, args=(actor,), width='stretch')
@@ -8952,31 +9061,51 @@ def ra_render_history(actor):
     except Exception:
         st.error('평가 목록을 불러오지 못했습니다. 저장소 연결을 확인한 뒤 새로고침해 주세요.')
         st.button('목록 새로고침', key='ra_hub_list_retry'); return
-    current_year = datetime.datetime.now(ZoneInfo('Asia/Seoul')).year
-    filters = st.session_state.get('ra_hub_filters', dict(year=str(current_year), kind='전체', query=''))
-    years = ['전체']+sorted({str(current_year), str(current_year-1)} | {str(row['assessment_year']) for row in records}, reverse=True)
+    current_year = ra_current_year()
+    defaults = dict(year=str(current_year), kind='전체', site='전체', name='전체', query='')
+    filters = dict(defaults, **st.session_state.get('ra_hub_filters', {}))
+    # Old free-text filters become explicit selectors on the first updated visit.
+    if 'ra_hub_filter_site' not in st.session_state:
+        filters.update(site='전체', name='전체', query='')
+        st.session_state.ra_hub_filters = filters
+    years = ['전체'] + [str(v) for v in ra_year_options(records)]
+    sites = ['전체'] + ra_site_options(records)
     with st.container(key='ra_hub_filters_box'):
-        with st.form('ra_hub_search_form'):
-            with st.container(key='ra_hub_filter_fields'):
-                year, kind, query, search, reset = st.columns([1.05, 1.05, 2.8, .8, .8], gap='small')
-            with year:
-                st.session_state.setdefault('ra_hub_filter_year', filters['year'] if filters['year'] in years else '전체')
-                if st.session_state.ra_hub_filter_year not in years: st.session_state.ra_hub_filter_year = '전체'
-                st.selectbox('연도', years, key='ra_hub_filter_year', format_func=lambda v: v if v == '전체' else v+'년')
-            with kind:
-                st.session_state.setdefault('ra_hub_filter_kind', filters['kind'])
-                st.selectbox('평가구분', ['전체']+RA_KINDS, key='ra_hub_filter_kind')
-            with query:
-                st.session_state.setdefault('ra_hub_filter_query', filters['query'])
-                st.text_input('평가명·사업장명', key='ra_hub_filter_query', placeholder='평가명 또는 사업장명 검색')
-            with search:
-                st.form_submit_button('검색', on_click=ra_hub_filter, type='primary', width='stretch')
-            with reset:
-                st.form_submit_button('초기화', on_click=ra_hub_filter_reset, width='stretch')
-    filters = st.session_state.get('ra_hub_filters', filters)
-    visible = [r for r in records if (filters['year'] == '전체' or str(r['assessment_year']) == filters['year']) and
-               (filters['kind'] == '전체' or r['kind'] == filters['kind']) and
-               (not filters['query'] or filters['query'].casefold() in (r['name']+' '+r['site']).casefold())]
+        with st.container(key='ra_hub_filter_fields'):
+            year, kind, site, name, search, reset = st.columns([1, 1.05, 2.4, 2.4, .75, .75], gap='small')
+        with year:
+            st.session_state.setdefault('ra_hub_filter_year', str(filters['year']))
+            if st.session_state.ra_hub_filter_year not in years:
+                st.session_state.ra_hub_filter_year = str(current_year)
+            st.selectbox('연도', years, key='ra_hub_filter_year', format_func=lambda v: v if v == '전체' else v+'년', on_change=ra_hub_filter_context_change)
+        with kind:
+            st.session_state.setdefault('ra_hub_filter_kind', filters['kind'])
+            if st.session_state.ra_hub_filter_kind not in ['전체']+RA_KINDS:
+                st.session_state.ra_hub_filter_kind = '전체'
+            st.selectbox('평가구분', ['전체']+RA_KINDS, key='ra_hub_filter_kind', on_change=ra_hub_filter_context_change)
+        with site:
+            st.session_state.setdefault('ra_hub_filter_site', filters['site'])
+            if st.session_state.ra_hub_filter_site not in sites:
+                st.session_state.ra_hub_filter_site = '전체'
+            st.selectbox('사업장명', sites, key='ra_hub_filter_site', on_change=ra_hub_filter_context_change)
+        with name:
+            names = ['전체'] + ra_hub_search_names(records, st.session_state.ra_hub_filter_year,
+                        st.session_state.ra_hub_filter_kind, st.session_state.ra_hub_filter_site)
+            st.session_state.setdefault('ra_hub_filter_name', filters['name'])
+            if st.session_state.ra_hub_filter_name not in names:
+                st.session_state.ra_hub_filter_name = '전체'
+                filters['name'] = '전체'
+            st.selectbox('평가명', names, key='ra_hub_filter_name', on_change=ra_hub_filter)
+        with search:
+            st.button('검색', key='ra_hub_search', on_click=ra_hub_filter, type='primary', width='stretch')
+        with reset:
+            st.button('초기화', key='ra_hub_reset', on_click=ra_hub_filter_reset, width='stretch')
+    filters = dict(defaults, **st.session_state.get('ra_hub_filters', filters))
+    visible = [r for r in records
+        if (filters['year'] == '전체' or str(r['assessment_year']) == str(filters['year']))
+        and (filters['kind'] == '전체' or r['kind'] == filters['kind'])
+        and (filters['site'] == '전체' or r['site'] == filters['site'])
+        and (filters['name'] == '전체' or r['name'] == filters['name'])]
     page_count = max(1, (len(visible)+9)//10)
     page = max(1, min(page_count, st.session_state.get('ra_hub_page_number', 1)))
     st.session_state.ra_hub_page_number = page
