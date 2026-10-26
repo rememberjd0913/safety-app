@@ -7288,22 +7288,291 @@ with calendar_tab:
 
 
 # ---------- 위험성평가: 선택형 작성 / 사람의 점수 판단 / 보고서 ----------
-RA_CONSTRUCTION_TYPES = [
-    '하수관로', '하수처리', '도시침수', '상수도', '소각/자원회수', '매립',
-    '바이오', '가축분뇨', '생태하천', '완충저류/비점오염', '폐수처리', '기타',
-]
-RA_TRADE_GROUPS = [
-('📐','현장 준비, 가설공사', ['현황측량·기준점 설치','지반조사·시추','지하매설물 탐사·시험굴착','수목 제거·벌목·뿌리 제거','현장 정리·장애물 제거','가설울타리·출입문 설치·해체','가설사무실·컨테이너 설치·철거','가설도로·장비 진입로 조성','가설전기·임시분전반 설치·철거','가설급수·배수시설 설치·철거']),
-('🚜','토공, 굴착, 지반공사', ['표토 제거·토사 절취','기초 터파기','관로 설치용 도랑 굴착','암반 천공·브레이커 파쇄','발파 작업','굴착토 상차·운반·하차','성토·되메우기','지반 다짐','사면 정리·보강','지반개량·그라우팅']),
-('🏗️','흙막이, 기초공사', ['흙막이 H파일 설치·인발','토류판 설치·해체','시트파일 설치·인발','띠장·버팀보 설치·해체','어스앵커 시공·긴장','주열식 흙막이벽 시공','지하연속벽 시공','웰포인트·딥웰 설치·운전','기성말뚝 항타·매입','현장타설말뚝 시공·두부 정리']),
-('🧱','철근, 거푸집, 콘크리트공사', ['철근 반입·하역·적재','철근 절단·절곡','철근 조립·결속','철근 이음·커플러 체결','일반 거푸집 설치·해체','시스템폼·갱폼 설치·해체','동바리 설치·해체','콘크리트 펌프카 설치·압송관 배치','콘크리트 타설·진동 다짐·표면 마감','콘크리트 양생·보온·열풍기 사용']),
-('🪜','철골, 비계, 고소작업', ['철골 부재 반입·적재','철골 기둥·보 세우기','철골 볼트 체결·접합','데크플레이트 설치','지붕재·채광창 설치·보수','강관비계 설치·해체','시스템비계 설치·해체','이동식비계 설치·이동·사용','고소작업대 사용','달비계·곤돌라 사용']),
-('🚧','관로, 맨홀, 도로공사', ['기존 도로 절단·포장 철거','관로 기초·받침 시공','상수·하수관 인양·부설','관 접합·융착·플랜지 체결','맨홀·집수정 설치','기존 관로 연결·절체','추진·압입 등 비개착 관로 시공','관로 수압·기밀·누수시험','관로 세척·준설·CCTV 조사','아스팔트·콘크리트 포장 및 복구']),
-('🏢','건축, 마감, 부대공사', ['벽돌·블록 쌓기','미장·견출','방수·방식·라이닝','도장·도료 취급','타일·석재 붙임','창호·유리 설치','금속패널·외장재 설치','천장·칸막이·내장재 설치','보온·단열재 시공','조경·식재·보도블록·경계석 시공']),
-('⚙️','환경시설, 기계설비공사', ['펌프·모터 설치·정렬','송풍기·압축기 설치','스크린·제진기·컨베이어 설치','교반기·수중기기·산기관 설치','침전지 수집기·농축기·탈수기 설치','탱크·저장조·압력용기 설치','약품주입·소독설비 설치','소각로·보일러·폐열회수설비 설치','집진기·탈취기·배출가스 처리설비 설치','기계배관·밸브·덕트 설치']),
-('⚡','전기, 계장, 시운전', ['수변전설비·변압기 설치','배전반·제어반·MCC 설치','전선관·케이블트레이 설치','케이블 포설·단말 처리','접지·피뢰설비 설치','조명·콘센트·전기기구 설치','계측기·센서·자동제어설비 설치','정전·전원 차단·복전 작업','절연·통전시험 및 전기설비 점검','단독·연동·부하 시운전']),
-('🔧','특수, 해체, 정비작업', ['용접·용단·불꽃 발생 연마','이동식크레인 등 중량물 인양·설치','맨홀·탱크·피트 등 내부 진입작업','구조물 해체·철거','석면 함유 자재 해체·제거','수중·잠수작업','설비 정비·막힘 제거·부품 교체','오염토양 굴착·선별·반출','토양세척·열처리·안정화 등 정화설비 작업','지하수 관정 설치·양수·정화설비 작업']),
-]
+RA_CONSTRUCTION_TYPES = ['환경기초시설 공통 공종',
+ '하수처리시설(대형)',
+ '하수처리시설(신설, 증설)',
+ '생태하천정비사업',
+ '도시침수 예방사업',
+ '완충저류시설 설치사업',
+ '소각시설 설치사업',
+ '매립시설 설치사업']
+
+RA_WORK_CATALOG = {'환경기초시설 공통 공종': [{'icon': '🔎',
+                   'title': '시공 전 확인 점검',
+                   'tasks': ['도로점용 및 자재반입', '보행자 안전시설물 설치', '차량계 건설기계 이송/이동'],
+                   'source': '1.jpg'},
+                  {'icon': '🛣️',
+                   'title': '포장절단 및 아스콘 철거',
+                   'tasks': ['포장절단 작업 및 아스콘 깨기', '아스콘 철거 등 폐기물 반출'],
+                   'source': '1.jpg'},
+                  {'icon': '🚜', 'title': '터파기', 'tasks': ['굴착작업', '토사 상차 및 반출'], 'source': '1.jpg'},
+                  {'icon': '🏗️',
+                   'title': '가시설 설치',
+                   'tasks': ['장비 및 자재 반입', '흙막이지보공 설치', '흙막이 뒷채움 및 계측'],
+                   'source': '1.jpg'},
+                  {'icon': '🔧', 'title': '관로부설', 'tasks': ['관로부설 작업'], 'source': '1.jpg'},
+                  {'icon': '🚚',
+                   'title': '되메우기 및 가시설 철거',
+                   'tasks': ['토사반입 및 되메우기', '흙막이지보공 철거', '철거 자재 운반'],
+                   'source': '1.jpg'},
+                  {'icon': '🛣️',
+                   'title': '포장 및 복구작업',
+                   'tasks': ['포장장비 반입 및 점검', '보조기층 포설 및 다짐', '아스콘 포설 및 다짐'],
+                   'source': '1.jpg'},
+                  {'icon': '🔩',
+                   'title': '기초파일 작업',
+                   'tasks': ['기초파일 자재·장비 반입·운반·보관', '기초파일 천공', '기초파일 근입 작업', '기초파일 항타'],
+                   'source': '1.jpg'},
+                  {'icon': '🧩',
+                   'title': '거푸집 작업',
+                   'tasks': ['자재반입·가공·운반', '거푸집 동바리 조립', '거푸집 동바리 해체', '거푸집 동바리 인양'],
+                   'source': '1.jpg'},
+                  {'icon': '🦾', 'title': '철근 작업', 'tasks': ['철근 반입 작업', '철근 가공 및 운반·조립 작업'], 'source': '1.jpg'},
+                  {'icon': '🧱',
+                   'title': '콘크리트 작업',
+                   'tasks': ['콘크리트 반입·운반', '콘크리트 타설 및 다짐', '콘크리트 양생'],
+                   'source': '1.jpg'},
+                  {'icon': '🚧',
+                   'title': '가설공사',
+                   'tasks': ['가설울타리 및 출입문 설치',
+                             '이동식 전기기계기구 및 분전반 설치',
+                             '이동식크레인 설치',
+                             '안전시설물 설치 작업',
+                             '가설통로 설치/해체 작업',
+                             '기타 안전시설물 설치/해체 작업',
+                             '가설도로 설치',
+                             '가설분전함 설치'],
+                   'source': '1-1.jpg'},
+                  {'icon': '🚇',
+                   'title': '추진공사',
+                   'tasks': ['추진레일 등 설치/해체', '반력벽 설치', '자재반입/양중', '압입/추진', '그라우팅'],
+                   'source': '1-1.jpg'},
+                  {'icon': '🏠',
+                   'title': '가설사무실 설치',
+                   'tasks': ['가설사무실 기초',
+                             '가설사무실 골조',
+                             '바닥몰탈 타설',
+                             '내부작업',
+                             '외부난간 등 설치',
+                             '정화조 설치',
+                             '울타리 설치작업',
+                             '조경부대시설 작업'],
+                   'source': '1-1.jpg'}],
+ '하수처리시설(대형)': [{'icon': '🔎',
+                 'title': '시공 전 확인 점검',
+                 'tasks': ['도로점용 및 자재반입', '보행자 안전시설물 설치', '차량계 건설기계 이송/이동'],
+                 'source': '1.jpg'},
+                {'icon': '🔩',
+                 'title': '기초파일 작업',
+                 'tasks': ['기초파일 자재·장비 반입·운반·보관', '기초파일 천공', '기초파일 항타'],
+                 'source': '1.jpg'},
+                {'icon': '🚜', 'title': '터파기', 'tasks': ['굴착작업', '토사 상차 및 반출'], 'source': '1.jpg'},
+                {'icon': '🏗️',
+                 'title': '흙막이',
+                 'tasks': ['흙막이', 'Earth Anchor', 'H-pile + 토류판'],
+                 'source': '2.jpg'},
+                {'icon': '🏗️', 'title': '타워 크레인 공사', 'tasks': ['타워 크레인 설치 및 해체'], 'source': '2.jpg'},
+                {'icon': '🧩',
+                 'title': '거푸집 작업',
+                 'tasks': ['자재반입·가공·운반', '거푸집 동바리 조립', '거푸집 동바리 해체', '거푸집 동바리 인양'],
+                 'source': '1.jpg'},
+                {'icon': '🦾', 'title': '철근 작업', 'tasks': ['철근 조립 및 용접'], 'source': '2.jpg'},
+                {'icon': '🧱',
+                 'title': '콘크리트 작업',
+                 'tasks': ['콘크리트 반입·운반', '콘크리트 타설 및 다짐', '콘크리트 양생'],
+                 'source': '1.jpg'},
+                {'icon': '⚙️', 'title': '설비 공사', 'tasks': ['기계 양중 공사', '배관 공사'], 'source': '2.jpg'},
+                {'icon': '🎨', 'title': '마감 공사', 'tasks': ['내부 미장·방수 공사'], 'source': '2.jpg'}],
+ '하수처리시설(신설, 증설)': [{'icon': '🚧', 'title': '가설공사', 'tasks': ['가설전기작업'], 'source': '3.jpg'},
+                    {'icon': '🚜', 'title': '토공사', 'tasks': ['시트파일작업', '굴착작업', '어스앵커 작업'], 'source': '3.jpg'},
+                    {'icon': '🏢', 'title': '구조물 공사', 'tasks': ['시스템동바리 작업', '철근작업', '시스템비계'], 'source': '3.jpg'},
+                    {'icon': '🎨',
+                     'title': '마감 공사',
+                     'tasks': ['방수작업', '도장작업', '금속 및 잡철물작업', '판넬 등 외부마감작업'],
+                     'source': '3.jpg'},
+                    {'icon': '⚡',
+                     'title': '전기설비 공사',
+                     'tasks': ['동력배관 배선작업', '접지작업', '수변전설비작업', '계측제어설비작업', '조명설비작업'],
+                     'source': '3.jpg'},
+                    {'icon': '⚙️',
+                     'title': '기계설비 공사',
+                     'tasks': ['기계배관 및 보온작업', '저장탱크 설치작업', '덕트 설치작업', '펌프 설치작업'],
+                     'source': '3.jpg'},
+                    {'icon': '🔧', 'title': '관로공사', 'tasks': ['관로굴착 및 부설작업'], 'source': '3.jpg'},
+                    {'icon': '🛣️',
+                     'title': '부대토목공사',
+                     'tasks': ['성토 및 운반작업', '포설 및 다짐작업', '포장작업'],
+                     'source': '3.jpg'},
+                    {'icon': '🌳', 'title': '조경공사', 'tasks': ['조경작업'], 'source': '3.jpg'},
+                    {'icon': '🚜',
+                     'title': '기계기구 및 장비',
+                     'tasks': ['건설기계 및 장비작업', '하역운반기계작업', '위험기계기구작업'],
+                     'source': '3.jpg'}],
+ '생태하천정비사업': [{'icon': '🚜', 'title': '토공사', 'tasks': ['기초파일작업', '굴착작업', '흙막이지보공작업', '되메움작업'], 'source': '4.jpg'},
+              {'icon': '🏢', 'title': '구조물 공사', 'tasks': ['거푸집작업', '철근작업', '콘크리트작업'], 'source': '4.jpg'},
+              {'icon': '🔧', 'title': '배관 공사', 'tasks': ['맨홀 및 관부설작업', '자재반입'], 'source': '4.jpg'},
+              {'icon': '🛣️', 'title': '포장 공사', 'tasks': ['포장작업', '포설 및 다짐작업'], 'source': '4.jpg'},
+              {'icon': '🌱',
+               'title': '법면보호 공사',
+               'tasks': ['흙운반 및 흙쌓기', '면고르기 및 법면다짐', '거적덮기 및 시드스프레이 뿌리기'],
+               'source': '4.jpg'},
+              {'icon': '🚧',
+               'title': '부대 공사',
+               'tasks': ['부대토목작업', '가설도로작업', '지장물조사 및 이설작업', '가체절작업(물막이)'],
+               'source': '4.jpg'},
+              {'icon': '🧰',
+               'title': '기타',
+               'tasks': ['안전가시설작업', '가설전기작업', '건설기계작업', '위험기계기구작업'],
+               'source': '4.jpg'}],
+ '도시침수 예방사업': [{'icon': '🏠',
+                'title': '가설사무실 설치',
+                'tasks': ['가설사무실 기초',
+                          '가설사무실 골조',
+                          '바닥몰탈 타설',
+                          '내부작업',
+                          '외부난간 등 설치',
+                          '정화조 설치',
+                          '울타리 설치작업',
+                          '조경부대시설 작업'],
+                'source': '1-1.jpg'},
+               {'icon': '🔎',
+                'title': '지장물 조사 및 이설 작업',
+                'tasks': ['지장물 조사 굴착', '지장물 보호·보강·이설·되메움'],
+                'source': '5.jpg'},
+               {'icon': '🚧', 'title': '안전식별 작업', 'tasks': ['안전식별 작업'], 'source': '5.jpg'},
+               {'icon': '🚜', 'title': '굴착작업', 'tasks': ['굴착작업'], 'source': '5.jpg'},
+               {'icon': '🏗️', 'title': '흙막이지보공 작업', 'tasks': ['흙막이지보공 작업'], 'source': '5.jpg'},
+               {'icon': '🔧', 'title': '관로 작업', 'tasks': ['관로 작업'], 'source': '5.jpg'},
+               {'icon': '🚚', 'title': '되메우기 작업', 'tasks': ['되메우기 작업'], 'source': '5.jpg'},
+               {'icon': '🛣️', 'title': '포장 작업', 'tasks': ['포장 작업'], 'source': '5.jpg'},
+               {'icon': '🚜', 'title': '터파기 작업', 'tasks': ['터파기 작업'], 'source': '5.jpg'},
+               {'icon': '🧩', 'title': '거푸집 작업', 'tasks': ['거푸집 작업'], 'source': '5.jpg'},
+               {'icon': '🦾', 'title': '철근 작업', 'tasks': ['자재반입/가공/운반/조립'], 'source': '5.jpg'},
+               {'icon': '🧱', 'title': '콘크리트 작업', 'tasks': ['콘크리트 작업'], 'source': '5.jpg'},
+               {'icon': '🏗️', 'title': '이동식크레인 작업', 'tasks': [], 'source': '0-1.jpg · 하위공종 확인 필요'},
+               {'icon': '🎨', 'title': '도장 작업', 'tasks': ['도장 면처리 및 실내·외 도장'], 'source': '5.jpg'},
+               {'icon': '⚡', 'title': '전기설비 작업', 'tasks': ['자재반입/가공/운반/배선', '전기설비 설치'], 'source': '5.jpg'},
+               {'icon': '⚙️', 'title': '기계설비 작업', 'tasks': ['자재반입/가공/운반/설치'], 'source': '5.jpg'},
+               {'icon': '🔧', 'title': '맨홀 및 관부설 작업', 'tasks': ['맨홀 및 관부설'], 'source': '5.jpg'},
+               {'icon': '🛤️', 'title': '포설 및 다짐 작업', 'tasks': ['포설 및 다짐'], 'source': '5.jpg'},
+               {'icon': '🪜',
+                'title': '안전가시설 작업',
+                'tasks': ['개구부', '작업발판', '비계', '이동식 비계', '추락방지망', '가설통로/계단', '방호선반'],
+                'source': '5.jpg'},
+               {'icon': '🧰', 'title': '위험기계기구 작업', 'tasks': [], 'source': '0-1.jpg · 하위공종 확인 필요'}],
+ '완충저류시설 설치사업': [{'icon': '🚧', 'title': '가설휀스 작업', 'tasks': ['가설휀스 설치'], 'source': '6.jpg'},
+                 {'icon': '🪜',
+                  'title': '강관비계 작업',
+                  'tasks': ['자재반입/기초·하부·기둥 설치', '띠장·장선·가새 설치', '우각부 출입구·작업발판·안전난간·통로 설치', '점검 및 보수·해체'],
+                  'source': '6.jpg'},
+                 {'icon': '🏗️',
+                  'title': '시스템동바리 작업',
+                  'tasks': ['자재반입·하부·수직재·추락방지망·작업발판 설치', '상부·U헤드·멍에재·장선재 설치/점검/해체'],
+                  'source': '6.jpg'},
+                 {'icon': '🚜', 'title': '터파기 작업', 'tasks': ['터파기 작업'], 'source': '6.jpg'},
+                 {'icon': '🔩', 'title': '시트파일 작업', 'tasks': ['시트파일 작업'], 'source': '6.jpg'},
+                 {'icon': '🚜', 'title': '굴착 작업', 'tasks': ['굴착 작업'], 'source': '6.jpg'},
+                 {'icon': '🏗️',
+                  'title': '흙막이 strut',
+                  'tasks': ['작업준비/선공/H-PILE 근입', '토류판·버팀보 설치', '흙막이 지보공 해체·반출'],
+                  'source': '6.jpg'},
+                 {'icon': '⚡',
+                  'title': '가설분전함 작업',
+                  'tasks': ['자재반입·외함접지·케이블결선', '누전차단기 설치·확인·정리'],
+                  'source': '6.jpg'},
+                 {'icon': '🧩', 'title': '거푸집 작업', 'tasks': ['거푸집 작업'], 'source': '6.jpg'},
+                 {'icon': '🦾', 'title': '철근 작업', 'tasks': ['자재반입·가공·운반·조립'], 'source': '6.jpg'},
+                 {'icon': '🧱', 'title': '콘크리트 작업', 'tasks': ['콘크리트 타설 작업'], 'source': '6.jpg'},
+                 {'icon': '🧱',
+                  'title': '조적·미장·견출 작업',
+                  'tasks': ['자재반입 및 운반', '조적시공', '미장 및 견출 시공'],
+                  'source': '6.jpg'},
+                 {'icon': '🖌️', 'title': '미장 작업', 'tasks': ['미장'], 'source': '6.jpg'},
+                 {'icon': '💧', 'title': '방수 작업', 'tasks': ['방수'], 'source': '6.jpg'},
+                 {'icon': '🪨', 'title': '석재 작업', 'tasks': ['작업준비·비계설치 및 해체', '자재반입·석재시공'], 'source': '6.jpg'},
+                 {'icon': '🪟', 'title': '창호 유리 작업', 'tasks': ['창호 유리'], 'source': '6.jpg'},
+                 {'icon': '🏠', 'title': '수장 작업', 'tasks': ['수장'], 'source': '6.jpg'},
+                 {'icon': '🎨', 'title': '도장 작업', 'tasks': ['도장 면처리 및 실내·외 도장'], 'source': '6.jpg'},
+                 {'icon': '⚡', 'title': '전기 작업', 'tasks': ['자재반입/가공/운반/배선', '전기설비 설치'], 'source': '6.jpg'},
+                 {'icon': '⚙️', 'title': '기계 작업', 'tasks': ['자재반입/가공/운반/설치'], 'source': '6.jpg'},
+                 {'icon': '🌳', 'title': '수목 식재 작업', 'tasks': ['식혈·식재'], 'source': '6.jpg'},
+                 {'icon': '🪨', 'title': '조경석 쌓기 작업', 'tasks': ['조경석 쌓기'], 'source': '6.jpg'},
+                 {'icon': '🔧', 'title': '맨홀 및 관부설 작업', 'tasks': ['맨홀 및 관부설'], 'source': '6.jpg'},
+                 {'icon': '🛣️', 'title': '포장 작업', 'tasks': ['포장 작업'], 'source': '6.jpg'},
+                 {'icon': '🪜',
+                  'title': '안전가시설 작업',
+                  'tasks': ['개구부', '작업발판', '비계', '이동식 비계', '추락방지망', '가설통로/계단', '방호선반'],
+                  'source': '6.jpg'}],
+ '소각시설 설치사업': [{'icon': '🔩',
+                'title': '기초파일 작업',
+                'tasks': ['기초파일 자재·장비 반입·운반·보관', '기초파일 천공', '기초파일 근입 작업', '기초파일 항타'],
+                'source': '1.jpg'},
+               {'icon': '🚜', 'title': '굴착 작업', 'tasks': ['굴착작업'], 'source': '1.jpg · 공통공종 참고'},
+               {'icon': '🚚', 'title': '되메움 작업', 'tasks': ['토사반입 및 되메우기'], 'source': '1.jpg · 공통공종 참고'},
+               {'icon': '🔩', 'title': '시트파일 작업', 'tasks': ['시트파일작업'], 'source': '3.jpg · 공통공종 참고'},
+               {'icon': '🦾', 'title': '철근 작업', 'tasks': ['철근 반입 작업', '철근 가공 및 운반·조립 작업'], 'source': '1.jpg'},
+               {'icon': '🧩',
+                'title': '거푸집 작업',
+                'tasks': ['자재반입·가공·운반', '거푸집 동바리 조립', '거푸집 동바리 해체', '거푸집 동바리 인양'],
+                'source': '1.jpg'},
+               {'icon': '🧱',
+                'title': '콘크리트 작업',
+                'tasks': ['콘크리트 반입·운반', '콘크리트 타설 및 다짐', '콘크리트 양생'],
+                'source': '1.jpg'},
+               {'icon': '🏗️', 'title': '철골 작업', 'tasks': ['철골 작업'], 'source': '7.jpg'},
+               {'icon': '🏢', 'title': '판넬외부 마감 작업', 'tasks': ['판넬 등 외부마감작업'], 'source': '3.jpg · 공통공종 참고'},
+               {'icon': '🪟', 'title': '창호유리 작업', 'tasks': ['창호 유리'], 'source': '6.jpg · 공통공종 참고'},
+               {'icon': '🏠', 'title': '수장 작업', 'tasks': ['수장'], 'source': '6.jpg · 공통공종 참고'},
+               {'icon': '⚡', 'title': '전기설비 작업', 'tasks': [], 'source': '0-1.jpg · 하위공종 확인 필요'},
+               {'icon': '⚙️', 'title': '기계설비 작업', 'tasks': [], 'source': '0-1.jpg · 하위공종 확인 필요'},
+               {'icon': '🚧',
+                'title': '가설공사',
+                'tasks': ['가설분전반 설치 작업',
+                          '가설변압기 작업',
+                          '가설전선 설치 작업',
+                          '가설전등 설치 작업',
+                          '활선 작업',
+                          '강관비계 설치·해체 작업',
+                          '시스템비계 설치·해체 작업',
+                          '철거 작업',
+                          '리모델링 작업'],
+                'source': '7.jpg'},
+               {'icon': '🧱',
+                'title': '건축공사',
+                'tasks': ['철골 작업',
+                          '데크플레이트 작업',
+                          '내화뿜칠 작업',
+                          '미장(벽체) 작업',
+                          '미장(바닥) 작업',
+                          '액체방수 작업',
+                          '우레탄방수 작업',
+                          '에폭시 작업',
+                          '견출 작업',
+                          '타일 작업'],
+                'source': '7.jpg'}],
+ '매립시설 설치사업': [{'icon': '🌲', 'title': '벌목 및 가설도로 작업', 'tasks': ['벌목 및 표토제거', '가설도로 시공'], 'source': '8.jpg'},
+               {'icon': '🚜', 'title': '굴착작업', 'tasks': ['굴착 장비반입', '굴착', '굴착 토사반출'], 'source': '8.jpg'},
+               {'icon': '💥',
+                'title': '발파작업',
+                'tasks': ['발파 천공', '발파 장약', '발파', '발파 암처리', '발파 화약고 관리'],
+                'source': '8.jpg'},
+               {'icon': '🚚', 'title': '되메우기 작업', 'tasks': ['토사반입 및 되메움', '토사다짐'], 'source': '8.jpg'},
+               {'icon': '🧩',
+                'title': '거푸집 작업',
+                'tasks': ['자재반입·가공운반', '거푸집동바리 조립', '거푸집동바리 해체', '거푸집동바리 인양'],
+                'source': '8.jpg'},
+               {'icon': '🦾', 'title': '철근작업', 'tasks': ['철근반입', '철근 가공 및 운반', '철근조립'], 'source': '8.jpg'},
+               {'icon': '🧱',
+                'title': '콘크리트 작업',
+                'tasks': ['콘크리트 반입·운반', '콘크리트 타설 및 다짐', '콘크리트 양생'],
+                'source': '8.jpg'},
+               {'icon': '🏢', 'title': '옹벽시공 작업', 'tasks': ['패널 옹벽시공', '부지정리'], 'source': '8.jpg'},
+               {'icon': '🔧', 'title': '맨홀 및 관부설 작업', 'tasks': ['맨홀 및 관부설 굴착', '맨홀 및 관부설'], 'source': '8.jpg'},
+               {'icon': '🛤️', 'title': '포설 및 다짐 작업', 'tasks': ['포설 및 다짐'], 'source': '8.jpg'},
+               {'icon': '🛣️', 'title': '포장작업', 'tasks': ['포장 장비 반입', '포장 시공'], 'source': '8.jpg'},
+               {'icon': '⚙️', 'title': '기계설비 작업', 'tasks': ['기계설비 자재반입·가공·운반', '기계설비 설치'], 'source': '8.jpg'}]}
+
+RA_TYPE_ALIASES = {'도시침수':'도시침수 예방사업','소각/자원회수':'소각시설 설치사업','매립':'매립시설 설치사업','생태하천':'생태하천정비사업','완충저류/비점오염':'완충저류시설 설치사업'}
 
 
 
@@ -7494,7 +7763,7 @@ RA_KECO_EXAMPLES = [
 ]
 
 
-RA_STEPS = ['① 사전준비', '② 위험요인 파악', '③ 위험성 결정', '④ 감소대책 수립', '⑤ 이행·재평가', '⑥ 공유·보고서']
+RA_STEPS = ['① 사전준비', '② 위험요인 파악', '③ 위험성 결정', '④ 감소대책 수립', '⑤ 이행·재평가', '⑥ 보고서·출력']
 RA_PROCEDURE = '한국환경공단 KECO-P-610 · 개정 7차 · 2024.06.10.'
 RA_CRITERIA_STAMP = 'KECO-P-610-20240610-5x4'
 RA_FREQUENCY = [
@@ -7520,6 +7789,205 @@ RA_CHECK_ITEMS = [
     '위험성평가 실시규정 확인', '사전교육 기록 확인', '근로자 참여 명단 확인',
     '평가 결과 및 감소대책 보고서 보관', '사후교육 기록 확인',
 ]
+
+
+def ra_auto_name(meta):
+    year=ra_assessment_year(meta.get('assessment_year'))
+    return f"{year}년 {meta.get('site') or '현장'} {meta.get('kind') or '위험성평가'}"[:120]
+
+
+def ra_task_major_change(construction_type, key):
+    st.session_state.setdefault('ra_task_major_drafts', {})[construction_type]=list(st.session_state[key])
+
+
+def ra_task_pick_change(construction_type, path, key):
+    st.session_state.setdefault('ra_task_pick_drafts', {}).setdefault(construction_type, {})[path]=bool(st.session_state[key])
+
+
+def ra_task_custom_change(construction_type, group, key):
+    st.session_state.setdefault('ra_task_custom_drafts', {}).setdefault(construction_type, {})[group]=st.session_state[key]
+
+
+def ra_apply_task_selection(construction_type):
+    groups=RA_WORK_CATALOG.get(construction_type, [])
+    majors=st.session_state.get('ra_task_major_drafts', {}).get(construction_type, [])
+    picks=st.session_state.get('ra_task_pick_drafts', {}).get(construction_type, {})
+    custom=st.session_state.get('ra_task_custom_drafts', {}).get(construction_type, {})
+    selected=[]
+    for item in groups:
+        group=item['title']
+        if group not in majors:continue
+        selected.extend(group+' / '+task for task in item['tasks'] if picks.get(group+' / '+task))
+        selected.extend(group+' / '+task for task in ra_custom_tasks(custom.get(group,'')))
+    selected.extend(ra_custom_tasks(custom.get('__preserved__','')))
+    selected.extend('기타 / '+task for task in ra_custom_tasks(custom.get('__other__','')))
+    st.session_state.ra_applied_tasks=list(dict.fromkeys(selected))
+    st.session_state.ra_meta['trades']=list(dict.fromkeys(selected+[r['trade'] for r in st.session_state.ra_rows if r['trade']]))
+    ra_invalidate_review()
+    st.session_state.ra_tasks_notice='평가할 작업을 적용했습니다.'
+
+
+def ra_artifact_schema(db):
+    db.execute('''CREATE TABLE IF NOT EXISTS risk_assessment_artifacts (
+        assessment_id TEXT NOT NULL, owner TEXT NOT NULL, generated_id TEXT NOT NULL,
+        PRIMARY KEY(assessment_id,owner,generated_id))''')
+
+
+def ra_archive_report(owner, assessment_id, generated_id, hwpx=None, pdf=None):
+    owner=report_history_identity(owner)
+    db=inspection_store()
+    try:
+        with db:
+            row=db.execute("SELECT deleted_at FROM risk_assessment_register WHERE id=? AND owner=?",(str(assessment_id),owner)).fetchone()
+            if not row or row[0]:raise PermissionError('보관 중인 평가의 보고서만 저장할 수 있습니다.')
+            report_history_require_active(db,'generated',generated_id)
+            db.execute('CREATE TABLE IF NOT EXISTS generated_reports (id TEXT PRIMARY KEY, owner TEXT, created TEXT, hwpx BLOB, pdf BLOB)')
+            db.execute('CREATE TABLE IF NOT EXISTS generated_report_info (id TEXT PRIMARY KEY, owner TEXT, title TEXT, dept TEXT, site TEXT, kind TEXT)')
+            db.execute('INSERT OR REPLACE INTO generated_reports VALUES (?,?,?,?,?)',(generated_id,owner,datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(),hwpx,pdf))
+            meta=st.session_state.ra_meta
+            db.execute('INSERT OR REPLACE INTO generated_report_info VALUES (?,?,?,?,?,?)',(generated_id,owner,ra_auto_name(meta)+' 보고서',meta.get('department',''),meta.get('site',''),'위험성평가'))
+            ra_artifact_schema(db)
+            db.execute('INSERT OR IGNORE INTO risk_assessment_artifacts VALUES (?,?,?)',(str(assessment_id),owner,generated_id))
+    finally:db.close()
+
+
+def ra_record_purge(owner, record_ids):
+    """Delete only this authenticated owner's trash, atomically, then compact SQLite."""
+    owner=report_history_identity(owner)
+    ids=list(dict.fromkeys(str(value) for value in record_ids))
+    if not ids or len(ids)>100:raise ValueError('완전삭제할 평가를 1~100건 선택해 주세요.')
+    db=inspection_store()
+    compacted=True
+    try:
+        with db:
+            tables=report_history_tables(db)
+            if 'risk_assessment_register' not in tables:raise PermissionError('삭제할 평가를 확인해 주세요.')
+            records=[]
+            for record_id in ids:
+                row=db.execute('SELECT deleted_at,payload FROM risk_assessment_register WHERE id=? AND owner=?',(record_id,owner)).fetchone()
+                if not row or not row[0]:raise PermissionError('본인의 휴지통에 있는 평가만 완전삭제할 수 있습니다.')
+                records.append((record_id,row[1]))
+            db.execute('CREATE TABLE IF NOT EXISTS risk_file_cleanup (object_key TEXT PRIMARY KEY)')
+            # Validate the entire batch before changing anything.
+            for record_id,encoded in records:
+                generated=set()
+                if 'risk_assessment_artifacts' in tables:
+                    generated.update(r[0] for r in db.execute('SELECT generated_id FROM risk_assessment_artifacts WHERE assessment_id=? AND owner=?',(record_id,owner)).fetchall())
+                try:generated.add('risk:'+owner+':'+ra_hash(json.loads(encoded)))
+                except (ValueError,TypeError):pass
+                if 'risk_assessments' in tables and record_id.startswith('legacy_'):
+                    for old_id,old_encoded in db.execute('SELECT id,payload FROM risk_assessments WHERE owner=?',(owner,)).fetchall():
+                        if record_id=='legacy_'+ra_hash([owner,old_id]):
+                            try:generated.add('risk:'+owner+':'+ra_hash(json.loads(old_encoded)))
+                            except (ValueError,TypeError):pass
+                            db.execute('DELETE FROM risk_assessments WHERE id=? AND owner=?',(old_id,owner))
+                for report_id in generated:
+                    if 'generated_reports' in tables:
+                        refs=db.execute('SELECT hex(hwpx),hex(pdf) FROM generated_reports WHERE id=? AND owner=?',(report_id,owner)).fetchone()
+                        for encoded_ref in refs or ():
+                            try:raw=bytes.fromhex(encoded_ref or '')
+                            except ValueError:continue
+                            if raw.startswith(b'KECO-NHN-BLOB-V1:'):
+                                key=raw[len(b'KECO-NHN-BLOB-V1:'):].decode('ascii')
+                                if re.fullmatch(r'files/[0-9a-f]{64}\.[a-z0-9]+',key):
+                                    db.execute('INSERT OR IGNORE INTO risk_file_cleanup VALUES (?)',(key,))
+                    for table in ('generated_reports','generated_report_info'):
+                        if table in tables:db.execute('DELETE FROM '+table+' WHERE id=? AND owner=?',(report_id,owner))
+                    if 'report_trash' in tables:db.execute("DELETE FROM report_trash WHERE source='generated' AND report_id=? AND owner=?",(report_id,owner))
+                if 'risk_assessment_artifacts' in tables:db.execute('DELETE FROM risk_assessment_artifacts WHERE assessment_id=? AND owner=?',(record_id,owner))
+                db.execute("DELETE FROM risk_assessment_register WHERE id=? AND owner=? AND deleted_at<>''",(record_id,owner))
+        try:db.execute('VACUUM')
+        except Exception:compacted=False
+    finally:db.close()
+    pending=0
+    try:pending=ra_cleanup_files()
+    except Exception:pending=-1
+    return dict(count=len(ids),compacted=compacted,cleanup_pending=pending)
+
+
+def ra_cleanup_files():
+    """Release only queued report objects with no reference in any app database.
+    App DB locks prevent a concurrent record writer during reference checks;
+    the store file lock protects its content-addressed upload cache.
+    """
+    from contextlib import ExitStack
+    storage=nhn_storage_backend()
+    if storage is None:return 0
+    with ExitStack() as stack:
+        databases=[]
+        for name in ('reports.sqlite3','safety_calendar.sqlite3','safety_documents.sqlite3'):
+            connection=storage.connect(name)
+            stack.callback(connection.close)
+            databases.append(connection)
+        db=databases[0]
+        if 'risk_file_cleanup' not in report_history_tables(db):return 0
+        queue=[row[0] for row in db.execute('SELECT object_key FROM risk_file_cleanup ORDER BY object_key LIMIT 200').fetchall()]
+        def quote(value):return '"'+str(value).replace('"','""')+'"'
+        catalogs=[]
+        for connection in databases:
+            columns=[]
+            for table in report_history_tables(connection):
+                if table=='risk_file_cleanup' or table.startswith('sqlite_'):continue
+                fields=[quote(row[1]) for row in connection.execute('PRAGMA table_info('+quote(table)+')').fetchall()]
+                if fields:columns.append((quote(table),fields))
+            catalogs.append((connection,columns))
+        # Reports use category files; photo objects are never removed here.
+        with storage._files_lock:
+            for key in queue:
+                if not re.fullmatch(r'files/[0-9a-f]{64}\.[a-z0-9]+',key):continue
+                referenced=False
+                for connection,tables in catalogs:
+                    for table,fields in tables:
+                        sql='SELECT 1 FROM '+table+' WHERE '+' OR '.join('instr(CAST('+column+' AS TEXT),?)>0' for column in fields)+' LIMIT 1'
+                        if connection.execute(sql,tuple(key for _ in fields)).fetchone():
+                            referenced=True;break
+                    if referenced:break
+                if not referenced:
+                    try:storage.client.delete_object(Bucket=storage.bucket,Key=storage._full_key(key))
+                    except Exception:continue
+                    storage._uploaded.discard(key)
+                with db:db.execute('DELETE FROM risk_file_cleanup WHERE object_key=?',(key,))
+        return db.execute('SELECT count(*) FROM risk_file_cleanup').fetchone()[0]
+
+
+def ra_hub_retry_cleanup():
+    try:
+        pending=ra_cleanup_files()
+        st.session_state.ra_hub_cleanup_pending=pending
+        st.session_state.ra_notice='남은 보고서 파일 정리를 마쳤습니다.' if pending==0 else '일부 파일 정리가 남아 있습니다. 저장소 연결·삭제 권한을 확인해 주세요.'
+    except Exception:st.session_state.ra_load_error='보고서 파일 정리는 확인 필요합니다. 저장소 연결·삭제 권한을 확인해 주세요.'
+
+
+def ra_hub_request_purge():
+    st.session_state.ra_hub_purge_ids=list(st.session_state.get('ra_hub_selection',[]))
+    st.session_state.ra_hub_purge_ack=False
+
+
+def ra_hub_cancel_purge():
+    st.session_state.pop('ra_hub_purge_ids',None)
+    st.session_state.ra_hub_purge_ack=False
+
+
+def ra_hub_confirm_purge(actor):
+    ids=st.session_state.get('ra_hub_purge_ids',[])
+    if not st.session_state.get('ra_hub_purge_ack') or set(ids)!=set(st.session_state.get('ra_hub_selection',[])):
+        st.session_state.ra_load_error='삭제 대상을 다시 확인해 주세요.'
+        return
+    try:
+        result=ra_record_purge(actor,ids)
+        if st.session_state.get('ra_active_record_id') in ids:
+            for key in list(st.session_state):
+                if key.startswith('ra_') and not key.startswith('ra_hub_') and key!='ra_actor':st.session_state.pop(key,None)
+        for key in list(st.session_state):
+            if key=='ra_output' or str(key).startswith('report_history_'):st.session_state.pop(key,None)
+        st.session_state.ra_hub_selection=[]
+        st.session_state.ra_hub_site_info=None
+        st.session_state.ra_hub_edit_record=None
+        ra_hub_cancel_purge()
+        st.session_state.ra_hub_cleanup_pending=result['cleanup_pending']
+        st.session_state.ra_notice=f"평가 {result['count']}건과 연결된 보고서를 완전삭제했습니다."+('' if result['compacted'] else ' 저장공간 정리는 확인 필요합니다.')+(' 보고서 파일 정리가 일부 남아 있습니다.' if result['cleanup_pending'] else '')
+    except (ValueError,PermissionError) as exc:st.session_state.ra_load_error=str(exc)
+    except Exception:st.session_state.ra_load_error='완전삭제를 저장하지 못했습니다. 저장소 연결을 확인해 주세요.'
 
 
 def ra_current_year():
@@ -7587,23 +8055,16 @@ def ra_hub_filter_context_change():
 
 
 def ra_hub_new_context_change():
-    names = ra_assessment_names(st.session_state.get('ra_hub_new_site'),
-                                st.session_state.get('ra_hub_new_year'),
-                                st.session_state.get('ra_hub_new_kind', RA_KINDS[0]))
-    st.session_state.ra_hub_new_name = names[0] if names else None
     ra_hub_registration_change()
 
 
 def ra_hub_edit_context_change():
-    names = ra_assessment_names(st.session_state.get('ra_hub_edit_site'),
-                                st.session_state.get('ra_hub_edit_year'),
-                                st.session_state.get('ra_hub_edit_kind', RA_KINDS[0]))
-    st.session_state.ra_hub_edit_name = names[0] if names else None
+    return
 
 
 def ra_default_meta(actor):
     today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date().isoformat()
-    return dict(construction_type=None, department=str(st.session_state.get('selected_dept_box', '')),
+    return dict(construction_type=None, legacy_construction_type='', department=str(st.session_state.get('selected_dept_box', '')),
                 site=str(st.session_state.get('selected_site_box', '')), address='', company='', date=today,
                 assessment_name='', assessment_year=str(ra_current_year()), method='빈도·강도법', kind='최초평가', trigger='', evaluator=str(actor), reviewer='', workers='',
                 worker_rep='', opinions='', education='', pre_shared='', work_scope='',
@@ -7650,7 +8111,15 @@ def ra_normalize_payload(payload, actor, require_review=True):
             if not isinstance(value, str) or len(value) > 30000: raise ValueError('문자 입력의 형식을 확인해 주세요.')
         meta[key] = value
     meta['assessment_year'] = str(ra_assessment_year(original.get('assessment_year', str(original.get('date', ''))[:4] or None)))
-    if meta['construction_type'] not in RA_CONSTRUCTION_TYPES: meta['construction_type'] = None
+    raw_type=original.get('construction_type')
+    meta['construction_type']=RA_TYPE_ALIASES.get(raw_type,raw_type)
+    if meta['construction_type'] not in RA_CONSTRUCTION_TYPES:
+        meta['legacy_construction_type']=str(raw_type or original.get('legacy_construction_type') or '')
+        meta['construction_type']=None
+    if meta.get('report_mode')=='현장 검토본':meta['report_mode']='출력본'
+    if meta.get('report_mode') not in ('초안','출력본'):meta['report_mode']='초안'
+    meta['review_confirmed']=False
+    meta['review_sig']='' 
     for field in ('frequency_max', 'severity_max', 'frequency_labels', 'severity_labels', 'threshold', 'criteria_name', 'criteria_stamp'):
         meta[field] = ra_default_meta(actor)[field]
     require_review = require_review or original.get('criteria_stamp') != RA_CRITERIA_STAMP
@@ -7688,7 +8157,7 @@ def ra_normalize_payload(payload, actor, require_review=True):
         if require_review: row['site_confirmed'] = False
         rows.append(row)
     meta['trades'] = list(dict.fromkeys(meta['trades']+[r['trade'] for r in rows if r['trade']]))
-    return dict(schema_version=3, meta=meta, rows=rows, final=bool(not require_review and payload.get('final') and meta.get('report_mode') == '현장 검토본'))
+    return dict(schema_version=3, meta=meta, rows=rows, final=bool(not require_review and payload.get('final') and meta.get('report_mode') == '출력본'))
 
 
 def ra_initialize(actor):
@@ -7711,6 +8180,9 @@ def ra_initialize(actor):
         for key, value in ra_default_row().items():
             if key not in row: row[key] = value.copy() if isinstance(value, list) else value
     st.session_state.setdefault('ra_step', st.session_state.get('ra_writer_step', RA_STEPS[0]))
+    if st.session_state.ra_step not in RA_STEPS:
+        st.session_state.ra_step=RA_STEPS[5] if str(st.session_state.ra_step).startswith('⑥') else RA_STEPS[0]
+    st.session_state.ra_writer_step=st.session_state.ra_step
 
 
 def ra_review_signature(meta, rows):
@@ -7733,7 +8205,6 @@ def ra_target(row_id=None):
 
 def ra_commit(row_id, field, key):
     target = ra_target(row_id)
-    previous_names = ra_assessment_names(target.get('site'), target.get('assessment_year'), target.get('kind')) if row_id is None else []
     value = st.session_state[key]
     if isinstance(value, (datetime.date, datetime.datetime)): value = value.isoformat()
     if value is None and field in ('date', 'sharing_date'): value = ''
@@ -7744,11 +8215,8 @@ def ra_commit(row_id, field, key):
         if department:
             target['department'] = department
             st.session_state.ra_edit_meta_department = department
-    if row_id is None and field in ('site', 'assessment_year', 'kind') and target.get('assessment_name') in previous_names:
-        names = ra_assessment_names(target.get('site'), target.get('assessment_year'), target.get('kind'))
-        if names:
-            target['assessment_name'] = names[0]
-            st.session_state.ra_edit_meta_assessment_name = names[0]
+    if row_id is None and field in ('site','assessment_year','kind'):
+        target['assessment_name']=ra_auto_name(target)
     if field == 'review_confirmed':
         target['review_sig'] = ra_review_signature(target, st.session_state.ra_rows) if value else ''
     elif changed and field != 'report_mode':
@@ -7795,31 +8263,72 @@ def ra_remember_step():
 
 
 def ra_select_tasks():
-    applied = list(st.session_state.get('ra_applied_tasks', []))
-    selected = []
-    st.caption('해당 작업을 체크하고 ‘선택한 작업 적용’을 한 번 누르세요.')
-    with st.form('ra_task_selection_form', clear_on_submit=False):
-        for group_index, (icon, group, tasks) in enumerate(RA_TRADE_GROUPS, 1):
-            with st.expander(f'{group_index}. {icon} {group}'):
-                for task_index, task in enumerate(tasks, 1):
-                    if st.checkbox(f'{task_index}. {task}', value=group+' / '+task in applied, key=f'ra_task_{group_index}_{task_index}'):
-                        selected.append(group+' / '+task)
-                extras = [v[len(group)+3:] for v in applied if v.startswith(group+' / ') and v[len(group)+3:] not in tasks]
-                custom = st.text_area('기타 직접 입력', value='\n'.join(extras), placeholder='한 줄에 세부작업 하나', key=f'ra_custom_group_{group_index}')
-                selected.extend(group+' / '+task for task in ra_custom_tasks(custom))
-        with st.expander('11. 기타 직접 입력'):
-            extras = [v[5:] for v in applied if v.startswith('기타 / ')]
-            other = st.text_area('목록에 없는 공종·세부작업', value='\n'.join(extras), placeholder='한 줄에 작업 하나', key='ra_custom_group_11')
-            selected.extend('기타 / '+task for task in ra_custom_tasks(other))
-        submitted = st.form_submit_button('선택한 작업 적용', type='primary')
-    if submitted:
-        st.session_state.ra_applied_tasks = list(dict.fromkeys(selected))
-        ra_invalidate_review()
-    applied = list(st.session_state.get('ra_applied_tasks', []))
-    st.session_state.ra_meta['trades'] = list(dict.fromkeys(applied+[r['trade'] for r in st.session_state.ra_rows]))
+    construction_type=st.session_state.ra_meta.get('construction_type')
+    groups=RA_WORK_CATALOG.get(construction_type, [])
+    applied=list(st.session_state.get('ra_applied_tasks', []))
+    titles=[item['title'] for item in groups]
+    icons={item['title']:item['icon'] for item in groups}
+    context=ra_hash(construction_type)[:12]
+    major_drafts=st.session_state.setdefault('ra_task_major_drafts', {})
+    pick_drafts=st.session_state.setdefault('ra_task_pick_drafts', {})
+    custom_drafts=st.session_state.setdefault('ra_task_custom_drafts', {})
+    if construction_type not in major_drafts:
+        major_drafts[construction_type]=[name for name in titles if any(v.startswith(name+' / ') for v in applied)]
+    if construction_type not in pick_drafts:
+        pick_drafts[construction_type]={v:True for v in applied}
+    if construction_type not in custom_drafts:
+        notes={}
+        for item in groups:
+            prefix=item['title']+' / '
+            notes[item['title']]='\n'.join(v[len(prefix):] for v in applied if v.startswith(prefix) and v[len(prefix):] not in item['tasks'])
+        notes['__preserved__']='\n'.join(v for v in applied if not any(v.startswith(name+' / ') for name in titles) and not v.startswith('기타 / '))
+        notes['__other__']='\n'.join(v[5:] for v in applied if v.startswith('기타 / '))
+        custom_drafts[construction_type]=notes
+    major_key='ra_task_majors_'+context
+    st.session_state.setdefault(major_key,major_drafts[construction_type])
+    selected_majors=st.multiselect('작업공종(대공종)',titles,key=major_key,
+        format_func=lambda value: icons[value]+' '+value,placeholder='평가할 대공종을 선택하세요',
+        on_change=ra_task_major_change,args=(construction_type,major_key))
+    major_drafts[construction_type]=selected_majors
+    st.caption('대공종 선택 → 하위공종 체크 → ‘선택한 작업 적용’ 순서로 진행하세요.')
+    if construction_type=='소각시설 설치사업':
+        st.caption('분류표의 대공종과 사진 7의 가설·건축공사를 함께 표시합니다. 공통공종을 참고한 항목은 출처를 구분했습니다.')
+    for item in groups:
+        group=item['title']
+        if group not in selected_majors:continue
+        with st.expander(item['icon']+' '+group+' · 하위공종',expanded=True):
+            st.caption('분류 참고 · '+item['source'])
+            if not item['tasks']:st.info('하위공종 확인 필요: 첨부 사진에 세부 목록이 없어 아래에 직접 입력해 주세요.')
+            for number,task in enumerate(item['tasks'],1):
+                path=group+' / '+task
+                key='ra_task_pick_'+ra_hash([construction_type,path])[:18]
+                st.session_state.setdefault(key,bool(pick_drafts[construction_type].get(path)))
+                st.checkbox(str(number)+'. '+task,key=key,on_change=ra_task_pick_change,args=(construction_type,path,key))
+            key='ra_task_custom_'+ra_hash([construction_type,group])[:18]
+            st.session_state.setdefault(key,custom_drafts[construction_type].get(group,''))
+            st.text_area('추가 하위공종 직접 입력',key=key,placeholder='한 줄에 하위공종 하나',height=80,
+                         on_change=ra_task_custom_change,args=(construction_type,group,key))
+    notes=custom_drafts[construction_type]
+    if notes.get('__preserved__'):
+        with st.expander('📂 기존에 저장한 작업'):
+            st.caption('새 분류와 이름이 다른 기존 작업입니다. 유지할 작업을 남겨 주세요. 작성된 평가 항목은 별도로 유지됩니다.')
+            key='ra_task_preserved_'+context
+            st.session_state.setdefault(key,notes['__preserved__'])
+            st.text_area('유지할 기존 작업',key=key,on_change=ra_task_custom_change,args=(construction_type,'__preserved__',key))
+    with st.expander('✏️ 목록에 없는 작업 직접 입력'):
+        key='ra_task_other_'+context
+        st.session_state.setdefault(key,notes.get('__other__',''))
+        st.text_area('기타 작업',key=key,placeholder='한 줄에 작업 하나',height=80,
+                     on_change=ra_task_custom_change,args=(construction_type,'__other__',key))
+    st.button('선택한 작업 적용',type='primary',key='ra_apply_tasks_'+context,
+              on_click=ra_apply_task_selection,args=(construction_type,))
+    notice=st.session_state.pop('ra_tasks_notice',None)
+    if notice:st.success(notice)
+    applied=list(st.session_state.get('ra_applied_tasks', []))
+    st.session_state.ra_meta['trades']=list(dict.fromkeys(applied+[r['trade'] for r in st.session_state.ra_rows if r['trade']]))
     st.caption(f'적용한 작업 {len(applied)}개')
     if applied:
-        with st.expander('선택한 작업 모아보기'): st.write('\n\n'.join('• '+v for v in applied))
+        with st.expander('선택한 작업 모아보기'):st.write('\n\n'.join('• '+v for v in applied))
     return applied
 
 
@@ -7865,17 +8374,11 @@ def ra_validate(meta, rows, final=False):
     errors = []
     if not rows: errors.append('② 평가 항목을 한 개 이상 추가하세요.')
     if final:
-        for field, label in [('site', '현장명'), ('department', '담당부서'), ('evaluator', '평가 담당자'), ('reviewer', '관리감독자·검토자'),
-                             ('workers', '참여 근로자 명단'), ('worker_rep', '근로자대표'), ('work_scope', '평가 대상 작업 개요'),
-                             ('pre_shared', '평가 일정 사전 공유 기록')]:
+        for field,label in [('site','사업장명'),('department','담당부서'),('evaluator','작성자(공단 안전관리자)'),('work_scope','평가 대상 작업 개요')]:
             if not ra_text_ready(meta.get(field)): errors.append('① '+label+'을 입력하세요.')
         if not meta.get('date'): errors.append('① 평가일을 입력하세요.')
         if meta.get('kind') == '수시평가' and not ra_text_ready(meta.get('trigger')): errors.append('① 수시평가 실시 사유를 입력하세요.')
         if not meta.get('criteria_confirmed'): errors.append('① 공단 빈도·강도 기준의 현장 적용 여부를 확인하세요.')
-        if not ra_text_ready(meta.get('sharing')) or not meta.get('sharing_date'): errors.append('⑥ 근로자 공유 내용과 공유일·예정일을 입력하세요.')
-        if not ra_text_ready(meta.get('followup')): errors.append('⑥ 후속 점검 계획을 입력하세요.')
-        if not meta.get('review_confirmed') or meta.get('review_sig') != ra_review_signature(meta, rows):
-            errors.append('⑥ 최신 내용으로 현장 검토 확인을 해 주세요.')
     for number, row in enumerate(rows, 1):
         prefix = f'{number}번 '
         if not str(row.get('factor', '')).strip(): errors.append('② '+prefix+'위험발생상황이 비어 있습니다.')
@@ -7903,7 +8406,7 @@ def ra_validate(meta, rows, final=False):
 def ra_progress(meta, rows):
     rated = bool(rows) and all(ra_score(r) and ra_text_ready(r.get('reason')) and ra_text_ready(r.get('existing')) for r in rows)
     return [
-        bool(meta.get('site') and meta.get('workers') and meta.get('work_scope') and meta.get('criteria_confirmed') and meta.get('trades')),
+        bool(meta.get('site') and meta.get('department') and meta.get('evaluator') and meta.get('work_scope') and meta.get('criteria_confirmed') and meta.get('trades')),
         bool(rows) and all(r.get('factor') and r.get('category') and r.get('work') and r.get('site_confirmed') for r in rows),
         rated,
         rated and all(not ra_needs_measures(r) or (ra_text_ready(r.get('measures')) and r.get('control_types') and ra_text_ready(r.get('owner')) and ra_text_ready(r.get('deadline'))) for r in rows),
@@ -7984,7 +8487,7 @@ def ra_sharing_draft():
 
 def ra_payload():
     payload = dict(schema_version=3, meta=st.session_state.ra_meta, rows=st.session_state.ra_rows,
-                   final=st.session_state.ra_meta.get('report_mode') == '현장 검토본')
+                   final=st.session_state.ra_meta.get('report_mode') == '출력본')
     if st.session_state.get('ra_active_record_id'): payload['assessment_id'] = st.session_state.ra_active_record_id
     return payload
 
@@ -8069,46 +8572,27 @@ def ra_overview(meta, rows):
 
 
 def ra_render_preparation(meta, actor):
-    st.info('평가할 작업 범위와 참여자를 정하고, 현장 자료와 점수 기준을 준비합니다.')
-    with st.expander('작성 예시와 기준 자료'):
-        st.write('작업 개요: 관로 설치 구간의 굴착 → 관 인양·부설 → 되메우기 작업. 작업 위치·깊이·장비·주변 통행 등은 실제 현장 조건을 작성합니다.')
-        st.caption('주요작업 분석·안전보건상 위험정보: 절차서 붙임 10·11 / 참여·사전교육 기록: 붙임 5·7·8')
-    left, right = st.columns(2)
+    st.info('공단 안전관리자가 현장 확인자료를 바탕으로 평가 대상과 작업 범위를 정리합니다.')
+    left,right=st.columns(2)
     with left:
-        ra_field('위험성평가명', 'assessment_name', kind='select', options=ra_assessment_names(meta.get('site'), meta.get('assessment_year'), meta.get('kind'), meta.get('assessment_name')) or [''])
-        ra_field('담당부서', 'department', placeholder='예: 시설사업1부')
-        ra_field('평가현장', 'site', kind='select', options=([''] if not meta.get('site') else []) + ra_site_options(extra=[meta.get('site')]))
-        ra_field('현장 주소', 'address')
-        ra_field('수행기관·시공사', 'company')
+        ra_field('담당부서','department',placeholder='예: 시설사업1부')
+        ra_field('사업장명','site',kind='select',options=([''] if not meta.get('site') else [])+ra_site_options(extra=[meta.get('site')]))
+        ra_field('현장 주소','address')
     with right:
-        ra_field('평가연도', 'assessment_year', kind='select', options=[str(v) for v in ra_year_options(extra=[meta.get('assessment_year')])])
-        ra_field('평가일', 'date', kind='date')
-        ra_field('평가 구분', 'kind', kind='select', options=RA_KINDS)
-        st.caption('평가방법 · '+RA_METHOD)
-        if meta['kind'] == '수시평가': ra_field('수시평가 실시 사유', 'trigger', kind='area', placeholder='예: 작업방법 변경, 새로운 위험요인 발견, 사고·아차사고')
-        ra_field('평가 담당자', 'evaluator')
-        ra_field('관리감독자·검토자', 'reviewer')
-    ra_field('평가 대상 작업 개요', 'work_scope', kind='area', placeholder='어디에서 어떤 순서로 무엇을 하는 작업인지 작성하세요.')
-    with st.expander('참여 근로자·사전 공유·교육', expanded=True):
-        ra_field('참여 근로자 명단·역할', 'workers', kind='area', placeholder='한 줄에 이름 / 소속 / 참여 작업 또는 역할')
-        ra_field('근로자대표', 'worker_rep', placeholder='대표 이름·소속. 해당 여부가 불분명하면 확인 필요를 명시하세요.')
-        ra_field('근로자 의견·아차사고 및 반영사항', 'opinions', kind='area', placeholder='예: 장비와 보행자 동선 분리 요청 → 유도자·출입통제 대책에 반영')
-        ra_field('평가 일정 사전 공유 기록', 'pre_shared', kind='area', placeholder='실시일 / 공유 대상 / TBM·게시·회의 등 방법 / 공유한 일정')
-        ra_field('사전교육 기록', 'education', kind='area', placeholder='교육일·내용·참석자·기록 위치. 미실시이면 계획을 구분해 작성')
-    with st.expander('장비·물질·안전보건정보'):
-        ra_field('주요 기계·기구·설비', 'equipment', kind='area', placeholder='장비명, 용량·수량, 운전·작업 조건')
-        ra_field('취급물질·화학물질 및 MSDS', 'materials', kind='area', placeholder='제품명·물질명·취급방법·MSDS 확인 상태')
-        ra_field('검토한 자료', 'information', kind='multi', options=['작업절차·작업계획서', '장비 사양·점검결과', 'MSDS', '도면·지하매설물 정보', '혼재작업 정보', '재해·아차사고', '작업환경·건강정보', '안전작업허가'])
-        ra_field('확인한 위험정보·추가 확인사항', 'information_note', kind='area')
-        st.caption('소음 측정치·건강자료와 화학물질 CHARM 평가는 공단의 별도 평가방법도 함께 검토하세요.')
-    with st.expander('공단 빈도·강도 기준', expanded=True):
+        ra_field('평가연도','assessment_year',kind='select',options=[str(v) for v in ra_year_options(extra=[meta.get('assessment_year')])])
+        ra_field('평가일','date',kind='date')
+        ra_field('평가 구분','kind',kind='select',options=RA_KINDS)
+        ra_field('작성자(공단 안전관리자)','evaluator')
+    st.caption('평가방법 · '+RA_METHOD)
+    if meta['kind']=='수시평가':ra_field('수시평가 실시 사유','trigger',kind='area',placeholder='작업방법 변경, 새로운 위험요인 발견 등')
+    ra_field('평가 대상 작업 개요','work_scope',kind='area',placeholder='작업 위치와 범위, 진행 순서, 현장 확인사항을 작성하세요.')
+    with st.expander('공단 빈도·강도 기준'):
         st.caption(RA_PROCEDURE+' · 붙임 2. 현장의 최신 적용 절차와 함께 확인합니다.')
-        st.dataframe([{'빈도': i, '수준': v[0], '안전조치·발생 가능성': v[1], '발생·노출 예시': v[2]} for i, v in enumerate(RA_FREQUENCY, 1)], hide_index=True, width='stretch')
-        st.dataframe([{'강도': i, '수준': v[0], '예상 피해': v[1]} for i, v in enumerate(RA_SEVERITY, 1)], hide_index=True, width='stretch')
-        st.caption('노출 예시는 판단을 돕는 기준입니다. 노출시간·방호상태·피해 가능성을 함께 고려하세요. 중대재해가 발생한 경우에는 첨부 절차서에 따라 빈도 5등급을 검토합니다.')
+        st.dataframe([{'빈도':i,'수준':v[0],'안전조치·발생 가능성':v[1],'발생·노출 예시':v[2]} for i,v in enumerate(RA_FREQUENCY,1)],hide_index=True,width='stretch')
+        st.dataframe([{'강도':i,'수준':v[0],'예상 피해':v[1]} for i,v in enumerate(RA_SEVERITY,1)],hide_index=True,width='stretch')
         st.write('**8점 이상 감소대책 수립 · 16점 이상 즉시 작업 중지·즉시 안전조치**')
-        ra_field('위 기준의 현장 적용 여부를 근로자·담당자와 확인했습니다.', 'criteria_confirmed', kind='check')
-    st.markdown('#### 평가할 공종·세부작업')
+        ra_field('위 기준의 현장 적용 여부를 확인했습니다.','criteria_confirmed',kind='check')
+    st.markdown('#### 평가할 공종 및 세부작업')
     ra_select_tasks()
 
 
@@ -8257,22 +8741,19 @@ def ra_render_execution(meta):
 
 def ra_report_sections(meta, rows, final):
     sections = [('사전준비 · 평가 개요', [
-        ('위험성평가명', meta.get('assessment_name', '') or '위험성평가'),
-        ('평가방법', meta.get('method', '빈도·강도법')),
-        ('보고서 상태', '현장 검토본' if final else '초안 · 미확인 사항 포함'),
-        ('공사종류 / 담당부서', (meta.get('construction_type') or '확인 필요')+' / '+meta.get('department', '')),
-        ('현장명 / 주소', meta.get('site', '')+' / '+meta.get('address', '')),
-        ('수행기관·시공사', meta.get('company', '')), ('평가일 / 구분', meta.get('date', '')+' / '+meta.get('kind', '')),
-        ('수시평가 사유', meta.get('trigger', '') or '해당 없음 또는 미기재'),
-        ('평가 담당자 / 관리감독자·검토자', meta.get('evaluator', '')+' / '+meta.get('reviewer', '')),
-        ('평가 대상 작업 개요', meta.get('work_scope', '')), ('평가 대상 공종', '\n'.join(meta.get('trades', []))),
-        ('참여 근로자 / 근로자대표', meta.get('workers', '')+'\n대표: '+meta.get('worker_rep', '')),
-        ('근로자 의견 및 반영', meta.get('opinions', '')), ('평가 일정 사전 공유', meta.get('pre_shared', '')),
-        ('사전교육 기록', meta.get('education', '')), ('장비·설비 / 취급물질', meta.get('equipment', '')+'\n'+meta.get('materials', '')),
-        ('안전보건상 위험정보', '\n'.join(meta.get('information', []))+'\n'+meta.get('information_note', '')),
-        ('평가기준', RA_PROCEDURE+' · 빈도 5단계 × 강도 4단계 · 8점 이상 개선대책 수립'),
-        ('적용 기준 확인', '확인' if meta.get('criteria_confirmed') else '현장 적용 여부 확인 필요'),
-        ('서식 반영 범위', '절차서 붙임 10·11·14·16·17의 주요 작성 항목을 반영한 작성 지원 보고서')])]
+        ('평가방법',meta.get('method',RA_METHOD)),
+        ('보고서 구분','출력본 · 지면 결재 전' if final else '초안 · 미확인 사항 포함'),
+        ('공사종류',meta.get('construction_type') or '확인 필요'),
+        ('담당부서',meta.get('department','')),
+        ('사업장명 / 주소',meta.get('site','')+' / '+meta.get('address','')),
+        ('평가연도 / 평가일 / 구분',str(meta.get('assessment_year',''))+'년 / '+meta.get('date','')+' / '+meta.get('kind','')),
+        ('수시평가 사유',meta.get('trigger','') or '해당 없음 또는 미기재'),
+        ('작성자(공단 안전관리자)',meta.get('evaluator','')),
+        ('평가 대상 작업 개요',meta.get('work_scope','')),
+        ('평가 대상 공종', '\n'.join(meta.get('trades',[]))),
+        ('평가기준',RA_PROCEDURE+' · 빈도 5단계 × 강도 4단계'),
+        ('적용 기준 확인','확인' if meta.get('criteria_confirmed') else '현장 적용 여부 확인 필요'),
+        ('결재 방법','보고서 출력 후 지면 결재. 시스템의 보고서 생성·저장 상태는 결재 완료를 의미하지 않습니다.')])]
     for number, row in enumerate(rows, 1):
         before, after = row['frequency']*row['severity'], row['residual_f']*row['residual_s']
         sections.append((f'평가 항목 {number} · '+row['trade'], [
@@ -8289,16 +8770,14 @@ def ra_report_sections(meta, rows, final):
             ('완료 확인자 / 확인일', row['verified_by']+' / '+row['verified_date']), ('이행 증빙·현장 점검', row['evidence']),
             ('잔여 위험·추가 개선', row.get('followup', '') or ('8점 이상 · 추가 개선 확인 필요' if after >= 8 else '현장 확인 필요')),
             ('참고자료', row['source'] or '직접 입력 또는 일반적인 검토 후보')]))
-    sections.append(('결과 공유 · 이행·점검 확인', [
-        ('공유 상태 / 공유일·예정일 / 방법', meta.get('sharing_state', '')+' / '+meta.get('sharing_date', '')+' / '+meta.get('sharing_method', '')),
-        ('근로자 공유·TBM 전달내용', meta.get('sharing', '')), ('후속 점검 계획', meta.get('followup', '')),
-        ('이행·점검 확인사항', '\n'.join(key+': '+meta.get('checks', {}).get(key, '미확인') for key in RA_CHECK_ITEMS)),
-        ('보완사항 / 완료 예정일', meta.get('supplement', '')+' / '+meta.get('supplement_deadline', '')),
-        ('최종 현장 검토', '최신 내용 검토 확인' if meta.get('review_confirmed') and meta.get('review_sig') == ra_review_signature(meta, rows) else '미확인'),
-        ('기록 보존', '위험성평가 실시 시기·담당자·참여 근로자·근로자대표·위험성 결정·개선대책·이행 결과를 기록하고 3년간 보존합니다.'),
-        ('법령 확인', '산업안전보건법 시행규칙 제37조의2~제37조의4 / '+RA_GUIDE),
-        ('작성 자료', RA_PROCEDURE+' / 첨부 건설공사 위험성평가 실무가이드'),
-        ('유의사항', '사례·AI 후보는 현장 확인 후 적용합니다. 이 보고서는 작업허가 또는 작업 재개를 자동 승인하지 않습니다.')]))
+    sections.append(('현장 전달·후속 점검 기록',[
+        ('전달 상태 / 일자 / 방법',meta.get('sharing_state','')+' / '+meta.get('sharing_date','')+' / '+meta.get('sharing_method','')),
+        ('공단 작성자의 현장 전달 기록',meta.get('sharing','') or '선택 기록 · 미기재'),
+        ('후속 점검 계획',meta.get('followup','') or '선택 기록 · 미기재'),
+        ('보완사항 / 완료 예정일',meta.get('supplement','')+' / '+meta.get('supplement_deadline','')),
+        ('문서 관리','출력한 결재 문서와 현장 확인자료는 기관·현장의 보존기준에 따라 관리합니다.'),
+        ('작성 자료',RA_PROCEDURE+' / 사용자 첨부 공종 분류 사진 0·0-1·1·1-1·2~8'),
+        ('작성 범위','공단 안전관리자가 현장 자료를 바탕으로 정리한 작성 지원 보고서입니다. 결재는 지면으로 진행합니다.')]))
     return sections
 
 
@@ -8334,7 +8813,7 @@ def ra_pdf(meta, rows, final):
                     ('LEFTPADDING', (0, 0), (-1, -1), 5), ('RIGHTPADDING', (0, 0), (-1, -1), 5)]
         if header: commands.append(('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e6f3eb')))
         return TableStyle(commands)
-    story = [Paragraph('현장 위험성평가 보고서', title), para('공단 작성 항목 반영 / '+('현장 검토본' if final else '초안 · 미확인 사항 포함')), Spacer(1, 12)]
+    story = [Paragraph('현장 위험성평가 보고서', title), para('공단 작성 항목 반영 / '+('출력본 · 지면 결재 전' if final else '초안 · 미확인 사항 포함')), Spacer(1, 12)]
     sections = ra_report_sections(meta, rows, final)
     story.append(Paragraph(sections[0][0], heading))
     overview = Table([[para(label, compact), para(value, compact)] for label, value in sections[0][1]], colWidths=[151, 593], splitByRow=1, splitInRow=1)
@@ -8354,7 +8833,7 @@ def ra_pdf(meta, rows, final):
     output = io.BytesIO()
     def footer(canvas, document):
         canvas.setFont('KecoNanum', 8)
-        canvas.drawString(40, 22, '한국환경공단 위험성평가 작성 지원 / '+('현장 검토본' if final else '초안'))
+        canvas.drawString(40, 22, '한국환경공단 위험성평가 작성 지원 / '+('출력본 · 지면 결재 전' if final else '초안'))
         canvas.drawRightString(802, 22, str(document.page))
     SimpleDocTemplate(output, pagesize=landscape(A4), leftMargin=40, rightMargin=40, topMargin=38, bottomMargin=38).build(story, onFirstPage=footer, onLaterPages=footer)
     return output.getvalue()
@@ -8379,7 +8858,7 @@ def ra_hwpx(meta, rows, final):
         return p
     title = paragraph('현장 위험성평가 보고서', 20, True)
     apply_format(paragraphs=[title], alignment='CENTER')
-    paragraph('공단 작성 항목 반영 / '+('현장 검토본' if final else '초안 · 미확인 사항 포함'))
+    paragraph('공단 작성 항목 반영 / '+('출력본 · 지면 결재 전' if final else '초안 · 미확인 사항 포함'))
     sections = ra_report_sections(meta, rows, final)
     paragraph(sections[0][0], 13, True)
     for label, value in sections[0][1]:
@@ -8411,34 +8890,24 @@ def ra_hwpx(meta, rows, final):
 
 
 def ra_render_sharing(meta, actor):
-    st.info('공유 내용과 후속 계획을 기록하고, 누락 항목을 확인한 뒤 보고서를 만듭니다.')
-    st.button('TBM·근로자 공유 문구 초안 만들기', on_click=ra_sharing_draft, disabled=not st.session_state.ra_rows, key='ra_sharing_template')
-    left, right = st.columns(2)
-    with left:
-        ra_field('공유 상태', 'sharing_state', kind='select', options=['공유 예정', '공유 완료'])
-        ra_field('공유일·예정일', 'sharing_date', kind='date')
-    with right: ra_field('공유 방법', 'sharing_method', kind='select', options=['TBM', '현장 게시', '교육', '회의·메신저', '기타'])
-    ra_field('근로자 공유·교육·TBM 전달내용', 'sharing', kind='area', height=200)
-    ra_field('후속 점검 계획', 'followup', kind='area', placeholder='점검 대상 / 담당 / 다음 점검일 / 확인 방법')
-    with st.expander('이행·점검 확인서 항목 (붙임 17)'):
-        for number, label in enumerate(RA_CHECK_ITEMS):
-            key = 'ra_check_'+str(number)
-            saved = meta['checks'].get(label, '미확인')
-            if key not in st.session_state: st.session_state[key] = saved
-            value = st.selectbox(label, ['미확인', '이행', '보완 필요', '해당 없음'], key=key)
-            if meta['checks'].get(label) != value:
-                meta['checks'][label] = value
-                ra_invalidate_review()
-        ra_field('보완사항', 'supplement', kind='area')
-        ra_field('보완 완료 예정일', 'supplement_deadline')
-    with st.expander('보고서에 들어갈 평가표 미리보기', expanded=True): ra_overview(meta, st.session_state.ra_rows)
-    missing = [error for error in ra_validate(meta, st.session_state.ra_rows, True) if '최신 내용' not in error]
+    st.info('공단 작성자가 내용을 확인해 보고서를 만듭니다. 결재는 PDF·한글 보고서를 출력한 뒤 지면으로 진행합니다.')
+    with st.expander('현장 전달·후속 점검 기록 (선택)'):
+        left,right=st.columns(2)
+        with left:
+            ra_field('전달 상태','sharing_state',kind='select',options=['공유 예정','공유 완료'])
+            ra_field('전달일·예정일','sharing_date',kind='date')
+        with right:ra_field('전달 방법','sharing_method',kind='select',options=['TBM','현장 게시','교육','회의·메신저','기타'])
+        ra_field('공단 작성자의 현장 전달 기록','sharing',kind='area',height=120)
+        ra_field('후속 점검 계획','followup',kind='area')
+        ra_field('보완사항','supplement',kind='area')
+        ra_field('보완 완료 예정일','supplement_deadline')
+    with st.expander('보고서 평가표 미리보기',expanded=True):ra_overview(meta,st.session_state.ra_rows)
+    missing=ra_validate(meta,st.session_state.ra_rows,True)
     if missing:
-        st.warning(f'현장 검토본 작성 전 확인할 항목 {len(missing)}개')
-        for error in missing: st.write('• '+error)
-    else: st.success('주요 작성 항목을 입력했습니다. 현장 검토 후 보고서 구분을 선택하세요.')
-    ra_field('현장 위험요인·점수·대책·참여 및 공유 기록의 최신 내용을 검토했습니다.', 'review_confirmed', kind='check')
-    ra_field('보고서 구분', 'report_mode', kind='select', options=['초안', '현장 검토본'])
+        st.warning(f'출력본 작성 전 확인할 항목 {len(missing)}개')
+        for error in missing:st.write('• '+error)
+    else:st.success('주요 작성 항목을 입력했습니다. 출력본을 만들 수 있습니다.')
+    ra_field('보고서 구분','report_mode',kind='select',options=['초안','출력본'])
     payload = ra_payload(); sig = ra_hash(payload)
     st.download_button('작성 내용 JSON 백업', json.dumps(payload, ensure_ascii=False, indent=2).encode(), '위험성평가_작성내용.json', 'application/json', key='ra_json', on_click='ignore')
     if st.button('위험성평가 보고서 만들기', type='primary', key='ra_build'):
@@ -8462,7 +8931,7 @@ def ra_render_sharing(meta, actor):
                     try:
                         keco_loading_stage(2)
                         ra_archive(actor, payload)
-                        archive_generated_reports(actor, 'risk:'+str(actor)+':'+sig, outputs.get('hwpx'), outputs.get('pdf'), title=(meta.get('assessment_name') or '위험성평가')+' 보고서', site=meta.get('site', ''), kind='위험성평가')
+                        ra_archive_report(actor,st.session_state.ra_active_record_id,'risk:'+str(actor)+':'+sig,outputs.get('hwpx'),outputs.get('pdf'))
                         st.session_state.ra_last_saved_sig = sig
                         outputs['archived_files_sig'] = file_sig
                     except ValueError as exc: st.warning(str(exc))
@@ -8506,7 +8975,7 @@ def ra_record_schema(db):
 def ra_record_details(payload):
     meta, rows = payload['meta'], payload['rows']
     progress = sum(bool(value) for value in ra_progress(meta, rows))
-    if payload.get('final') and not ra_validate(meta, rows, True): status = '검토 완료'
+    if payload.get('final') and not ra_validate(meta, rows, True): status = '출력본 작성'
     elif rows or progress or meta.get('construction_type') or meta.get('work_scope'): status = '작성 중'
     else: status = '등록'
     return status, progress, len(rows)
@@ -8514,7 +8983,9 @@ def ra_record_details(payload):
 
 def ra_record_header(meta):
     name = str(meta.get('assessment_name', '')).strip()
-    if not name or len(name) > 120: raise ValueError('위험성평가명은 1~120자로 입력해 주세요.')
+    if not name:name=ra_auto_name(meta)
+    if len(name)>120:raise ValueError('평가 식별명 길이를 확인해 주세요.')
+    meta['assessment_name']=name
     if meta.get('kind') not in RA_KINDS: raise ValueError('평가구분은 최초·정기·수시평가 중에서 선택해 주세요.')
     if meta.get('method') != RA_METHOD: raise ValueError('현재는 빈도·강도법만 등록할 수 있습니다.')
     return name, meta['kind'], meta['method']
@@ -8716,8 +9187,9 @@ def ra_hub_register(actor):
         meta = ra_default_meta(actor)
         meta.update(site=site, department=ra_site_department(site),
                     assessment_year=str(ra_assessment_year(st.session_state.get('ra_hub_new_year'))))
+        meta['kind']=st.session_state.get('ra_hub_new_kind',RA_KINDS[0])
         payload = dict(schema_version=3, meta=meta, rows=[], final=False)
-        record_id = ra_record_create(actor, st.session_state.get('ra_hub_new_name') or '', st.session_state.get('ra_hub_new_kind'), RA_METHOD, payload=payload)
+        record_id = ra_record_create(actor, ra_auto_name(meta), st.session_state.get('ra_hub_new_kind'), RA_METHOD, payload=payload)
         st.session_state.ra_hub_created_id = record_id
         st.session_state.ra_hub_page = 'list'
         ra_hub_filter_reset()
@@ -8730,11 +9202,7 @@ def ra_hub_register(actor):
 
 
 def ra_hub_registration_change():
-    st.session_state.ra_hub_registration = dict(
-        name=st.session_state.get('ra_hub_new_name') or '',
-        kind=st.session_state.get('ra_hub_new_kind', RA_KINDS[0]),
-        year=st.session_state.get('ra_hub_new_year', ra_current_year()),
-        site=st.session_state.get('ra_hub_new_site') or '')
+    st.session_state.ra_hub_registration=dict(kind=st.session_state.get('ra_hub_new_kind',RA_KINDS[0]),year=st.session_state.get('ra_hub_new_year',ra_current_year()),site=st.session_state.get('ra_hub_new_site') or '')
 
 
 def ra_hub_filter():
@@ -8754,6 +9222,9 @@ def ra_hub_filter_reset():
     st.session_state.ra_hub_filters = dict(year='전체', kind='전체', site='전체', name='전체', query='')
     st.session_state.ra_hub_page_number = 1
     st.session_state.ra_hub_selection = []
+
+    st.session_state.pop('ra_hub_purge_ids',None)
+    st.session_state.ra_hub_purge_ack=False
 
 
 def ra_hub_select(record_id, key):
@@ -8837,16 +9308,11 @@ def ra_render_guide():
                 st.write(description)
                 st.caption('현장 예시 · '+example)
     with methods:
-        for title, subtitle, description, availability in RA_METHOD_GUIDE:
-            with st.expander(title, expanded=False):
-                st.markdown('**'+subtitle+'**')
-                st.write(description)
-                if title == RA_METHOD:
-                    ra_render_frequency_method()
-                else:
-                    st.caption(availability)
+        st.markdown('**'+RA_METHOD+'**')
+        ra_render_frequency_method()
+        st.caption('다른 평가방법 4종 · 준비 중')
     with writing:
-        descriptions = ['평가 대상·참여자·자료·점수 기준과 공종을 정합니다.', '실제 작업조건을 입력하고 표준모델·근로자 의견 등으로 위험요인을 찾습니다.', '현재 안전조치를 확인하고 빈도·강도와 판단 사유를 작성합니다.', '위험을 낮출 대책, 담당자, 기한과 필요한 예산을 정합니다.', '실제 이행 여부와 증빙을 기록하고 개선 후 위험성을 재평가합니다.', 'TBM 등 공유 내용과 후속 점검을 기록하고 보고서를 만듭니다.']
+        descriptions = ['공단 작성자가 현장·작업 범위·점수 기준과 공종을 정합니다.', '실제 작업조건을 입력하고 표준모델·근로자 의견 등으로 위험요인을 찾습니다.', '현재 안전조치를 확인하고 빈도·강도와 판단 사유를 작성합니다.', '위험을 낮출 대책, 담당자, 기한과 필요한 예산을 정합니다.', '실제 이행 여부와 증빙을 기록하고 개선 후 위험성을 재평가합니다.', '작성 내용을 확인하고 보고서를 출력한 뒤 지면으로 결재합니다.']
         for title, description in zip(RA_STEPS, descriptions):
             with st.container(border=True):
                 st.markdown('**'+title+'**')
@@ -8856,49 +9322,28 @@ def ra_render_guide():
 
 
 def ra_render_registration(actor):
-    st.markdown(RA_REGISTER_LIST_CSS, unsafe_allow_html=True)
+    st.markdown(RA_REGISTER_LIST_CSS,unsafe_allow_html=True)
     st.subheader('위험성평가 등록')
-    back, guide = st.columns(2)
-    with back:
-        st.button('← 목록', key='ra_hub_register_back', on_click=ra_hub_navigate, args=('list',))
-    with guide:
-        st.button('평가구분·평가방법 안내', key='ra_hub_register_guide', on_click=ra_hub_navigate, args=('guide',), width='stretch')
-    st.caption('관리현장을 선택하면 담당부서와 평가명이 연결됩니다. 등록 후 목록에서 평가를 열어 작성하세요.')
-    saved = st.session_state.get('ra_hub_registration', {})
-    st.session_state.setdefault('ra_hub_new_year', saved.get('year', ra_current_year()))
-    st.session_state.setdefault('ra_hub_new_kind', saved.get('kind', RA_KINDS[0]))
-    initial_site = saved.get('site') or st.session_state.get('selected_site_box')
-    st.session_state.setdefault('ra_hub_new_site', initial_site if initial_site in ra_managed_sites() else None)
-    if st.session_state.ra_hub_new_site not in ra_managed_sites():
-        st.session_state.ra_hub_new_site = None
-    with st.container(border=True, key='ra_hub_registration_card'):
-        year, kind = st.columns(2)
-        with year:
-            st.selectbox('평가연도 *', ra_year_options(extra=[st.session_state.ra_hub_new_year]),
-                         key='ra_hub_new_year', format_func=lambda v: str(v)+'년', on_change=ra_hub_new_context_change)
-        with kind:
-            st.selectbox('평가구분 *', RA_KINDS, key='ra_hub_new_kind', on_change=ra_hub_new_context_change)
-        st.selectbox('사업장명 *', ra_managed_sites(), index=None, placeholder='관리현장을 선택하세요',
-                     key='ra_hub_new_site', on_change=ra_hub_new_context_change)
-        names = ra_assessment_names(st.session_state.ra_hub_new_site, st.session_state.ra_hub_new_year,
-                                    st.session_state.ra_hub_new_kind, saved.get('name', ''))
-        if st.session_state.get('ra_hub_new_name') not in names:
-            st.session_state.ra_hub_new_name = names[0] if names else None
-        st.selectbox('위험성평가명 *', names, index=None, key='ra_hub_new_name', disabled=not bool(names),
-                     placeholder='사업장을 먼저 선택하세요', on_change=ra_hub_registration_change)
-        if st.session_state.ra_hub_new_site:
-            st.caption('담당부서 · '+ra_site_department(st.session_state.ra_hub_new_site))
-        description = next(item for item in RA_KIND_GUIDE if item[0] == st.session_state.ra_hub_new_kind)
-        st.caption(description[1])
-        st.selectbox('평가방법 *', [RA_METHOD], key='ra_hub_new_method')
-        st.caption('현재 지원 · 공단 기준 빈도 5단계 × 강도 4단계')
-        st.markdown('**다른 평가방법**')
-        columns = st.columns(2)
-        for index, method in enumerate(RA_OTHER_METHODS):
-            with columns[index % 2]:
-                st.button(method+' · 준비 중', disabled=True, key='ra_hub_disabled_method_'+str(index), width='stretch')
-    st.button('등록', key='ra_hub_register_submit', type='primary', on_click=ra_hub_register,
-              args=(actor,), disabled=not bool(st.session_state.ra_hub_new_site), width='stretch')
+    back,guide=st.columns(2)
+    with back:st.button('← 목록',key='ra_hub_register_back',on_click=ra_hub_navigate,args=('list',))
+    with guide:st.button('평가구분·평가방법 안내',key='ra_hub_register_guide',on_click=ra_hub_navigate,args=('guide',),width='stretch')
+    st.caption('사업장과 평가연도·평가구분을 선택해 등록하세요. 공단 안전관리자가 작성하며 결재는 보고서 출력 후 지면으로 진행합니다.')
+    saved=st.session_state.get('ra_hub_registration',{})
+    st.session_state.setdefault('ra_hub_new_year',saved.get('year',ra_current_year()))
+    st.session_state.setdefault('ra_hub_new_kind',saved.get('kind',RA_KINDS[0]))
+    initial=saved.get('site') or st.session_state.get('selected_site_box')
+    st.session_state.setdefault('ra_hub_new_site',initial if initial in ra_managed_sites() else None)
+    if st.session_state.ra_hub_new_site not in ra_managed_sites():st.session_state.ra_hub_new_site=None
+    with st.container(border=True,key='ra_hub_registration_card'):
+        year,kind=st.columns(2)
+        with year:st.selectbox('평가연도 *',ra_year_options(extra=[st.session_state.ra_hub_new_year]),key='ra_hub_new_year',format_func=lambda v:str(v)+'년',on_change=ra_hub_new_context_change)
+        with kind:st.selectbox('평가구분 *',RA_KINDS,key='ra_hub_new_kind',on_change=ra_hub_new_context_change)
+        st.selectbox('사업장명 *',ra_managed_sites(),index=None,placeholder='관리현장을 선택하세요',key='ra_hub_new_site',on_change=ra_hub_new_context_change)
+        if st.session_state.ra_hub_new_site:st.caption('담당부서 · '+ra_site_department(st.session_state.ra_hub_new_site))
+        st.caption(next(item[1] for item in RA_KIND_GUIDE if item[0]==st.session_state.ra_hub_new_kind))
+        st.selectbox('평가방법 *',[RA_METHOD],key='ra_hub_new_method')
+        st.caption('다른 평가방법 4종 · 준비 중')
+    st.button('등록',key='ra_hub_register_submit',type='primary',on_click=ra_hub_register,args=(actor,),disabled=not bool(st.session_state.ra_hub_new_site),width='stretch')
 
 
 def ra_hub_card_html(record, number):
@@ -8918,6 +9363,8 @@ def ra_hub_card_html(record, number):
             '<dl class="ra-card-details">'+details+'</dl>'
             '<div class="ra-card-count">평가 항목 '+text(record['row_count'])+'개</div></section>')
 
+
+RA_SITE_SELECT_CSS = '<style>\n/* Keep native virtual scrolling and keyboard selection intact. A wider menu\n   and compact two-line labels fit every registered managed-site name. */\n:is(.st-key-ra_hub_filter_site,.st-key-ra_hub_new_site,.st-key-ra_hub_edit_site,.st-key-ra_edit_meta_site) [data-baseweb="select"] > div {\n    height:auto!important;min-height:44px!important;\n}\n:is(.st-key-ra_hub_filter_site,.st-key-ra_hub_new_site,.st-key-ra_hub_edit_site,.st-key-ra_edit_meta_site) [data-baseweb="select"] > div > div:first-child {\n    min-width:0!important;height:auto!important;\n}\n:is(.st-key-ra_hub_filter_site,.st-key-ra_hub_new_site,.st-key-ra_hub_edit_site,.st-key-ra_edit_meta_site) [data-baseweb="select"] > div > div:first-child > div:first-child {\n    white-space:normal!important;word-break:keep-all!important;overflow-wrap:anywhere!important;\n    text-overflow:clip!important;overflow:visible!important;max-height:none!important;line-height:1.5!important;\n}\nbody:has(:is(.st-key-ra_hub_filter_site,.st-key-ra_hub_new_site,.st-key-ra_hub_edit_site,.st-key-ra_edit_meta_site) [aria-expanded="true"]) [data-baseweb="popover"]:has([data-testid="stSelectboxVirtualDropdown"]) {\n    width:min(640px,calc(100vw - 24px))!important;\n    min-width:min(640px,calc(100vw - 24px))!important;max-width:calc(100vw - 24px)!important;\n}\nbody:has(:is(.st-key-ra_hub_filter_site,.st-key-ra_hub_new_site,.st-key-ra_hub_edit_site,.st-key-ra_edit_meta_site) [aria-expanded="true"]) [data-baseweb="popover"]:has([data-testid="stSelectboxVirtualDropdown"]) > div,\nbody:has(:is(.st-key-ra_hub_filter_site,.st-key-ra_hub_new_site,.st-key-ra_hub_edit_site,.st-key-ra_edit_meta_site) [aria-expanded="true"]) [data-baseweb="popover"]:has([data-testid="stSelectboxVirtualDropdown"]) > div > div,\nbody:has(:is(.st-key-ra_hub_filter_site,.st-key-ra_hub_new_site,.st-key-ra_hub_edit_site,.st-key-ra_edit_meta_site) [aria-expanded="true"]) [data-testid="stSelectboxVirtualDropdown"] {\n    width:100%!important;min-width:100%!important;max-width:100%!important;box-sizing:border-box!important;\n}\nbody:has(:is(.st-key-ra_hub_filter_site,.st-key-ra_hub_new_site,.st-key-ra_hub_edit_site,.st-key-ra_edit_meta_site) [aria-expanded="true"]) [data-testid="stSelectboxVirtualDropdown"] [role="option"] {\n    padding-top:2px!important;padding-bottom:2px!important;align-items:center!important;\n    font-size:14px!important;line-height:18px!important;\n}\nbody:has(:is(.st-key-ra_hub_filter_site,.st-key-ra_hub_new_site,.st-key-ra_hub_edit_site,.st-key-ra_edit_meta_site) [aria-expanded="true"]) [data-testid="stSelectboxVirtualDropdown"] [role="option"] div {\n    min-width:0!important;max-width:100%!important;white-space:normal!important;\n    word-break:break-all!important;overflow-wrap:anywhere!important;text-overflow:clip!important;\n    overflow:visible!important;line-height:18px!important;font-size:14px!important;\n}\n\n</style>'
 
 RA_REGISTER_LIST_CSS = '<style>\n.st-key-ra_register_title h2 {font-size:27px!important;font-weight:700!important;color:#17212b!important;line-height:1.4!important;margin:0!important;padding:0!important;}\n.st-key-ra_hub_list_toolbar [data-testid="stHorizontalBlock"],.st-key-ra_hub_actions [data-testid="stHorizontalBlock"] {align-items:center!important;gap:8px!important;}\n.st-key-ra_hub_filters_box {background:#fffdf8!important;border:1px solid #dedfd3!important;border-radius:10px!important;padding:18px!important;}\n.st-key-ra_hub_filters_box [data-testid="stForm"] {border:0!important;padding:0!important;}\n.st-key-ra_hub_filter_fields [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:1fr 1.05fr 2.4fr 2.4fr .75fr .75fr!important;align-items:end!important;gap:12px!important;}\n.st-key-ra_hub_filter_fields [data-testid="stColumn"] {width:auto!important;min-width:0!important;flex:initial!important;}\n.st-key-ra_hub_filter_fields [data-testid="stWidgetLabel"] p {font-size:14px!important;font-weight:600!important;}\n.st-key-ra_hub_filter_fields [data-testid="stButton"] button,.st-key-ra_hub_filter_fields [data-testid="stFormSubmitButton"] button {height:42px!important;min-height:42px!important;padding:8px 12px!important;}\n.st-key-ra_hub_actions [data-testid="stButton"] button,.st-key-ra_hub_list_toolbar [data-testid="stButton"] button {height:42px!important;min-height:42px!important;border-radius:7px!important;padding:8px 10px!important;box-shadow:none!important;transform:none!important;}\n.st-key-ra_hub_actions [data-testid="stButton"] button p,.st-key-ra_hub_list_toolbar [data-testid="stButton"] button p {font-size:14px!important;line-height:1.4!important;white-space:nowrap!important;}\n.st-key-ra_hub_actions .st-key-ra_hub_new button,.st-key-ra_hub_actions .st-key-ra_hub_edit_selected button,.st-key-ra_hub_actions .st-key-ra_hub_request_delete button {background:#fff!important;background-image:none!important;color:#294334!important;-webkit-text-fill-color:#294334!important;border:1px solid #cdd8d0!important;}\n.st-key-ra_hub_actions [data-testid="stButton"] button:disabled {background:#e5eae6!important;background-image:none!important;color:#78847b!important;-webkit-text-fill-color:#78847b!important;border:1px solid #dce2dd!important;opacity:1!important;}\n.st-key-ra_hub_actions [data-testid="stButton"] button p {color:inherit!important;-webkit-text-fill-color:currentColor!important;}\n.ra-register-count {font-size:17px!important;font-weight:700!important;color:#202b25!important;margin:0!important;line-height:1.7!important;}\n.ra-register-count small {font-size:13px!important;font-weight:400!important;color:#6b766f!important;margin-left:8px;}\n.st-key-ra_hub_table {overflow-x:auto!important;width:100%!important;max-width:100%!important;border:1px solid #d7dfe0!important;border-radius:8px!important;background:#fff!important;gap:0!important;}\n.st-key-ra_hub_table > [data-testid="stVerticalBlock"],.st-key-ra_hub_table [data-testid="stVerticalBlock"] {gap:0!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:44px 38px 108px minmax(160px,1.25fr) minmax(210px,1.6fr) 100px 110px 100px 92px!important;min-width:1000px!important;gap:0!important;align-items:center!important;flex-wrap:nowrap!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stColumn"] {width:auto!important;min-width:0!important;flex:initial!important;padding:8px 9px!important;box-sizing:border-box!important;}\n.st-key-risk_assessment .st-key-ra_hub_table .st-key-ra_table_header {background:#173f36!important;border-bottom:1px solid #173f36!important;min-width:1000px!important;}\n.st-key-risk_assessment .st-key-ra_hub_table .st-key-ra_table_header p {font-size:14px!important;font-weight:700!important;text-align:center!important;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;white-space:nowrap!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"] {border:0!important;border-bottom:1px solid #e5e9e7!important;border-radius:0!important;box-shadow:none!important;padding:0!important;min-width:1000px!important;background:#fff!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"]:has(input:checked) {background:#e6f3eb!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stCheckbox"] {background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;min-height:28px!important;height:28px!important;box-shadow:none!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stCheckbox"] label {padding:0!important;min-height:28px!important;align-items:center!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stButton"] button {background:#fff!important;background-image:none!important;border:1px solid #d6ded9!important;border-radius:5px!important;box-shadow:none!important;transform:none!important;color:#315341!important;min-height:34px!important;height:34px!important;padding:5px 8px!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [data-testid="stButton"] button p {color:#315341!important;-webkit-text-fill-color:#315341!important;font-size:13px!important;white-space:nowrap!important;}\n.ra-table-cell {font-size:14px!important;line-height:1.55!important;margin:0!important;color:#26332c!important;word-break:keep-all!important;overflow-wrap:anywhere!important;}\n.ra-table-cell.center {text-align:center!important;white-space:nowrap!important;}\n.ra-table-cell.name {font-weight:600!important;}\n.ra-table-status {display:block;text-align:center;font-size:12px;color:#14644d;background:#e6f2e9;border-radius:5px;padding:4px 5px;white-space:nowrap;}\n.ra-table-empty {min-width:1000px;text-align:center;padding:58px 18px;color:#758079;font-size:14px;}\n.st-key-ra_hub_pagination [data-testid="stHorizontalBlock"] {display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;gap:10px!important;}\n@media(max-width:768px){\n .st-key-ra_hub_list_toolbar [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;}\n .st-key-ra_hub_list_toolbar [data-testid="stColumn"]:first-child {grid-column:1/-1!important;}\n .st-key-ra_hub_list_toolbar [data-testid="stColumn"],.st-key-ra_hub_actions [data-testid="stColumn"] {width:auto!important;min-width:0!important;}\n .st-key-ra_hub_filters_box {padding:14px!important;}\n .st-key-ra_hub_filter_fields [data-testid="stHorizontalBlock"] {grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;}\n .st-key-ra_hub_filter_fields [data-testid="stColumn"]:nth-child(3),.st-key-ra_hub_filter_fields [data-testid="stColumn"]:nth-child(4) {grid-column:1/-1!important;}\n .st-key-ra_hub_actions [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;}\n .st-key-ra_hub_actions [data-testid="stColumn"]:first-child {grid-column:1/-1!important;}\n .st-key-ra_register_title h2 {font-size:23px!important;}\n}\n\n.st-key-risk_assessment .st-key-ra_hub_filters_box,\n.st-key-risk_assessment .st-key-ra_hub_registration_card,\n.st-key-risk_assessment .st-key-ra_hub_edit_card {background:#fffdf8!important;border:1px solid #dedfd3!important;border-radius:14px!important;box-shadow:0 4px 18px #3c4a3910!important;}\n.st-key-risk_assessment .st-key-ra_hub_filters_box [data-testid="stWidgetLabel"] p,\n.st-key-risk_assessment .st-key-ra_hub_registration_card [data-testid="stWidgetLabel"] p,\n.st-key-risk_assessment .st-key-ra_hub_edit_card [data-testid="stWidgetLabel"] p {color:#29483b!important;-webkit-text-fill-color:#29483b!important;font-weight:650!important;}\n.st-key-risk_assessment .st-key-ra_hub_filters_box [data-baseweb="select"]>div,\n.st-key-risk_assessment .st-key-ra_hub_registration_card [data-baseweb="select"]>div,\n.st-key-risk_assessment .st-key-ra_hub_edit_card [data-baseweb="select"]>div {background:#fff!important;border-color:#d2dbd1!important;border-radius:9px!important;color:#233f34!important;-webkit-text-fill-color:#233f34!important;min-height:44px!important;box-shadow:none!important;}\n.st-key-risk_assessment .st-key-ra_hub_filters_box [data-baseweb="select"]:focus-within>div,\n.st-key-risk_assessment .st-key-ra_hub_registration_card [data-baseweb="select"]:focus-within>div,\n.st-key-risk_assessment .st-key-ra_hub_edit_card [data-baseweb="select"]:focus-within>div {border-color:#16825d!important;box-shadow:0 0 0 3px #16825d18!important;}\n.st-key-risk_assessment .st-key-ra_hub_filter_fields [data-testid="stButton"] {padding-top:27px!important;}\n.st-key-risk_assessment .st-key-ra_hub_filter_fields button,\n.st-key-risk_assessment .st-key-ra_hub_actions button,\n.st-key-risk_assessment .st-key-ra_hub_list_toolbar button {background:#fffdf8!important;background-image:none!important;border:1px solid #cdd9cd!important;color:#284b3b!important;-webkit-text-fill-color:#284b3b!important;border-radius:9px!important;box-shadow:none!important;}\n.st-key-risk_assessment .st-key-ra_hub_filter_fields button[kind="primary"],\n.st-key-risk_assessment .st-key-ra_hub_actions button[kind="primary"],\n.st-key-risk_assessment .st-key-ra_hub_register_submit button,\n.st-key-risk_assessment .st-key-ra_hub_edit_save button {background:#167451!important;background-image:none!important;border:1px solid #167451!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-radius:9px!important;box-shadow:none!important;}\n.st-key-risk_assessment .st-key-ra_hub_filter_fields button p,\n.st-key-risk_assessment .st-key-ra_hub_actions button p,\n.st-key-risk_assessment .st-key-ra_hub_list_toolbar button p,\n.st-key-risk_assessment .st-key-ra_hub_register_submit button p,\n.st-key-risk_assessment .st-key-ra_hub_edit_save button p {color:inherit!important;-webkit-text-fill-color:currentColor!important;}\n.st-key-risk_assessment .st-key-ra_hub_request_delete button {color:#a7463c!important;-webkit-text-fill-color:#a7463c!important;border-color:#e0c9be!important;}\n.st-key-risk_assessment .st-key-ra_hub_table {border-color:#d5dfd4!important;border-radius:12px!important;box-shadow:0 4px 18px #3c4a390a!important;}\n.st-key-risk_assessment .st-key-ra_hub_table .st-key-ra_table_header p {color:#fff!important;-webkit-text-fill-color:#fff!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"]:hover {background:#f4f8f2!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"]:has(input:checked),\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"]:has([role="checkbox"][aria-checked="true"]) {background:#e6f3eb!important;}\n.st-key-risk_assessment .st-key-ra_hub_table .ra-table-cell {color:#263f33!important;-webkit-text-fill-color:#263f33!important;}\n.st-key-risk_assessment .ra-register-count {color:#173f36!important;-webkit-text-fill-color:#173f36!important;}\n.st-key-risk_assessment .ra-table-status {color:#14644d!important;-webkit-text-fill-color:#14644d!important;background:#e6f2e9!important;border:1px solid #cde3d3!important;border-radius:20px!important;}\n.st-key-risk_assessment .st-key-ra_hub_registration_card [data-testid="stCaptionContainer"] p,\n.st-key-risk_assessment .st-key-ra_hub_edit_card [data-testid="stCaptionContainer"] p {color:#647365!important;-webkit-text-fill-color:#647365!important;}\n.st-key-risk_assessment .st-key-ra_hub_actions button:disabled,\n.st-key-risk_assessment .st-key-ra_hub_register_submit button:disabled,\n.st-key-risk_assessment .st-key-ra_hub_edit_save button:disabled {background:#e7ebe3!important;background-image:none!important;border-color:#dce2d7!important;color:#829083!important;-webkit-text-fill-color:#829083!important;opacity:1!important;}\n@media(max-width:768px){.st-key-risk_assessment .st-key-ra_hub_filter_fields [data-testid="stButton"]{padding-top:0!important;}}\n\n</style>'
 
@@ -8972,10 +9419,11 @@ def ra_hub_commit_edit(actor):
         record = st.session_state.get('ra_hub_edit_record')
         if not record: raise ValueError('목록에서 수정할 평가를 다시 선택해 주세요.')
         data = copy.deepcopy(record['payload'])
-        data['meta'].update(assessment_name=(st.session_state.get('ra_hub_edit_name') or '').strip(),
-                            assessment_year=str(ra_assessment_year(st.session_state.get('ra_hub_edit_year'))),
+        data['meta'].update(assessment_year=str(ra_assessment_year(st.session_state.get('ra_hub_edit_year'))),
                             site=st.session_state.get('ra_hub_edit_site', '').strip(),
                             kind=st.session_state.get('ra_hub_edit_kind'))
+        if any(data['meta'].get(field)!=record['payload']['meta'].get(field) for field in ('site','assessment_year','kind')):
+            data['meta']['assessment_name']=ra_auto_name(data['meta'])
         department = ra_site_department(data['meta']['site'])
         if department: data['meta']['department'] = department
         if data['meta'] != record['payload']['meta']:
@@ -8994,35 +9442,24 @@ def ra_hub_commit_edit(actor):
 
 
 def ra_render_record_edit(actor):
-    st.markdown(RA_REGISTER_LIST_CSS, unsafe_allow_html=True)
-    record = st.session_state.get('ra_hub_edit_record')
+    st.markdown(RA_REGISTER_LIST_CSS,unsafe_allow_html=True)
+    record=st.session_state.get('ra_hub_edit_record')
     if not record:
         st.warning('목록에서 수정할 평가를 선택해 주세요.')
-        st.button('← 목록', key='ra_hub_edit_missing_back', on_click=ra_hub_navigate, args=('list',))
+        st.button('← 목록',key='ra_hub_edit_missing_back',on_click=ra_hub_navigate,args=('list',))
         return
     st.subheader('위험성평가 정보 수정')
-    meta = record['payload']['meta']
-    st.session_state.setdefault('ra_hub_edit_year', ra_assessment_year(meta.get('assessment_year')))
-    with st.container(border=True, key='ra_hub_edit_card'):
-        year, kind = st.columns(2)
-        with year:
-            st.selectbox('평가연도 *', ra_year_options(extra=[st.session_state.ra_hub_edit_year]),
-                         key='ra_hub_edit_year', format_func=lambda v: str(v)+'년', on_change=ra_hub_edit_context_change)
-        with kind:
-            st.selectbox('평가구분 *', RA_KINDS, key='ra_hub_edit_kind', on_change=ra_hub_edit_context_change)
-            st.selectbox('사업장명', ([''] if not meta.get('site') else []) + ra_site_options(extra=[meta.get('site'), st.session_state.get('ra_hub_edit_site')]),
-                     key='ra_hub_edit_site', index=None, on_change=ra_hub_edit_context_change)
-        names = ra_assessment_names(st.session_state.get('ra_hub_edit_site'), st.session_state.ra_hub_edit_year,
-                                    st.session_state.ra_hub_edit_kind, meta.get('assessment_name', ''))
-        if st.session_state.get('ra_hub_edit_name') not in names:
-            st.session_state.ra_hub_edit_name = names[0] if names else None
-        st.selectbox('위험성평가명 *', names, key='ra_hub_edit_name', index=None)
-        st.caption('평가방법 · '+meta.get('method', RA_METHOD))
-    save, cancel = st.columns(2)
-    with save:
-        st.button('수정 저장', key='ra_hub_edit_save', type='primary', on_click=ra_hub_commit_edit, args=(actor,), width='stretch')
-    with cancel:
-        st.button('취소 · 목록', key='ra_hub_edit_cancel', on_click=ra_hub_navigate, args=('list',), width='stretch')
+    meta=record['payload']['meta']
+    st.session_state.setdefault('ra_hub_edit_year',ra_assessment_year(meta.get('assessment_year')))
+    with st.container(border=True,key='ra_hub_edit_card'):
+        year,kind=st.columns(2)
+        with year:st.selectbox('평가연도 *',ra_year_options(extra=[st.session_state.ra_hub_edit_year]),key='ra_hub_edit_year',format_func=lambda v:str(v)+'년',on_change=ra_hub_edit_context_change)
+        with kind:st.selectbox('평가구분 *',RA_KINDS,key='ra_hub_edit_kind',on_change=ra_hub_edit_context_change)
+        st.selectbox('사업장명',([''] if not meta.get('site') else [])+ra_site_options(extra=[meta.get('site'),st.session_state.get('ra_hub_edit_site')]),key='ra_hub_edit_site',index=None,on_change=ra_hub_edit_context_change)
+        st.caption('평가방법 · '+meta.get('method',RA_METHOD))
+    save,cancel=st.columns(2)
+    with save:st.button('수정 저장',key='ra_hub_edit_save',type='primary',on_click=ra_hub_commit_edit,args=(actor,),width='stretch')
+    with cancel:st.button('취소 · 목록',key='ra_hub_edit_cancel',on_click=ra_hub_navigate,args=('list',),width='stretch')
 
 
 def ra_hub_show_site_info(actor, record_id):
@@ -9130,8 +9567,24 @@ def ra_render_history(actor):
             st.button('수정', key='ra_hub_edit_selected', disabled=trashed or len(selected)!=1,
                       on_click=ra_hub_edit_selected, args=(actor,), width='stretch')
         with delete:
-            st.button('삭제', key='ra_hub_request_delete', disabled=trashed or not selected,
-                      on_click=ra_hub_request_delete, width='stretch')
+            if trashed:
+                st.button('완전삭제',key='ra_hub_request_purge',disabled=not selected,on_click=ra_hub_request_purge,width='stretch')
+            else:
+                st.button('삭제',key='ra_hub_request_delete',disabled=not selected,on_click=ra_hub_request_delete,width='stretch')
+    purge_ids=st.session_state.get('ra_hub_purge_ids',[])
+    if trashed and purge_ids and set(purge_ids)==selected:
+        with st.container(border=True,key='ra_hub_purge_panel'):
+            st.warning(f'평가 {len(purge_ids)}건을 완전삭제합니다. 삭제 후 복원할 수 없습니다.')
+            for record in records:
+                if record['id'] in purge_ids:st.write('• '+record['site']+' / '+str(record['assessment_year'])+'년 / '+record['kind'])
+            st.caption('평가 작성자료와 연결된 보고서를 삭제합니다. 다른 자료에서 사용하는 공용 파일과 별도 다운로드한 파일은 유지됩니다.')
+            acknowledged=st.checkbox('선택한 평가와 연결된 보고서를 복원할 수 없음을 확인합니다.',key='ra_hub_purge_ack')
+            confirm,cancel=st.columns(2)
+            with confirm:st.button('완전삭제 실행',key='ra_hub_purge_confirm',type='primary',disabled=not acknowledged,on_click=ra_hub_confirm_purge,args=(actor,),width='stretch')
+            with cancel:st.button('취소',key='ra_hub_purge_cancel',on_click=ra_hub_cancel_purge,width='stretch')
+    if st.session_state.get('ra_hub_cleanup_pending'):
+        st.caption('일부 보고서 파일 정리가 남아 있습니다. 저장소 연결·삭제 권한을 확인한 뒤 다시 시도해 주세요.')
+        st.button('남은 보고서 파일 정리',key='ra_hub_cleanup_retry',on_click=ra_hub_retry_cleanup)
     if not trashed and selected and st.session_state.get('ra_hub_delete_confirm'):
         with st.container(border=True, key='ra_hub_delete_panel'):
             st.write(f'선택한 평가 {len(selected)}건을 삭제하시겠습니까? 삭제한 평가는 휴지통에서 복원할 수 있습니다.')
@@ -9140,7 +9593,7 @@ def ra_render_history(actor):
                 st.button('삭제 확인', key='ra_hub_delete', on_click=ra_hub_change_trash, args=(actor, False), width='stretch')
             with cancel:
                 st.button('취소', key='ra_hub_delete_cancel', on_click=ra_hub_cancel_delete, width='stretch')
-    st.caption('평가를 체크한 뒤 ‘선택한 평가 열기’를 누르면 작성을 이어갈 수 있습니다.' if not trashed else '복원할 평가를 체크한 뒤 ‘선택 평가 복원’을 누르세요.')
+    st.caption('평가를 체크한 뒤 ‘선택한 평가 열기’를 누르면 작성을 이어갈 수 있습니다.' if not trashed else '평가를 체크한 뒤 복원 또는 완전삭제를 선택하세요.')
     with st.container(key='ra_hub_table'):
         with st.container(key='ra_table_header'):
             columns = st.columns(9, gap='small', vertical_alignment='center')
@@ -9256,14 +9709,16 @@ def ra_render_writer(actor):
         st.info('목록에서 작성할 평가를 선택해 주세요.')
         return
     meta, rows = st.session_state.ra_meta, st.session_state.ra_rows
-    st.subheader(meta.get('assessment_name') or '위험성평가 작성')
-    st.caption(meta['kind']+' · '+RA_METHOD+' · 빈도 5단계 × 강도 4단계')
+    st.subheader((meta.get('site') or '현장')+' 위험성평가 작성')
+    st.caption(str(meta.get('assessment_year',''))+'년 · '+meta['kind']+' · '+RA_METHOD+' · 작성 후 보고서 출력·지면 결재')
     back, guide, save = st.columns([1, 2, 1])
     with back: st.button('← 목록', key='ra_hub_writer_back', on_click=ra_hub_back, args=(actor,), width='stretch')
     with guide: st.button('평가구분·평가방법 안내', key='ra_hub_writer_guide', on_click=ra_hub_navigate, args=('guide',), width='stretch')
     with save: st.button('임시 저장', key='ra_save', on_click=ra_hub_save, args=(actor,), type='primary', width='stretch')
     st.caption('입력은 단계 이동 중 유지됩니다. ‘임시 저장’ 또는 ‘목록’을 누르면 저장소에 반영됩니다.')
     ra_field('공사종류', 'construction_type', kind='select', options=[None]+RA_CONSTRUCTION_TYPES, format_func=lambda value: '공사종류를 선택하세요' if value is None else value)
+    if meta.get('legacy_construction_type') and not meta['construction_type']:
+        st.caption('기존 공사종류 · '+meta['legacy_construction_type']+' / 새 분류에서 공사종류를 선택해 주세요. 기존 평가 항목은 유지됩니다.')
     if not meta['construction_type']:
         st.info('먼저 공사종류를 선택하면 단계별 작성 화면이 열립니다.')
         return
@@ -9282,7 +9737,7 @@ def ra_render_writer(actor):
     previous, next_step = st.columns(2)
     with previous: st.button('이전 단계', on_click=ra_go_step, args=(index-1,), disabled=index == 0, key='ra_previous', width='stretch')
     with next_step: st.button('다음 단계', on_click=ra_go_step, args=(index+1,), disabled=index == 5, key='ra_next', width='stretch')
-    st.caption('표준모델과 AI는 작성 후보를 제공합니다. 점수와 현장 적용·이행 여부는 참여 근로자와 담당자가 확인합니다.')
+    st.caption('표준모델과 AI는 작성 후보를 제공합니다. 점수와 현장 적용·이행 여부는 공단 작성자가 현장 확인자료를 바탕으로 확인합니다.')
     with st.expander('작성 내용 백업'):
         st.download_button('작성 내용 JSON 내려받기', json.dumps(ra_payload(), ensure_ascii=False, indent=2).encode(), '위험성평가_작성내용.json', 'application/json', key='ra_hub_writer_json', on_click='ignore')
         st.caption('다른 창에서 평가를 수정했다면 필요한 내용을 백업한 뒤 저장된 내용을 다시 불러오세요.')
@@ -9331,6 +9786,7 @@ def render_risk_back_bridge(actor):
 @st.fragment
 def render_risk_assessment(actor):
     if not actor or not st.session_state.get('password_correct'): return
+    st.markdown(RA_SITE_SELECT_CSS, unsafe_allow_html=True)
     ra_initialize(actor)
     st.session_state.setdefault('ra_hub_page', 'list')
     st.markdown('''<style>
