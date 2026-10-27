@@ -285,15 +285,15 @@ WORKSTATION_CSS = '''<style>
 .st-key-keco_main_menu [data-baseweb="tab-border"],
 .st-key-keco_main_menu [data-testid="stTabHighlight"],
 .st-key-keco_main_menu [data-testid="stTabBorder"],
-.st-key-keco_main_menu [role="tablist"] > [role="presentation"] {
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="presentation"] {
  display:none!important;visibility:hidden!important;height:0!important;
  background:transparent!important;border:0!important;box-shadow:none!important;
 }
-.st-key-keco_main_menu [role="tablist"] > [role="tab"][aria-selected],
-.st-key-keco_main_menu [role="tablist"] > [role="tab"][aria-selected]:is(:hover,:active,:focus) {
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"][aria-selected],
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"][aria-selected]:is(:hover,:active,:focus) {
  border-bottom:0!important;box-shadow:none!important;text-decoration:none!important;
 }
-.st-key-keco_main_menu [role="tablist"] > [role="tab"]::after {
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"]::after {
  content:none!important;display:none!important;height:0!important;
  background:transparent!important;border:0!important;box-shadow:none!important;animation:none!important;
 }
@@ -6086,39 +6086,39 @@ def render_safety_calendar(actor):
 
 st.markdown("""<style>
 
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(2)::before {content:"✓"!important;background:none!important;font-size:28px!important;line-height:32px!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:nth-of-type(2)::before {content:"✓"!important;background:none!important;font-size:28px!important;line-height:32px!important;}
 /* Main navigation only: scoped overrides beat legacy global tab styles. */
 .st-key-keco_main_menu {overflow:visible!important;}
-.st-key-keco_main_menu [role="tablist"] {display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:12px!important;padding:12px 5px 24px!important;height:auto!important;overflow:visible!important;background:transparent!important;border:0!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"] {position:relative!important;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:12px!important;width:100%!important;min-width:0!important;height:auto!important;min-height:100px!important;margin:0!important;padding:20px 12px!important;border:2px solid transparent!important;border-radius:16px!important;background:#008566!important;color:white!important;-webkit-text-fill-color:white!important;box-shadow:0 4px 10px rgba(0,85,62,.14)!important;transform:translateY(0) scale(1)!important;transition:transform 180ms ease,background-color 180ms ease,box-shadow 180ms ease,border-color 180ms ease!important;cursor:pointer!important;touch-action:manipulation;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"] p,.st-key-keco_main_menu [role="tablist"] [role="tab"] span {font-size:17px!important;line-height:1.45!important;font-weight:700!important;color:white!important;-webkit-text-fill-color:white!important;white-space:normal!important;word-break:keep-all!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]::before {content:""!important;display:block!important;width:32px!important;height:32px!important;flex:0 0 32px!important;background:transparent center/contain no-repeat!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]::after {content:none!important;animation:none!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"][aria-selected="true"] {background:#00543e!important;border-color:#a0e7c4!important;box-shadow:0 5px 14px rgba(0,66,45,.25),inset 0 -4px 0 #7edbb4!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) {display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:12px!important;padding:12px 5px 24px!important;height:auto!important;overflow:visible!important;background:transparent!important;border:0!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"] {position:relative!important;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:12px!important;width:100%!important;min-width:0!important;height:auto!important;min-height:100px!important;margin:0!important;padding:20px 12px!important;border:2px solid transparent!important;border-radius:16px!important;background:#008566!important;color:white!important;-webkit-text-fill-color:white!important;box-shadow:0 4px 10px rgba(0,85,62,.14)!important;transform:translateY(0) scale(1)!important;transition:transform 180ms ease,background-color 180ms ease,box-shadow 180ms ease,border-color 180ms ease!important;cursor:pointer!important;touch-action:manipulation;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"] p,.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"] span {font-size:17px!important;line-height:1.45!important;font-weight:700!important;color:white!important;-webkit-text-fill-color:white!important;white-space:normal!important;word-break:keep-all!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]::before {content:""!important;display:block!important;width:32px!important;height:32px!important;flex:0 0 32px!important;background:transparent center/contain no-repeat!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]::after {content:none!important;animation:none!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"][aria-selected="true"] {background:#00543e!important;border-color:#a0e7c4!important;box-shadow:0 5px 14px rgba(0,66,45,.25),inset 0 -4px 0 #7edbb4!important;}
 @media(hover:hover) {
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:hover {transform:translateY(-6px) scale(1.015)!important;background:#009977!important;border-color:#b0f2d6!important;box-shadow:0 14px 24px rgba(0,93,64,.3)!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:hover {transform:translateY(-6px) scale(1.015)!important;background:#009977!important;border-color:#b0f2d6!important;box-shadow:0 14px 24px rgba(0,93,64,.3)!important;}
 }
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:active {transform:translateY(2px) scale(.96)!important;background:#004b39!important;box-shadow:0 1px 3px rgba(0,65,45,.25)!important;transition-duration:70ms!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:focus-visible {outline:3px solid #176cb5!important;outline-offset:4px!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:active {transform:translateY(2px) scale(.96)!important;background:#004b39!important;box-shadow:0 1px 3px rgba(0,65,45,.25)!important;transition-duration:70ms!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:focus-visible {outline:3px solid #176cb5!important;outline-offset:4px!important;}
 .st-key-keco_main_menu [data-baseweb="tab-highlight"],.st-key-keco_main_menu [data-baseweb="tab-border"] {display:none!important;}
-@media(max-width:1100px) and (min-width:641px) { .st-key-keco_main_menu [role="tablist"] [role="tab"] {flex-direction:column!important;gap:10px!important;} }
+@media(max-width:1100px) and (min-width:641px) { .st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"] {flex-direction:column!important;gap:10px!important;} }
 @media(max-width:640px) {
-.st-key-keco_main_menu [role="tablist"] {grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"] {min-height:78px!important;padding:14px 8px!important;border-radius:13px!important;gap:9px!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"] p,.st-key-keco_main_menu [role="tablist"] [role="tab"] span {font-size:16px!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]::before {width:27px!important;height:27px!important;flex-basis:27px!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(6) {grid-column:auto;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) {grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"] {min-height:78px!important;padding:14px 8px!important;border-radius:13px!important;gap:9px!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"] p,.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"] span {font-size:16px!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]::before {width:27px!important;height:27px!important;flex-basis:27px!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:nth-of-type(6) {grid-column:auto;}
 }
 @media(prefers-reduced-motion:reduce) {
-.st-key-keco_main_menu [role="tablist"] [role="tab"],.st-key-keco_main_menu [role="tablist"] [role="tab"]:hover,.st-key-keco_main_menu [role="tablist"] [role="tab"]:active {transition:none!important;transform:none!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"],.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:hover,.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:active {transition:none!important;transform:none!important;}
 }
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(1)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%226%22%20y%3D%224%22%20width%3D%2220%22%20height%3D%2225%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M12%204V2h8v2M11%2013l3%203%207-7M11%2022h10%22%2F%3E%3C%2Fsvg%3E")!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(7)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%203v26h25M11%2023v-7M18%2023V9M25%2023V5%22%2F%3E%3C%2Fsvg%3E")!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(4)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%224%22%20y%3D%227%22%20width%3D%2224%22%20height%3D%2220%22%20rx%3D%226%22%2F%3E%3Cpath%20d%3D%22M16%203v4M10%2014v3M22%2014v3M11%2022h10M1%2013v8M31%2013v8%22%2F%3E%3C%2Fsvg%3E")!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(5)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%208h10l3%204h13v16H3zM3%208V5h11l3%203h12v4%22%2F%3E%3C%2Fsvg%3E")!important;}
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(6)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%226%22%20width%3D%2226%22%20height%3D%2223%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M9%202v8M23%202v8M3%2014h26M9%2020h3M19%2020h3M9%2025h3%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:nth-of-type(1)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%226%22%20y%3D%224%22%20width%3D%2220%22%20height%3D%2225%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M12%204V2h8v2M11%2013l3%203%207-7M11%2022h10%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:nth-of-type(7)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%203v26h25M11%2023v-7M18%2023V9M25%2023V5%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:nth-of-type(4)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%224%22%20y%3D%227%22%20width%3D%2224%22%20height%3D%2220%22%20rx%3D%226%22%2F%3E%3Cpath%20d%3D%22M16%203v4M10%2014v3M22%2014v3M11%2022h10M1%2013v8M31%2013v8%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:nth-of-type(5)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%208h10l3%204h13v16H3zM3%208V5h11l3%203h12v4%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:nth-of-type(6)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%226%22%20width%3D%2226%22%20height%3D%2223%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M9%202v8M23%202v8M3%2014h26M9%2020h3M19%2020h3M9%2025h3%22%2F%3E%3C%2Fsvg%3E")!important;}
 
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(2)::before {content:"✓"!important;background:none!important;font-size:28px!important;line-height:32px!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:nth-of-type(2)::before {content:"✓"!important;background:none!important;font-size:28px!important;line-height:32px!important;}
 </style>""", unsafe_allow_html=True)
 
 from html import escape as workstation_escape
@@ -6257,8 +6257,14 @@ def render_main_tab_home_bridge(actor):
 
 def ra_hub_focus_record(record_id):
     record_id = str(record_id)
-    st.session_state.ra_hub_focus_id = record_id
-    st.session_state.ra_hub_selection = [record_id]
+    selected = list(st.session_state.get('ra_hub_selection', []))
+    if record_id in selected:
+        selected.remove(record_id)
+        st.session_state.ra_hub_selection = selected
+        st.session_state.ra_hub_focus_id = None
+    else:
+        st.session_state.ra_hub_selection = [record_id]
+        st.session_state.ra_hub_focus_id = record_id
     st.session_state.ra_hub_delete_confirm = False
     st.session_state.pop('ra_hub_purge_ids', None)
     st.session_state.ra_hub_purge_ack = False
@@ -7778,7 +7784,7 @@ RA_KECO_EXAMPLES = [
          keywords=['굴착', '터파기', '도랑', '사면'], construction_types=['하수관로', '상수도', '도시침수'],
          category='작업환경 요인', hazards=['무너짐', '매몰'],
          factor='관로 굴착 내부에서 작업 중 굴착면 토사나 굴착 가장자리 적재물이 무너져 근로자가 매몰될 위험',
-         controls=[('위험 제거·저감', '지반·깊이·주변 하중과 지하매설물을 확인하고 안전한 굴착방법·순서를 검토한다.'),
+         controls=[('유해위험 제거·저감', '지반·깊이·주변 하중과 지하매설물을 확인하고 안전한 굴착방법·순서를 검토한다.'),
                    ('공학적 대책', '현장에 적합한 사면·흙막이와 배수 조치를 마련하고 굴착 가장자리의 토사·장비 하중을 관리한다.'),
                    ('관리적 대책', '강우·용수·균열 등 이상 징후를 점검하고 안전이 확인될 때까지 접근과 작업을 통제한다.')],
          source='첨부 공단 실무가이드 · 굴착 작업 · 책자 64~67쪽 (PDF 33~34쪽)'),
@@ -7829,7 +7835,7 @@ RA_KECO_EXAMPLES = [
          keywords=['반입', '하역', '운반', '적재'], construction_types=['소각/자원회수', '매립', '바이오'],
          category='기계(설비)적 요인', hazards=['부딪힘', '끼임'],
          factor='지게차로 자재를 높은 위치에 든 채 이동하거나 하중 중심이 불안정한 상태로 운반하여 전도·깔림이 발생할 위험',
-         controls=[('위험 제거·저감', '자재의 형상·무게·하중 중심에 맞는 운반방식과 작업경로를 정한다.'),
+         controls=[('유해위험 제거·저감', '자재의 형상·무게·하중 중심에 맞는 운반방식과 작업경로를 정한다.'),
                    ('관리적 대책', '이동 시 포크·화물을 안전한 낮은 위치로 유지하고 작업계획, 운전자 교육, 안전벨트 착용 및 보행자 접근통제를 확인한다.')],
          incident='2020년 폐기물 처리시설에서 비산재 톤백을 높은 위치에 든 지게차가 전도한 사례를 바탕으로 합니다.',
          source='첨부 공단 실무가이드 · 지게차 전도 사고사례 · 책자 52~53쪽 (PDF 27쪽)'),
@@ -7852,7 +7858,7 @@ RA_KECO_EXAMPLES = [
          keywords=['내부', '맨홀', '탱크', '피트', '추진', '준설', '저장조'], construction_types=['하수관로', '하수처리', '폐수처리', '바이오', '가축분뇨'],
          category='작업환경 요인', hazards=['질식', '산소결핍', '유해물질'],
          factor='추진관·탱크·피트 등 내부 작업장에 산소결핍 또는 유해가스가 존재해 진입 작업자와 무방비 구조자가 질식·중독될 위험',
-         controls=[('위험 제거·저감', '내부에 들어가지 않고 작업할 수 있는 방법과 위험물질·에너지 유입 차단을 먼저 검토한다.'),
+         controls=[('유해위험 제거·저감', '내부에 들어가지 않고 작업할 수 있는 방법과 위험물질·에너지 유입 차단을 먼저 검토한다.'),
                    ('공학적 대책', '산소·유해가스 측정 및 적절한 환기로 진입 가능 조건을 확인한다.'),
                    ('관리적 대책', '밀폐공간 작업프로그램·작업허가·감시·통신·구조계획을 마련한다. 안전이 확인되지 않으면 진입하거나 무방비로 구조하지 않는다.')],
          source='첨부 공단 실무가이드 · 추진공사·설비 및 방수 작업 · 책자 104~105·122~123·128~129쪽 (PDF 53·62·65쪽) 기반 검토 예시'),
@@ -7860,7 +7866,7 @@ RA_KECO_EXAMPLES = [
          keywords=['용접', '용단', '불꽃', '연마', '배관'], construction_types=['소각/자원회수', '하수처리', '폐수처리', '바이오'],
          category='화학(물질)적 요인', hazards=['화재', '폭발', '화상'],
          factor='용접·용단의 불꽃과 열이 주변 가연물·인화성 물질에 전달되거나 인화성 분위기에 점화해 화재·폭발이 발생할 위험',
-         controls=[('위험 제거·저감', '가연물·인화성 물질을 제거하고 도장·방수 등 인접 작업과의 동시 수행을 조정한다.'),
+         controls=[('유해위험 제거·저감', '가연물·인화성 물질을 제거하고 도장·방수 등 인접 작업과의 동시 수행을 조정한다.'),
                    ('공학적 대책', '불티 비산방지·환기·소화설비를 마련하고 인접·하부 공간의 위험을 확인한다.'),
                    ('관리적 대책', '화기작업 허가·감시·비상대피 절차를 정하고 종료 후 잔불과 인접 구역을 확인한다.')],
          source='첨부 공단 실무가이드 · 설비·배관 작업 · 책자 122~123쪽 (PDF 62쪽) 기반 검토 예시'),
@@ -7868,7 +7874,7 @@ RA_KECO_EXAMPLES = [
          keywords=['도장', '도료', '방수', '방식', '라이닝'], construction_types=[],
          category='화학(물질)적 요인', hazards=['유해물질', '질식', '화재'],
          factor='도장·방수 작업에서 유기용제 증기를 흡입하거나 인화성 증기가 축적되어 중독·질식·화재가 발생할 위험',
-         controls=[('위험 제거·저감', 'MSDS와 작업조건을 확인하고 유해성이 낮은 자재·작업방법으로 변경할 수 있는지 검토한다.'),
+         controls=[('유해위험 제거·저감', 'MSDS와 작업조건을 확인하고 유해성이 낮은 자재·작업방법으로 변경할 수 있는지 검토한다.'),
                    ('공학적 대책', '작업장 환기·유해가스 확인과 점화원 분리, 적정 보관 및 누출 방지 조치를 한다.'),
                    ('관리적 대책', '화기작업과 동시작업을 통제하고 취급자 교육·표시·작업허가 필요 여부를 확인한다.'),
                    ('개인보호구', '물질과 노출조건에 적합한 보호구를 선정한다. 보호구만으로 산소결핍 공간의 진입을 허용하지 않는다.')],
@@ -7893,7 +7899,7 @@ RA_SEVERITY = [
     ('최대', '사망·영구적 근로불능 또는 장애가 남는 부상·질병'),
 ]
 RA_CATEGORIES = ['기계(설비)적 요인', '전기적 요인', '화학(물질)적 요인', '생물학적 요인', '작업특성 요인', '작업환경 요인']
-RA_CONTROL_TYPES = ['위험 제거·저감', '공학적 대책', '관리적 대책', '개인보호구']
+RA_CONTROL_TYPES = ['유해위험 제거·저감', '공학적 대책', '관리적 대책', '개인보호구']
 RA_ORIGINS = ['사업장 순회점검', '근로자 청취·제안', '아차사고', '안전보건자료·체크리스트', '공단 가이드 사례', 'AI 작성 후보', '직접 입력']
 RA_CHECK_ITEMS = [
     '작업장 유해·위험요인 및 개선사항 고지', '개선 후 조치 유지·관리',
@@ -8270,7 +8276,7 @@ def ra_normalize_payload(payload, actor, require_review=True):
         if row['origin'] not in RA_ORIGINS: row['origin'] = '직접 입력'
         if row['status'] not in ('미착수', '진행 중', '완료·현장 확인'): row['status'] = '미착수'
         if row['budget_note'] not in ('미정', '추가 비용 최소화', '50만원 이내', '100만원 이내', '500만원 이내', '직접 입력'): row['budget_note'] = '직접 입력'
-        row['control_types'] = [v for v in row['control_types'] if v in RA_CONTROL_TYPES]
+        row['control_types'] = [ra_canonical_control(v) for v in row['control_types'] if ra_canonical_control(v) in RA_CONTROL_TYPES]
         rows.append(row)
     meta['trades'] = list(dict.fromkeys(meta['trades']+[r['trade'] for r in rows if r['trade']]))
     return dict(schema_version=3, meta=meta, rows=rows, final=bool(not require_review and payload.get('final') and meta.get('report_mode') == '출력본'))
@@ -8292,9 +8298,15 @@ def ra_initialize(actor):
     if 'ra_entry' not in st.session_state:
         st.session_state.ra_entry = dict(work='', category=None, origin='사업장 순회점검', hazards=[],
                                          custom_hazard='', direct='', source='', consent=False, example=None)
+    st.session_state.ra_entry.setdefault('manual_factors', '')
     for row in st.session_state.ra_rows:
         for key, value in ra_default_row().items():
             if key not in row: row[key] = value.copy() if isinstance(value, list) else value
+    for row in st.session_state.ra_rows:
+        row['control_types'] = [ra_canonical_control(value) for value in row.get('control_types', [])]
+        key = 'ra_edit_'+row['id']+'_control_types'
+        if key in st.session_state:
+            st.session_state[key] = [ra_canonical_control(value) for value in st.session_state[key]]
     st.session_state.ra_meta['site'] = canonical_site_label(st.session_state.ra_meta.get('site', ''))
     st.session_state.ra_meta['assessment_name'] = canonical_site_label(st.session_state.ra_meta.get('assessment_name', ''))
     for key in ('ra_edit_meta_site', 'ra_hub_filter_site', 'ra_hub_new_site', 'ra_hub_edit_site', 'ra_hub_filter_name', 'ra_site_choice'):
@@ -8381,10 +8393,14 @@ def ra_set_field(row_id, field, value):
 def ra_go_step(number):
     st.session_state.ra_step = RA_STEPS[max(0, min(5, number))]
     st.session_state.ra_writer_step = st.session_state.ra_step
+    if st.session_state.ra_step != RA_STEPS[1]:
+        st.session_state.pop('ra_report_correction', None)
 
 
 def ra_remember_step():
     st.session_state.ra_writer_step = st.session_state.ra_step
+    if st.session_state.ra_step != RA_STEPS[1]:
+        st.session_state.pop('ra_report_correction', None)
 
 
 def ra_select_tasks():
@@ -8489,36 +8505,7 @@ def ra_text_ready(value):
 
 
 def ra_validate(meta, rows, final=False):
-    errors = []
-    if not rows: errors.append('② 평가 항목을 한 개 이상 추가하세요.')
-    if final:
-        for field,label in [('site','사업장명'),('department','담당부서'),('evaluator','작성자(공단 안전관리자)'),('work_scope','평가 대상 작업 개요')]:
-            if not ra_text_ready(meta.get(field)): errors.append('① '+label+'을 입력하세요.')
-        if not meta.get('date'): errors.append('① 평가일을 입력하세요.')
-        if meta.get('kind') == '수시평가' and not ra_text_ready(meta.get('trigger')): errors.append('① 수시평가 실시 사유를 입력하세요.')
-        if not meta.get('criteria_confirmed'): errors.append('① 공단 빈도·강도 기준의 현장 적용 여부를 확인하세요.')
-    for number, row in enumerate(rows, 1):
-        prefix = f'{number}번 '
-        if not str(row.get('factor', '')).strip(): errors.append('② '+prefix+'위험발생상황이 비어 있습니다.')
-        for field, maximum in [('frequency', 5), ('severity', 4), ('residual_f', 5), ('residual_s', 4)]:
-            value = row.get(field, 0)
-            if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= maximum:
-                errors.append('③ '+prefix+'점수 범위를 확인하세요.')
-        if final:
-            if not row.get('category') or not ra_text_ready(row.get('work')) or not ra_text_ready(row.get('factor')):
-                errors.append('② '+prefix+'유해위험요인·작업조건·발생상황을 작성하세요.')
-            if not ra_score(row) or not ra_text_ready(row.get('reason')):
-                errors.append('③ '+prefix+'빈도·강도와 판단 사유를 입력하세요.')
-            if not ra_text_ready(row.get('existing')): errors.append('③ '+prefix+'현재 안전조치를 입력하세요. 없다면 없음을 명시하세요.')
-            if ra_needs_measures(row):
-                if not all(ra_text_ready(row.get(k)) for k in ('measures', 'owner', 'deadline')) or not row.get('control_types'):
-                    errors.append('④ '+prefix+'감소대책·대책방법·담당자·기한을 입력하세요.')
-            if row.get('status') == '완료·현장 확인':
-                if not all(ra_text_ready(row.get(k)) for k in ('verified_by', 'verified_date', 'evidence')) or not ra_score(row, True):
-                    errors.append('⑤ '+prefix+'완료 확인자·일자·증빙 및 재평가 점수를 입력하세요.')
-                if ra_score(row, True) >= 8 and not ra_text_ready(row.get('followup')):
-                    errors.append('⑤ '+prefix+'잔여 위험에 대한 추가 개선계획을 입력하세요.')
-    return list(dict.fromkeys(errors))
+    return [issue['message'] for issue in ra_validation_issues(meta, rows, final)]
 
 
 def ra_progress(meta, rows):
@@ -8732,16 +8719,15 @@ RA_WORKFLOW_CSS = '<style>\n.st-key-ra_prep_dual [data-testid="stColumn"] {min-w
 
 RA_CATEGORY_GUIDE = {'기계(설비)적 요인': {'description': '기계·설비의 움직임이나 구조, 불안정한 작업면에서 생기는 위험입니다.', 'examples': '굴착기 회전반경의 충돌, 회전체 끼임, 자재 낙하, 개구부 추락.'}, '전기적 요인': {'description': '전기 에너지와의 접촉 또는 방전에서 생기는 위험입니다.', 'examples': '임시전선 손상에 따른 감전, 전기 아크, 정전기 및 전기적 화재.'}, '화학(물질)적 요인': {'description': '물질의 유해성이나 반응·누출 때문에 생기는 위험입니다.', 'examples': '유해가스·용제 증기·용접 흄·분진 노출, 화학물질 화재·폭발.'}, '생물학적 요인': {'description': '미생물·바이러스·동식물과의 접촉에서 생기는 감염·알레르기 등의 위험입니다.', 'examples': '하수·오니 취급, 오염된 물·토양 접촉, 곤충·동물 접촉.'}, '작업특성 요인': {'description': '작업방법·자세·부담이나 작업 중 노출 조건에서 생기는 위험입니다.', 'examples': '중량물 운반, 반복 작업, 부자연스러운 자세, 소음·진동, 산소결핍.'}, '작업환경 요인': {'description': '작업 장소와 주변 환경·운영 조건에서 생기는 위험입니다.', 'examples': '부족한 조명, 좁은 통로, 인접 작업자와 혼재작업, 고온·한랭.'}}
 
-def ra_render_criteria_reference():
+def ra_render_criteria_reference(kind):
     from html import escape
-    frequency = ''.join('<tr><th scope="row">'+str(number)+'점<span>'+escape(value[0])+'</span></th><td>'+escape(value[1])+'<small>예시 · '+escape(value[2])+'</small></td></tr>'
-                        for number, value in enumerate(RA_FREQUENCY, 1))
-    severity = ''.join('<tr><th scope="row">'+str(number)+'점<span>'+escape(value[0])+'</span></th><td>'+escape(value[1])+'</td></tr>'
+    if kind == 'frequency':
+        rows = ''.join('<tr><th scope="row">'+str(number)+'점<span>'+escape(value[0])+'</span></th><td>'+escape(value[1])+'<small>예시 · '+escape(value[2])+'</small></td></tr>'
+                       for number, value in enumerate(RA_FREQUENCY, 1))
+    else:
+        rows = ''.join('<tr><th scope="row">'+str(number)+'점<span>'+escape(value[0])+'</span></th><td>'+escape(value[1])+'</td></tr>'
                        for number, value in enumerate(RA_SEVERITY, 1))
-    st.markdown('**빈도 기준**')
-    st.markdown('<table class="ra-criteria-table"><tbody>'+frequency+'</tbody></table>', unsafe_allow_html=True)
-    st.markdown('**강도 기준**')
-    st.markdown('<table class="ra-criteria-table"><tbody>'+severity+'</tbody></table>', unsafe_allow_html=True)
+    st.markdown('<table class="ra-criteria-table"><tbody>'+rows+'</tbody></table>', unsafe_allow_html=True)
 
 def ra_hazard_choices_commit():
     entry = st.session_state.ra_entry
@@ -8793,7 +8779,6 @@ def ra_render_category_reference(category):
             st.write(details['description'])
             st.markdown('**현장 예시**')
             st.write(details['examples'])
-    st.markdown('[분류 안내 · 안전보건공단 위험성평가 지침 해설서](https://www.kosha.or.kr/kosha/business/PublicInstitutionAssessment_Notice.do?articleNo=415100&attachNo=234149&mode=download)')
 
 def ra_deadline_input(row):
     value = row.get('deadline', '')
@@ -8807,6 +8792,171 @@ def ra_deadline_input(row):
                   on_change=ra_commit, args=(row['id'], 'deadline', key))
     if value and initial is None:
         st.caption('기존 입력 기한 · '+str(value))
+
+RA_REVIEW_CSS = '<style>\n.st-key-risk_assessment .st-key-ra_reference_tabs [role="tablist"] {display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;gap:10px!important;padding:0 0 12px!important;grid-template-columns:none!important;width:100%!important;overflow:visible!important;}\n.st-key-risk_assessment .st-key-ra_reference_tabs [role="tab"] {display:flex!important;flex-direction:row!important;flex:1 1 auto!important;width:auto!important;min-width:0!important;min-height:48px!important;height:auto!important;padding:12px 10px!important;margin:0!important;gap:0!important;box-sizing:border-box!important;transform:none!important;box-shadow:none!important;}\n.st-key-risk_assessment .st-key-ra_reference_tabs [role="tab"]::before,.st-key-risk_assessment .st-key-ra_reference_tabs [role="tab"]::after {display:none!important;content:none!important;}\n.st-key-risk_assessment .st-key-ra_reference_tabs [role="tab"] p {white-space:nowrap!important;word-break:normal!important;writing-mode:horizontal-tb!important;font-size:14px!important;line-height:1.5!important;}\n.st-key-risk_assessment .st-key-ra_ident_reference {box-sizing:border-box!important;padding:18px!important;writing-mode:horizontal-tb!important;}\n.st-key-risk_assessment .st-key-ra_ident_reference [data-testid="stExpander"] summary {gap:12px!important;align-items:center!important;padding:12px!important;min-height:48px!important;}\n.st-key-risk_assessment .st-key-ra_ident_reference [data-testid="stExpander"] summary p {font-size:15px!important;white-space:nowrap!important;word-break:normal!important;writing-mode:horizontal-tb!important;}\n.st-key-risk_assessment .st-key-ra_ident_reference p {line-height:1.75!important;word-break:keep-all!important;overflow-wrap:break-word!important;}\n.st-key-risk_assessment .st-key-ra_ident_reference [class*="st-key-ra_model_preview_"] {border:1px solid #d5dfd4!important;border-radius:12px!important;background:#fff!important;padding:18px!important;gap:12px!important;}\n.st-key-risk_assessment .st-key-ra_prep_reference,\n.st-key-risk_assessment .st-key-ra_prep_dual [data-testid="stLayoutWrapper"]:has(> .st-key-ra_prep_reference) {height:auto!important;min-height:0!important;max-height:calc(100dvh - 100px)!important;overflow-y:auto!important;}\n.st-key-risk_assessment .st-key-ra_report_missing [data-testid="stButton"] button {justify-content:flex-start!important;text-align:left!important;min-height:48px!important;height:auto!important;padding:12px 16px!important;border:1px solid #cdded1!important;border-radius:10px!important;}\n.st-key-risk_assessment .st-key-ra_report_missing [data-testid="stButton"] button p {white-space:normal!important;word-break:keep-all!important;text-align:left!important;line-height:1.6!important;}\n.ra-issue-focus {outline:2px solid #16825d!important;outline-offset:4px!important;border-radius:8px!important;}\n.st-key-risk_assessment .st-key-ra_measures_final {border:1px solid #d5dfd4!important;border-radius:12px!important;background:#fffdf8!important;padding:18px!important;}\n@media(max-width:1099px){\n .st-key-risk_assessment .st-key-ra_prep_reference,\n .st-key-risk_assessment .st-key-ra_prep_dual [data-testid="stLayoutWrapper"]:has(> .st-key-ra_prep_reference) {height:auto!important;max-height:none!important;overflow:visible!important;}\n .st-key-risk_assessment .st-key-ra_ident_reference,\n .st-key-risk_assessment .st-key-ra_ident_dual [data-testid="stLayoutWrapper"]:has(> .st-key-ra_ident_reference) {height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;}\n .st-key-risk_assessment .st-key-ra_reference_tabs [role="tablist"] {gap:8px!important;}\n .st-key-risk_assessment .st-key-ra_reference_tabs [role="tab"] {padding:10px 8px!important;}\n}\n\n</style>'
+
+def ra_canonical_control(value):
+    return '유해위험 제거·저감' if value == '위험 제거·저감' else value
+
+def ra_add_entry_factors(data, source, signature, chosen, manual_text):
+    if not data.get('trade') or not data.get('work') or data.get('category') not in RA_CATEGORIES or not data.get('hazards'):
+        raise ValueError('세부작업, 현장조건, 유해위험요인과 재해유형을 입력해 주세요.')
+    manual = list(dict.fromkeys(line.strip() for line in str(manual_text or '').splitlines() if line.strip()))
+    cache = st.session_state.get('ra_factors', {})
+    if chosen and cache.get('sig') != signature:
+        raise ValueError('입력 조건이 바뀌었습니다. AI 후보를 다시 받거나 유해위험요인을 직접 입력해 주세요.')
+    ai = list(dict.fromkeys(value.strip() for value in chosen if value in cache.get('items', []) and value.strip()))
+    if not manual and not ai:
+        raise ValueError('유해위험요인을 직접 입력하거나 AI 후보를 선택해 주세요.')
+    rows = st.session_state.ra_rows
+    existing = {row['factor'] for row in rows if row['trade'] == data['trade'] and row['work'] == data['work']}
+    manual_pending = [value for value in manual if value not in existing]
+    ai_pending = [value for value in ai if value not in existing and value not in manual]
+    if len(rows)+len(manual_pending)+len(ai_pending) > 200:
+        raise ValueError('한 평가에 최대 200개 항목까지 작성할 수 있습니다.')
+    before = len(rows)
+    if manual_pending:
+        ra_add_factors(data['trade'], data['work'], data['hazards'], data['category'], data.get('origin') or '직접 입력',
+                       manual_pending, '', '직접 작성 · 확인 방법: '+str(data.get('origin', '')))
+    if ai_pending:
+        ra_add_factors(data['trade'], data['work'], data['hazards'], data['category'], 'AI 작성 후보', ai_pending,
+                       source, 'AI 작성 후보 · 입력한 확인 방법: '+str(data.get('origin', ''))+' · 현장 확인 필요')
+    return len(rows)-before
+
+def ra_validation_issues(meta, rows, final=False):
+    issues = []
+    def add(step, message, fields, row=None):
+        issues.append(dict(step=step, message=message, fields=list(fields), row_id=row['id'] if row else None))
+    if not rows:
+        add(1, '② 평가 항목을 한 개 이상 추가하세요.', ['work', 'manual_factors'])
+    if final:
+        for field, label in [('site','사업장명'),('department','담당부서'),('evaluator','작성자(공단 안전관리자)'),('work_scope','평가 대상 작업 개요')]:
+            if not ra_text_ready(meta.get(field)):
+                add(0, '① '+label+'을 입력하세요.', [field])
+        if not meta.get('date'):
+            add(0, '① 평가일을 입력하세요.', ['date'])
+        if meta.get('kind') == '수시평가' and not ra_text_ready(meta.get('trigger')):
+            add(0, '① 수시평가 실시 사유를 입력하세요.', ['trigger'])
+        if not meta.get('criteria_confirmed'):
+            add(0, '① 공단 빈도·강도 기준의 현장 적용 여부를 확인하세요.', ['criteria_confirmed'])
+    for number, row in enumerate(rows, 1):
+        prefix = f'{number}번 '
+        if not str(row.get('factor', '')).strip():
+            add(1, '② '+prefix+'위험발생상황이 비어 있습니다.', ['factor'], row)
+        for field, maximum in [('frequency',5),('severity',4),('residual_f',5),('residual_s',4)]:
+            value = row.get(field, 0)
+            if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= maximum:
+                step = 4 if field.startswith('residual_') else 2
+                add(step, ('⑤ ' if step == 4 else '③ ')+prefix+'점수 범위를 확인하세요.', [field], row)
+        if final:
+            fields = [field for field in ('category','work','factor') if not ra_text_ready(row.get(field))]
+            if not row.get('category') or not ra_text_ready(row.get('work')) or not ra_text_ready(row.get('factor')):
+                add(1, '② '+prefix+'유해위험요인·작업조건·발생상황을 작성하세요.', fields, row)
+            if not ra_score(row) or not ra_text_ready(row.get('reason')):
+                fields = [field for field in ('frequency','severity') if not row.get(field)]
+                if not ra_text_ready(row.get('reason')):
+                    fields.append('reason')
+                add(2, '③ '+prefix+'빈도·강도와 판단 사유를 입력하세요.', fields or ['frequency'], row)
+            if not ra_text_ready(row.get('existing')):
+                add(2, '③ '+prefix+'현재 안전조치를 입력하세요. 없다면 없음을 명시하세요.', ['existing'], row)
+            if ra_needs_measures(row):
+                fields = [field for field in ('measures','owner','deadline') if not ra_text_ready(row.get(field))]
+                if not row.get('control_types'):
+                    fields.insert(1, 'control_types')
+                if fields:
+                    add(3, '④ '+prefix+'감소대책·대책방법·담당자·기한을 입력하세요.', fields, row)
+            if row.get('status') == '완료·현장 확인':
+                fields = [field for field in ('verified_by','verified_date','evidence') if not ra_text_ready(row.get(field))]
+                if not ra_score(row, True):
+                    fields.extend(field for field in ('residual_f','residual_s') if not row.get(field))
+                if fields:
+                    add(4, '⑤ '+prefix+'완료 확인자·일자·증빙 및 재평가 점수를 입력하세요.', fields, row)
+                if ra_score(row, True) >= 8 and not ra_text_ready(row.get('followup')):
+                    add(4, '⑤ '+prefix+'잔여 위험에 대한 추가 개선계획을 입력하세요.', ['followup'], row)
+    unique = {}
+    for issue in issues:
+        unique.setdefault(issue['message'], issue)
+    return list(unique.values())
+
+def ra_jump_to_issue(issue, actor, record_id):
+    import uuid
+    if not _perf_actor_allowed(actor) or record_id != st.session_state.get('ra_active_record_id'):
+        return
+    index = issue.get('step')
+    if type(index) is not int or index not in range(5):
+        return
+    row_id = issue.get('row_id')
+    if row_id and not any(row['id'] == row_id for row in st.session_state.ra_rows):
+        return
+    fields = issue.get('fields') or ['work']
+    ra_go_step(index)
+    st.session_state.pop('ra_report_correction', None)
+    if row_id:
+        stage = {1:'identify',2:'rating',3:'measures',4:'execution'}.get(index)
+        if stage:
+            st.session_state['ra_active_'+stage] = row_id
+        if index == 1:
+            st.session_state.ra_report_correction = dict(record_id=record_id, row_id=row_id, fields=fields)
+    field = fields[0]
+    target = row_id or ('meta' if index == 0 else 'entry')
+    key = 'ra_edit_'+target+'_'+field+('_date' if field == 'deadline' and row_id else '')
+    st.session_state.ra_issue_focus = dict(token=uuid.uuid4().hex, key=key,
+                                          expand=['강도 기준'] if field == 'criteria_confirmed' else [])
+
+def ra_return_to_report():
+    st.session_state.pop('ra_report_correction', None)
+    ra_go_step(5)
+
+def ra_render_report_correction():
+    correction = st.session_state.get('ra_report_correction')
+    if not correction or correction.get('record_id') != st.session_state.get('ra_active_record_id'):
+        return False
+    row = next((row for row in st.session_state.ra_rows if row['id'] == correction.get('row_id')), None)
+    if row is None:
+        st.session_state.pop('ra_report_correction', None)
+        return False
+    with st.container(border=True, key='ra_report_correction'):
+        st.markdown('#### 보고서 누락 항목 보완')
+        st.caption(row['trade'])
+        for field in correction.get('fields', []):
+            if field == 'work':
+                ra_field('세부작업에 대한 현장조건 입력', 'work', row['id'], 'area')
+            elif field == 'category':
+                ra_field('유해위험요인', 'category', row['id'], 'select', ['']+RA_CATEGORIES,
+                         format_func=lambda value:value or '유해위험요인 선택')
+            elif field == 'factor':
+                ra_field('유해위험발생상황', 'factor', row['id'], 'area')
+        st.button('보고서 화면으로 돌아가기', key='ra_correction_back', on_click=ra_return_to_report, width='stretch')
+    return True
+
+def ra_render_validation_links(issues, actor):
+    if not issues:
+        return
+    record_id = st.session_state.get('ra_active_record_id')
+    with st.container(key='ra_report_missing'):
+        st.markdown('#### 미작성 항목 바로 작성')
+        st.caption('항목을 누르면 해당 단계와 평가 항목으로 이동합니다.')
+        for issue in issues:
+            key = 'ra_issue_'+ra_hash([record_id, issue['step'], issue['row_id'], issue['message']])[:24]
+            st.button(issue['message']+'  →', key=key, on_click=ra_jump_to_issue,
+                      args=(issue, actor, record_id), width='stretch')
+
+def ra_render_issue_focus():
+    command = st.session_state.pop('ra_issue_focus', None)
+    if not command:
+        return
+    script = '''<script>(()=>{let w;try{w=window.parent;void w.document.body;}catch(e){return;}
+      const command=__COMMAND__;let tries=0;
+      const focus=()=>{if(w.__kecoIssueFocus===command.token)return;
+        for(const label of command.expand||[])for(const detail of w.document.querySelectorAll('details')){
+          const summary=detail.querySelector('summary');if(summary&&summary.textContent.includes(label)&&!detail.open)summary.click();}
+        const target=w.document.querySelector('.st-key-'+w.CSS.escape(command.key));
+        if(!target||!target.getBoundingClientRect().height){if(++tries<40)w.setTimeout(focus,100);return;}
+        w.__kecoIssueFocus=command.token;target.classList.add('ra-issue-focus');
+        target.scrollIntoView({block:'center',behavior:'auto'});
+        const input=target.querySelector('textarea,input,button');if(input)try{input.focus({preventScroll:true});}catch(e){}
+      };w.setTimeout(focus,100);})();</script>'''.replace('__COMMAND__', json.dumps(command))
+    components.html(script, height=0, scrolling=False)
 
 def ra_render_preparation(meta, actor):
     st.markdown(RA_WORKFLOW_CSS, unsafe_allow_html=True)
@@ -8831,12 +8981,14 @@ def ra_render_preparation(meta, actor):
             st.markdown('#### 평가할 공종 및 세부작업')
             ra_select_tasks()
         with reference:
-            with st.container(height=680, border=True, key='ra_prep_reference'):
+            with st.container(border=True, key='ra_prep_reference'):
                 st.markdown('#### 공단 빈도·강도 기준')
-                st.caption(RA_PROCEDURE+' · 붙임 2')
-                ra_render_criteria_reference()
-                st.write('**8점 이상 감소대책 수립 · 16점 이상 즉시 작업 중지·즉시 안전조치**')
-                ra_field('위 기준의 현장 적용 여부를 확인했습니다.', 'criteria_confirmed', kind='check')
+                with st.expander('빈도 기준'):
+                    ra_render_criteria_reference('frequency')
+                with st.expander('강도 기준'):
+                    ra_render_criteria_reference('severity')
+                    st.write('**8점 이상 감소대책 수립 · 16점 이상 즉시 작업 중지·즉시 안전조치**')
+                    ra_field('위 기준의 현장 적용 여부를 확인했습니다.', 'criteria_confirmed', kind='check')
 
 
 def ra_examples_for(trade, construction_type):
@@ -8880,6 +9032,8 @@ def ra_add_identification_candidates(data, source, signature, chosen):
 def ra_render_identification(meta):
     st.markdown(RA_IDENTIFICATION_CSS, unsafe_allow_html=True)
     st.markdown(RA_WORKFLOW_CSS, unsafe_allow_html=True)
+    if ra_render_report_correction():
+        return
     st.info('세부작업과 현장 조건을 입력하고, 표준모델을 참고해 유해위험요인을 파악합니다.')
     tasks = list(dict.fromkeys(st.session_state.get('ra_applied_tasks', [])+meta['trades']))
     if not tasks:
@@ -8905,7 +9059,7 @@ def ra_render_identification(meta):
                                   placeholder='목록에 없는 재해유형을 입력하세요.') if other else ''
                 ai_controls = st.container()
         with reference:
-            with st.container(height=680, border=True, key='ra_ident_reference'):
+            with st.container(height=760, border=True, key='ra_ident_reference'):
                 with st.container(key='ra_reference_tabs'):
                     model_tab, category_tab = st.tabs(['표준모델 참고', '유해위험요인'])
                 with model_tab:
@@ -8935,9 +9089,11 @@ def ra_render_identification(meta):
                 candidate_key = 'ra_candidate_'+ra_hash([signature, candidate])[:20]
                 if st.checkbox(candidate, key=candidate_key):
                     chosen.append(candidate)
-            if st.button('선택한 유해위험요인을 평가표에 추가', disabled=not bool(chosen) or bool(missing), key='ra_add', width='stretch'):
+            manual_text = ra_field('유해위험요인 직접 입력', 'manual_factors', 'entry', 'area', height=110, max_chars=10000,
+                                   placeholder='AI를 사용하지 않아도 입력할 수 있습니다. 한 줄에 유해위험요인 하나를 작성하세요.')
+            if st.button('유해위험요인을 평가표에 추가', disabled=bool(missing), key='ra_add', width='stretch'):
                 try:
-                    count = ra_add_identification_candidates(data, source, signature, chosen)
+                    count = ra_add_entry_factors(data, source, signature, chosen, manual_text)
                     st.success(f'평가표에 {count}개 항목을 추가했습니다.' if count else '같은 작업조건과 유해위험요인이 이미 등록되어 있습니다.')
                 except ValueError as exc:
                     st.warning(str(exc))
@@ -8966,17 +9122,17 @@ def ra_render_rating(meta):
 
 
 def ra_render_measures(meta):
-    st.info('위험 제거·저감 → 공학적 대책 → 관리적 대책 → 개인보호구 순으로 검토하고, 담당자와 기한을 정합니다.')
+    st.info('유해위험 제거·저감 → 공학적 대책 → 관리적 대책 → 개인보호구 순으로 검토하고, 담당자와 기한을 정합니다.')
     row = ra_active_row('measures')
     if not row: return
     st.write(f'**{ra_decision(row, meta)}**')
     examples = ra_examples_for(row['trade'], meta['construction_type'])
-    with st.expander('공단 감소대책 예시', expanded=True):
+    with st.expander('1\\. 공단 감소대책 참고', expanded=True):
         eid = st.selectbox('대책 참고 사례', [v['id'] for v in examples], format_func=lambda value: next(v['title'] for v in examples if v['id'] == value), key='ra_measures_example_'+row['id'])
         example = next(v for v in examples if v['id'] == eid)
         for kind, detail in example['controls']: st.write('• '+kind+' / '+detail)
         st.button('이 대책을 작성 초안에 추가', on_click=ra_fill_measures, args=(row['id'], eid), key='ra_measures_template_'+row['id'])
-    with st.expander('계획 예산·AI 대책 작성 도움'):
+    with st.expander('2\\. 계획 예산·AI 대책 작성 참고'):
         band = ra_field('이 항목의 개선 예산', 'budget_note', row['id'], 'select', ['미정', '추가 비용 최소화', '50만원 이내', '100만원 이내', '500만원 이내', '직접 입력'])
         if band == '직접 입력': ra_field('계획 예산 상한 (원)', 'budget', row['id'], 'number', min_value=0, step=10000)
         else: row['budget'] = {'미정': 0, '추가 비용 최소화': 0, '50만원 이내': 500000, '100만원 이내': 1000000, '500만원 이내': 5000000}[band]
@@ -8997,11 +9153,13 @@ def ra_render_measures(meta):
         pick_key = 'ra_measure_picks_'+row['id']+'_'+sig[:10]
         picked = st.multiselect('반영할 대책 후보', options, key=pick_key)
         st.button('선택 대책을 작성 내용에 추가', disabled=not picked, on_click=ra_apply_ai_measures, args=(row['id'], pick_key), key='ra_measure_apply_'+row['id'])
-    ra_field('감소대책 방법', 'control_types', row['id'], 'multi', RA_CONTROL_TYPES)
-    ra_field('최종 감소대책', 'measures', row['id'], 'area', placeholder='무엇을 어떻게 개선하는지, 작업 전 조건·검증방법을 구체적으로 작성')
-    left, right = st.columns(2)
-    with left: ra_field('개선 담당자', 'owner', row['id'])
-    with right: ra_deadline_input(row)
+    with st.container(key='ra_measures_final'):
+        st.markdown('#### 3. 최종 감소대책 작성')
+        ra_field('감소대책 방법', 'control_types', row['id'], 'multi', RA_CONTROL_TYPES)
+        ra_field('최종 감소대책', 'measures', row['id'], 'area', placeholder='무엇을 어떻게 개선하는지, 작업 전 조건·검증방법을 구체적으로 작성')
+        left, right = st.columns(2)
+        with left: ra_field('개선 담당자', 'owner', row['id'])
+        with right: ra_deadline_input(row)
 
 
 def ra_render_execution(meta):
@@ -9188,17 +9346,16 @@ def ra_render_sharing(meta, actor):
         ra_field('보완사항','supplement',kind='area')
         ra_field('보완 완료 예정일','supplement_deadline')
     with st.expander('보고서 평가표 미리보기',expanded=True):ra_overview(meta,st.session_state.ra_rows)
-    missing=ra_validate(meta,st.session_state.ra_rows,True)
+    missing=ra_validation_issues(meta,st.session_state.ra_rows,True)
     if missing:
         st.warning(f'출력본 작성 전 확인할 항목 {len(missing)}개')
-        for error in missing:st.write('• '+error)
     else:st.success('주요 작성 항목을 입력했습니다. 출력본을 만들 수 있습니다.')
     ra_field('보고서 구분','report_mode',kind='select',options=['초안','출력본'])
     payload = ra_payload(); sig = ra_hash(payload)
     if st.button('위험성평가 보고서 만들기', type='primary', key='ra_build'):
         errors = ra_validate(meta, st.session_state.ra_rows, payload['final'])
         if errors:
-            for error in errors: st.warning(error)
+            st.warning('아래 미작성 항목을 눌러 필요한 내용을 보완해 주세요.')
         else:
             previous = st.session_state.get('ra_output', {})
             outputs = dict(previous) if previous.get('sig') == sig else {'sig': sig}
@@ -9222,6 +9379,7 @@ def ra_render_sharing(meta, actor):
                     except ValueError as exc: st.warning(str(exc))
                     except Exception: st.warning('보고서는 생성했으나 저장소 보관 확인 필요. 다운로드해 보관해 주세요.')
             st.session_state.ra_output = outputs
+    ra_render_validation_links(missing, actor)
     outputs = st.session_state.get('ra_output', {})
     if outputs.get('sig') == sig:
         if outputs.get('pdf'): st.download_button('출력용 PDF 다운로드', outputs['pdf'], '위험성평가_보고서.pdf', 'application/pdf', key='ra_pdf_download', on_click='ignore')
@@ -9893,7 +10051,7 @@ def ra_render_history(actor):
                 st.button('삭제 확인', key='ra_hub_delete', on_click=ra_hub_change_trash, args=(actor, False), width='stretch')
             with cancel:
                 st.button('취소', key='ra_hub_delete_cancel', on_click=ra_hub_cancel_delete, width='stretch')
-    st.caption('등록일·사업장명·평가명을 클릭하면 앞의 체크박스도 선택됩니다. 여러 평가를 선택하려면 체크박스를 이용하세요.' if not trashed else '평가를 체크한 뒤 복원 또는 완전삭제를 선택하세요.')
+    st.caption('등록일·사업장명·평가명을 클릭하면 체크되고, 같은 항목을 다시 클릭하면 해제됩니다. 여러 평가는 체크박스로 선택하세요.' if not trashed else '평가를 체크한 뒤 복원 또는 완전삭제를 선택하세요.')
     with st.container(key='ra_hub_table'):
         with st.container(key='ra_table_header'):
             columns = st.columns(9, gap='small', vertical_alignment='center')
@@ -9990,7 +10148,7 @@ def ra_render_standard_models(meta, trade, work, examples):
         preview_ids = picked or ids[:1]
         previews = [model for eid in preview_ids for model in examples if model['id'] == eid]
         for model in previews:
-            with st.container(border=True):
+            with st.container(key='ra_model_preview_'+model['id']):
                 st.markdown('**'+model['title']+'**')
                 st.write('유해위험요인 · '+model['factor'])
                 for kind, detail in model['controls']:
@@ -10012,6 +10170,7 @@ def ra_render_writer(actor):
         st.session_state.ra_hub_page = 'list'
         st.info('목록에서 작성할 평가를 선택해 주세요.')
         return
+    st.markdown(RA_REVIEW_CSS, unsafe_allow_html=True)
     meta, rows = st.session_state.ra_meta, st.session_state.ra_rows
     st.subheader((meta.get('site') or '현장')+' 위험성평가 작성')
     st.caption(str(meta.get('assessment_year',''))+'년 · '+meta['kind']+' · '+RA_METHOD+' · 작성 후 보고서 출력·지면 결재')
@@ -10051,6 +10210,7 @@ def ra_render_writer(actor):
             confirmed = st.checkbox('현재 화면을 저장된 최신 내용으로 바꿉니다.', key='ra_hub_reload_confirm')
             st.button('최신 내용 불러오기', key='ra_hub_writer_reload', disabled=not confirmed,
                       on_click=ra_hub_open, args=(actor, st.session_state.ra_active_record_id))
+    ra_render_issue_focus()
 
 
 def ra_hardware_back(actor):
@@ -10233,7 +10393,7 @@ PTW_TRADES = {
 }
 PTW_HAZARDS = ['추락', '낙하·비래', '매몰·붕괴', '충돌·협착', '전도', '감전', '질식·중독', '화재·폭발', '화상', '기타']
 PTW_CSS = '''<style>
-.st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(3)::before {content:""!important;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%226%22%20y%3D%224%22%20width%3D%2220%22%20height%3D%2225%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M12%204V2h8v2M11%2013h10M11%2018h6M11%2023l3%203%207-7%22%2F%3E%3C%2Fsvg%3E")!important;}
+.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:nth-of-type(3)::before {content:""!important;background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%226%22%20y%3D%224%22%20width%3D%2220%22%20height%3D%2225%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M12%204V2h8v2M11%2013h10M11%2018h6M11%2023l3%203%207-7%22%2F%3E%3C%2Fsvg%3E")!important;}
 .st-key-work_permit {color:#20352b;}
 .ptw-intro {background:#f4f8f1;border:1px solid #d7e4d1;border-radius:12px;padding:18px 22px;margin:0 0 10px;}
 .ptw-intro h2 {font-size:24px!important;font-weight:700!important;color:#203d2c!important;margin:0 0 8px!important;padding:0!important;}
@@ -10249,8 +10409,8 @@ PTW_CSS = '''<style>
 .ptw-summary strong {color:#087f57;font-size:20px;margin-right:6px;}
 .st-key-ptw_back_frame {display:none!important;}
 @media(max-width:768px){
- .st-key-keco_main_menu [role="tablist"] {grid-template-columns:repeat(2,minmax(0,1fr))!important;}
- .st-key-keco_main_menu [role="tablist"] [role="tab"]:nth-of-type(7) {grid-column:1 / -1;}
+ .st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) {grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+ .st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:nth-of-type(7) {grid-column:1 / -1;}
  .ptw-intro {padding:16px;}.ptw-intro h2 {font-size:21px!important;}
  .st-key-work_permit [data-testid="stHorizontalBlock"] {min-width:0!important;flex-direction:column!important;align-items:stretch!important;}
  .st-key-work_permit [data-testid="stColumn"] {min-width:0!important;width:100%!important;flex:1 1 100%!important;}
