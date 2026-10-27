@@ -2394,6 +2394,15 @@ def nhn_storage_backend():
     )
 
 
+SITE_NAME_ALIASES = {'파주 환경순환센터 현대화사업': '파주시 환경순환센터 현대화사업'}
+
+def canonical_site_label(value):
+    if not isinstance(value, str):
+        return value
+    for previous, current in SITE_NAME_ALIASES.items():
+        value = value.replace(previous, current)
+    return value
+
 def nhn_record_connection(filename):
     storage = nhn_storage_backend()
     if storage is not None:
@@ -2800,7 +2809,8 @@ def report_history_inspection_rows(db, owner=None):
     sql = "SELECT r.id,r.owner,r.dept,r.site,r.created,r.payload FROM reports r"
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
-    return db.execute(sql + " ORDER BY r.created DESC,r.rowid DESC", tuple(params)).fetchall()
+    rows = db.execute(sql + " ORDER BY r.created DESC,r.rowid DESC", tuple(params)).fetchall()
+    return [tuple(row[:3])+(canonical_site_label(row[3]),)+tuple(row[4:]) for row in rows]
 
 
 def report_history_active_inspections(owner):
@@ -2924,6 +2934,9 @@ def report_history_list(owner, *, trashed=False):
         if trashed:
             for row in records:
                 row["deleted_at"] = trash[(row["source"],row["id"])]
+        for row in records:
+            for field in ('site', 'title'):
+                row[field] = canonical_site_label(row[field])
         return sorted(records, key=lambda row:(row.get("deleted_at",row["created"]), row["id"]), reverse=True)
     finally:
         db.close()
@@ -2941,7 +2954,7 @@ def report_history_get(owner, source, report_id):
             if row is None:
                 raise PermissionError("이 계정에서 조회할 수 있는 리포트가 아닙니다.")
             files = db.execute("SELECT hwpx,pdf FROM report_files WHERE id=?", (row[0],)).fetchone() if "report_files" in tables else None
-            return {"id":row[0], "created":row[1], "dept":row[2], "site":row[3], "payload":json.loads(row[4]),
+            return {"id":row[0], "created":row[1], "dept":row[2], "site":canonical_site_label(row[3]), "payload":json.loads(row[4]),
                     "hwpx":files[0] if files else None, "pdf":files[1] if files else None}
         if source == "generated" and "generated_reports" in tables:
             row = db.execute("SELECT hwpx,pdf FROM generated_reports WHERE id=? AND owner=?", (str(report_id),owner)).fetchone()
@@ -3233,7 +3246,9 @@ def case_get(case_id, actor):
                          (case_id, str(actor), str(actor))).fetchone()
         if not row:
             raise PermissionError('이 점검 건에 접근할 권한이 없습니다.')
-        return dict(row)
+        result = dict(row)
+        result['site'] = canonical_site_label(result.get('site', ''))
+        return result
     finally:
         db.close()
 
@@ -3359,7 +3374,9 @@ def case_export(owner, version_ids, include_photos=False):
                 JOIN safety_cases c ON c.id=v.case_id WHERE v.id=? AND c.owner=?''',(key,str(owner))).fetchone()
             if not row:
                 raise PermissionError('내 보고서만 반입 묶음으로 만들 수 있습니다.')
-            records.append(dict(row))
+            result = dict(row)
+            result['site'] = canonical_site_label(result.get('site', ''))
+            records.append(result)
     finally:
         db.close()
     if not records:
@@ -3814,7 +3831,7 @@ st.markdown(f"""
 # --- 부서 및 현장 매핑 정의 ---
 department_sites_map = {
     "시설사업1부": [
-        "파주 환경순환센터 현대화사업",
+        "파주시 환경순환센터 현대화사업",
         "수도권서부환경본부 청사 건립사업"
     ],
     "시설사업2부": [
@@ -5690,6 +5707,8 @@ def safety_cal_validate(data):
         raise ValueError('종료일은 시작일보다 빠를 수 없습니다.')
     if clean['status'] not in CAL_STATUSES or clean['kind'] not in CAL_KINDS:
         raise ValueError('분류와 상태를 확인해주세요.')
+    clean['site'] = canonical_site_label(clean['site'])
+    clean['title'] = canonical_site_label(clean['title'])
     return clean
 
 
@@ -6168,7 +6187,7 @@ def workstation_snapshot(actor):
     return workstation_summarize(rows, department_sites_map, datetime.datetime.now(ZoneInfo('Asia/Seoul')).date())
 
 
-MAIN_TAB_HOME_SCRIPT = '<script>(()=>{\n  let host;try{host=window.parent;void host.document.body;}catch(e){return;}\n  const install=function(){\n  const w=window;\n  const owner=__OWNER__,version=\'home-hover-v3\';\n  const prior=w.__kecoHomeHover;\n  if(prior&&prior.owner===owner&&prior.version===version){prior.refresh();return;}\n  if(prior){\n    if(prior.observer)prior.observer.disconnect();\n    w.clearTimeout(prior.homeTimer);w.clearTimeout(prior.hoverTimer);\n    if(prior.onClick)w.document.removeEventListener(\'click\',prior.onClick,true);\n    if(prior.onHover)w.document.removeEventListener(\'pointerover\',prior.onHover,true);\n    if(!prior.observer&&prior.cleanup)prior.cleanup();\n  }\n  const state={owner,version,homeTimer:null,hoverTimer:null,hoverId:null,lastToken:prior&&prior.owner===owner?prior.lastToken:null};\n  const mainTabs=()=>{const menu=w.document.querySelector(\'.st-key-keco_main_menu\');\n    const list=menu&&menu.querySelector(\'[role="tablist"]\');return list?Array.from(list.querySelectorAll(\'[role="tab"]\')):[];};\n  const scrollHome=()=>{const main=w.document.querySelector(\'[data-testid="stMain"]\');\n    if(main)main.scrollTo({top:0,behavior:\'auto\'});};\n  const clickHome=(index,attempt=0)=>{const button=w.document.querySelector(\'.st-key-keco_tab_home_\'+index+\' button\');\n    if(button&&!button.disabled){button.click();return;}\n    if(attempt<50)state.homeTimer=w.setTimeout(()=>clickHome(index,attempt+1),100);\n  };\n  const onClick=event=>{\n    if(!event.isTrusted)return;\n    const tab=event.target.closest&&event.target.closest(\'[role="tab"]\');\n    if(!tab)return;\n    const tabs=mainTabs(),index=tabs.indexOf(tab);if(index<0)return;\n    w.clearTimeout(state.homeTimer);w.clearTimeout(state.hoverTimer);state.hoverId=null;\n    state.homeTimer=w.setTimeout(()=>clickHome(index),80);\n  };\n  const onHover=event=>{\n    if(!event.isTrusted||!w.matchMedia(\'(hover:hover) and (pointer:fine)\').matches)return;\n    const cell=event.target.closest&&event.target.closest(\'[class*="st-key-ra_hub_focuscell_"]\');\n    if(!cell)return;\n    if(event.relatedTarget&&cell.contains(event.relatedTarget))return;\n    const row=cell.closest(\'[class*="st-key-ra_hub_row_"]\');if(!row)return;\n    if(row.querySelector(\'[class*="st-key-ra_hub_focuscell_active_"]\'))return;\n    const tab=mainTabs()[1];if(!tab||tab.getAttribute(\'aria-selected\')!==\'true\')return;\n    const table=row.closest(\'.st-key-ra_hub_table\');\n    if(table&&table.querySelector(\'[data-testid="stCheckbox"] input:checked\'))return;\n    const rowKey=Array.from(row.classList).find(key=>key.startsWith(\'st-key-ra_hub_row_\'));\n    if(!rowKey)return;\n    const button=cell.querySelector(\'button\');if(!button||button.disabled)return;\n    w.clearTimeout(state.hoverTimer);\n    state.hoverTimer=w.setTimeout(()=>{\n      if(!button.isConnected||!cell.matches(\':hover\'))return;\n      state.hoverId=rowKey;button.click();\n    },150);\n  };\n  const refresh=()=>{\n    const marker=w.document.getElementById(\'keco-tab-home-state\');\n    if(marker&&marker.dataset.token&&state.lastToken!==marker.dataset.token){\n      state.lastToken=marker.dataset.token;state.hoverId=null;\n      w.requestAnimationFrame(scrollHome);\n    }\n  };\n  const observer=new w.MutationObserver(refresh);\n  observer.observe(w.document.body,{childList:true,subtree:true});\n  w.document.addEventListener(\'click\',onClick,true);\n  w.document.addEventListener(\'pointerover\',onHover,true);\n  state.observer=observer;state.onClick=onClick;state.onHover=onHover;\n  state.refresh=refresh;\n  state.cleanup=()=>{observer.disconnect();w.clearTimeout(state.homeTimer);w.clearTimeout(state.hoverTimer);\n    w.document.removeEventListener(\'click\',onClick,true);w.document.removeEventListener(\'pointerover\',onHover,true);};\n  w.__kecoHomeHover=state;refresh();\n  };\n  const script=host.document.createElement(\'script\');\n  script.textContent=\'(\'+install.toString()+\')();\';\n  host.document.head.appendChild(script);script.remove();\n})();</script>\n'
+MAIN_TAB_HOME_SCRIPT = '<script>(()=>{\n  let host;try{host=window.parent;void host.document.body;}catch(e){return;}\n  const install=function(){\n  const w=window;\n  const owner=__OWNER__,version=\'home-click-v4\';\n  const prior=w.__kecoHomeHover;\n  if(prior&&prior.owner===owner&&prior.version===version){prior.refresh();return;}\n  if(prior){\n    if(prior.observer)prior.observer.disconnect();\n    w.clearTimeout(prior.homeTimer);w.clearTimeout(prior.hoverTimer);\n    if(prior.onClick)w.document.removeEventListener(\'click\',prior.onClick,true);\n    if(prior.onHover)w.document.removeEventListener(\'pointerover\',prior.onHover,true);\n    if(!prior.observer&&prior.cleanup)prior.cleanup();\n  }\n  const state={owner,version,homeTimer:null,lastToken:prior&&prior.owner===owner?prior.lastToken:null};\n  const mainTabs=()=>{const menu=w.document.querySelector(\'.st-key-keco_main_menu\');\n    const list=menu&&menu.querySelector(\'[role="tablist"]\');return list?Array.from(list.querySelectorAll(\'[role="tab"]\')):[];};\n  const scrollHome=()=>{const main=w.document.querySelector(\'[data-testid="stMain"]\');\n    if(main)main.scrollTo({top:0,behavior:\'auto\'});};\n  const clickHome=(index,attempt=0)=>{const button=w.document.querySelector(\'.st-key-keco_tab_home_\'+index+\' button\');\n    if(button&&!button.disabled){button.click();return;}\n    if(attempt<50)state.homeTimer=w.setTimeout(()=>clickHome(index,attempt+1),100);\n  };\n  const onClick=event=>{\n    if(!event.isTrusted)return;\n    const tab=event.target.closest&&event.target.closest(\'[role="tab"]\');\n    if(!tab)return;\n    const tabs=mainTabs(),index=tabs.indexOf(tab);if(index<0)return;\n    w.clearTimeout(state.homeTimer);\n    state.homeTimer=w.setTimeout(()=>clickHome(index),80);\n  };\n  const refresh=()=>{\n    const marker=w.document.getElementById(\'keco-tab-home-state\');\n    if(marker&&marker.dataset.token&&state.lastToken!==marker.dataset.token){\n      state.lastToken=marker.dataset.token;\n      w.requestAnimationFrame(scrollHome);\n    }\n  };\n  const observer=new w.MutationObserver(refresh);\n  observer.observe(w.document.body,{childList:true,subtree:true});\n  w.document.addEventListener(\'click\',onClick,true);\n  state.observer=observer;state.onClick=onClick;\n  state.refresh=refresh;\n  state.cleanup=()=>{observer.disconnect();w.clearTimeout(state.homeTimer);\n    w.document.removeEventListener(\'click\',onClick,true);};\n  w.__kecoHomeHover=state;refresh();\n  };\n  const script=host.document.createElement(\'script\');\n  script.textContent=\'(\'+install.toString()+\')();\';\n  host.document.head.appendChild(script);script.remove();\n})();</script>\n'
 
 MAIN_TAB_HOME_CSS = '<style>\n.st-key-keco_tab_home_bridge {display:none!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_"] [data-testid="stButton"] button {\n background:transparent!important;background-image:none!important;border:1px solid transparent!important;\n color:#263f33!important;-webkit-text-fill-color:#263f33!important;border-radius:6px!important;box-shadow:none!important;\n min-height:40px!important;height:auto!important;padding:7px 3px!important;width:100%!important;\n justify-content:flex-start!important;text-align:left!important;transform:none!important;font-weight:500!important;\n}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_"] [data-testid="stButton"] button:hover:not(:disabled) {\n background:#e6f3eb!important;border-color:#bed9c8!important;color:#126443!important;\n}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_"] button p,\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_"] button span {\n color:inherit!important;-webkit-text-fill-color:currentColor!important;font-size:14px!important;line-height:1.5!important;\n white-space:normal!important;word-break:keep-all!important;overflow-wrap:anywhere!important;text-align:left!important;\n}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_2_"] button,\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_active_2_"] button {justify-content:center!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"]:has([class*="st-key-ra_hub_focuscell_active_"] button) {background:#e6f3eb!important;box-shadow:inset 3px 0 #16825d!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_"] button:disabled {background:transparent!important;border-color:transparent!important;color:#647365!important;opacity:1!important;}\n\n</style>'
 
@@ -7856,7 +7875,7 @@ RA_KECO_EXAMPLES = [
 ]
 
 
-RA_STEPS = ['① 사전준비', '② 위험요인 파악', '③ 위험성 결정', '④ 감소대책 수립', '⑤ 이행·재평가', '⑥ 보고서·출력']
+RA_STEPS = ['① 사전준비', '② 유해위험요인파악', '③ 위험성 결정', '④ 감소대책 수립', '⑤ 이행·재평가', '⑥ 보고서·출력']
 RA_PROCEDURE = '한국환경공단 KECO-P-610 · 개정 7차 · 2024.06.10.'
 RA_CRITERIA_STAMP = 'KECO-P-610-20240610-5x4'
 RA_FREQUENCY = [
@@ -7886,7 +7905,7 @@ RA_CHECK_ITEMS = [
 
 def ra_auto_name(meta):
     year=ra_assessment_year(meta.get('assessment_year'))
-    return f"{year}년 {meta.get('site') or '현장'} {meta.get('kind') or '위험성평가'}"[:120]
+    return f"{year}년 {canonical_site_label(meta.get('site')) or '현장'} {meta.get('kind') or '위험성평가'}"[:120]
 
 
 def ra_task_major_change(construction_type, key):
@@ -8115,12 +8134,14 @@ def ra_managed_sites():
 def ra_site_options(records=(), extra=()):
     sites = ra_managed_sites()
     for site in [row.get('site', '') for row in records] + list(extra):
+        site = canonical_site_label(site)
         if site and site != '전체' and site not in sites:
             sites.append(site)
     return sites
 
 
 def ra_site_department(site):
+    site = canonical_site_label(site)
     return next((department for department, sites in department_sites_map.items() if site in sites), '')
 
 
@@ -8174,7 +8195,7 @@ def ra_default_meta(actor):
 
 def ra_default_row():
     return dict(id='', trade='', work='', hazards=[], category='', factor='', origin='직접 입력',
-                existing='', frequency=0, severity=0, reason='', site_confirmed=False,
+                existing='', frequency=0, severity=0, reason='',
                 urgent=False, mandatory=False, measures='', control_types=[], budget=0,
                 budget_note='미정', owner='', deadline='', status='미착수',
                 residual_f=0, residual_s=0, verified_by='', verified_date='', evidence='',
@@ -8203,6 +8224,8 @@ def ra_normalize_payload(payload, actor, require_review=True):
         elif isinstance(default, str):
             if not isinstance(value, str) or len(value) > 30000: raise ValueError('문자 입력의 형식을 확인해 주세요.')
         meta[key] = value
+    meta['site'] = canonical_site_label(meta.get('site', ''))
+    meta['assessment_name'] = canonical_site_label(meta.get('assessment_name', ''))
     meta['assessment_year'] = str(ra_assessment_year(original.get('assessment_year', str(original.get('date', ''))[:4] or None)))
     raw_type=original.get('construction_type')
     meta['construction_type']=RA_TYPE_ALIASES.get(raw_type,raw_type)
@@ -8247,7 +8270,6 @@ def ra_normalize_payload(payload, actor, require_review=True):
         if row['status'] not in ('미착수', '진행 중', '완료·현장 확인'): row['status'] = '미착수'
         if row['budget_note'] not in ('미정', '추가 비용 최소화', '50만원 이내', '100만원 이내', '500만원 이내', '직접 입력'): row['budget_note'] = '직접 입력'
         row['control_types'] = [v for v in row['control_types'] if v in RA_CONTROL_TYPES]
-        if require_review: row['site_confirmed'] = False
         rows.append(row)
     meta['trades'] = list(dict.fromkeys(meta['trades']+[r['trade'] for r in rows if r['trade']]))
     return dict(schema_version=3, meta=meta, rows=rows, final=bool(not require_review and payload.get('final') and meta.get('report_mode') == '출력본'))
@@ -8272,9 +8294,18 @@ def ra_initialize(actor):
     for row in st.session_state.ra_rows:
         for key, value in ra_default_row().items():
             if key not in row: row[key] = value.copy() if isinstance(value, list) else value
+    st.session_state.ra_meta['site'] = canonical_site_label(st.session_state.ra_meta.get('site', ''))
+    st.session_state.ra_meta['assessment_name'] = canonical_site_label(st.session_state.ra_meta.get('assessment_name', ''))
+    for key in ('ra_edit_meta_site', 'ra_hub_filter_site', 'ra_hub_new_site', 'ra_hub_edit_site', 'ra_hub_filter_name', 'ra_site_choice'):
+        if key in st.session_state:
+            st.session_state[key] = canonical_site_label(st.session_state[key])
+    for field in ('site', 'name'):
+        filters = st.session_state.get('ra_hub_filters', {})
+        if field in filters:
+            filters[field] = canonical_site_label(filters[field])
     st.session_state.setdefault('ra_step', st.session_state.get('ra_writer_step', RA_STEPS[0]))
     if st.session_state.ra_step not in RA_STEPS:
-        st.session_state.ra_step=RA_STEPS[5] if str(st.session_state.ra_step).startswith('⑥') else RA_STEPS[0]
+        st.session_state.ra_step=RA_STEPS[{'①':0,'②':1,'③':2,'④':3,'⑤':4,'⑥':5}.get(str(st.session_state.ra_step)[:1],0)]
     st.session_state.ra_writer_step=st.session_state.ra_step
 
 
@@ -8384,14 +8415,11 @@ def ra_select_tasks():
         on_change=ra_task_major_change,args=(construction_type,major_key))
     major_drafts[construction_type]=selected_majors
     st.caption('대공종 선택 → 하위공종 체크 → ‘선택한 작업 적용’ 순서로 진행하세요.')
-    if construction_type=='소각시설 설치사업':
-        st.caption('분류표의 대공종과 사진 7의 가설·건축공사를 함께 표시합니다. 공통공종을 참고한 항목은 출처를 구분했습니다.')
     for item in groups:
         group=item['title']
         if group not in selected_majors:continue
         with st.expander(item['icon']+' '+group+' · 하위공종',expanded=True):
-            st.caption('분류 참고 · '+item['source'])
-            if not item['tasks']:st.info('하위공종 확인 필요: 첨부 사진에 세부 목록이 없어 아래에 직접 입력해 주세요.')
+            if not item['tasks']:st.info('목록에 없는 하위공종은 아래에 직접 입력해 주세요.')
             for number,task in enumerate(item['tasks'],1):
                 path=group+' / '+task
                 key='ra_task_pick_'+ra_hash([construction_type,path])[:18]
@@ -8480,8 +8508,8 @@ def ra_validate(meta, rows, final=False):
             if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= maximum:
                 errors.append('③ '+prefix+'점수 범위를 확인하세요.')
         if final:
-            if not row.get('category') or not ra_text_ready(row.get('work')) or not ra_text_ready(row.get('factor')) or not row.get('site_confirmed'):
-                errors.append('② '+prefix+'위험분류·작업조건·현장 확인을 작성하세요.')
+            if not row.get('category') or not ra_text_ready(row.get('work')) or not ra_text_ready(row.get('factor')):
+                errors.append('② '+prefix+'유해위험요인·작업조건·발생상황을 작성하세요.')
             if not ra_score(row) or not ra_text_ready(row.get('reason')):
                 errors.append('③ '+prefix+'빈도·강도와 판단 사유를 입력하세요.')
             if not ra_text_ready(row.get('existing')): errors.append('③ '+prefix+'현재 안전조치를 입력하세요. 없다면 없음을 명시하세요.')
@@ -8500,7 +8528,7 @@ def ra_progress(meta, rows):
     rated = bool(rows) and all(ra_score(r) and ra_text_ready(r.get('reason')) and ra_text_ready(r.get('existing')) for r in rows)
     return [
         bool(meta.get('site') and meta.get('department') and meta.get('evaluator') and meta.get('work_scope') and meta.get('criteria_confirmed') and meta.get('trades')),
-        bool(rows) and all(r.get('factor') and r.get('category') and r.get('work') and r.get('site_confirmed') for r in rows),
+        bool(rows) and all(r.get('factor') and r.get('category') and r.get('work') for r in rows),
         rated,
         rated and all(not ra_needs_measures(r) or (ra_text_ready(r.get('measures')) and r.get('control_types') and ra_text_ready(r.get('owner')) and ra_text_ready(r.get('deadline'))) for r in rows),
         rated and all(not ra_needs_measures(r) or (r.get('status') == '완료·현장 확인' and ra_text_ready(r.get('verified_by')) and r.get('verified_date') and ra_text_ready(r.get('evidence')) and ra_score(r, True)) for r in rows),
@@ -8524,8 +8552,8 @@ def ra_add_factors(trade, work, hazards, category, origin, factors, source='', s
 def ra_active_row(stage):
     rows = st.session_state.ra_rows
     if not rows:
-        st.info('② 위험요인 파악에서 평가 항목을 추가해 주세요.')
-        st.button('위험요인 작성으로 이동', key='ra_empty_'+stage, on_click=ra_go_step, args=(1,))
+        st.info('② 유해위험요인파악에서 평가 항목을 추가해 주세요.')
+        st.button('유해위험요인 작성으로 이동', key='ra_empty_'+stage, on_click=ra_go_step, args=(1,))
         return None
     ids = [row['id'] for row in rows]
     key = 'ra_active_'+stage
@@ -8655,13 +8683,52 @@ def ra_delete_row(row_id):
         ra_invalidate_review()
 
 
-def ra_overview(meta, rows):
-    if not rows: return
-    st.dataframe([{'번호': i, '세부작업': r['trade'].split(' / ')[-1], '위험발생상황': r['factor'],
-                   '현재 점수': str(r['frequency']*r['severity']) if r['frequency']*r['severity'] else '미평가',
-                   '위험도': ra_risk_level(r['frequency']*r['severity'])[0],
-                   '개선 담당자': r['owner'], '이행 상태': r['status']} for i, r in enumerate(rows, 1)],
-                 hide_index=True, width='stretch')
+def ra_delete_selected_items(row_ids, record_id):
+    actor = st.session_state.get('ra_actor')
+    if not _perf_actor_allowed(actor) or record_id != st.session_state.get('ra_active_record_id'):
+        return
+    rows = st.session_state.get('ra_rows', [])
+    removed = {row['id'] for row in rows if row['id'] in set(row_ids)}
+    if not removed:
+        return
+    st.session_state.ra_rows = [row for row in rows if row['id'] not in removed]
+    for key in list(st.session_state):
+        if str(key).startswith('ra_active_') and st.session_state[key] in removed:
+            st.session_state.pop(key, None)
+        elif any(str(key).startswith('ra_edit_'+row_id+'_') or key == 'ra_delete_confirm_'+row_id for row_id in removed):
+            st.session_state.pop(key, None)
+    ra_invalidate_review()
+    st.session_state.ra_items_notice = f'{len(removed)}개 평가 항목을 삭제했습니다.'
+
+def ra_overview(meta, rows, allow_delete=False):
+    notice = st.session_state.pop('ra_items_notice', None) if allow_delete else None
+    if notice:
+        st.success(notice)
+    if not rows:
+        return
+    table = [{'번호': i, '세부작업': row['trade'].split(' / ')[-1], '위험발생상황': row['factor'],
+              '현재 점수': str(row['frequency']*row['severity']) if row['frequency']*row['severity'] else '미평가',
+              '위험도': ra_risk_level(row['frequency']*row['severity'])[0],
+              '개선 담당자': row['owner'], '이행 상태': row['status']} for i, row in enumerate(rows, 1)]
+    if not allow_delete:
+        st.dataframe(table, hide_index=True, width='stretch')
+        return
+    st.markdown('#### 추가한 평가 항목')
+    st.caption('목록에서 삭제할 항목을 선택한 뒤 ‘선택 항목 삭제’를 누르세요. 여러 항목을 선택할 수 있습니다.')
+    ids = [row['id'] for row in rows]
+    record_id = st.session_state.get('ra_active_record_id')
+    key = 'ra_items_grid_'+ra_hash([record_id, ids])[:20]
+    with st.container(key='ra_items_table'):
+        event = st.dataframe(table, hide_index=True, width='stretch', key=key,
+                             on_select='rerun', selection_mode='multi-row')
+    selected = [ids[index] for index in event.selection.rows
+                if isinstance(index, int) and not isinstance(index, bool) and 0 <= index < len(ids)]
+    count, delete = st.columns([4, 1.6])
+    with count:
+        st.caption(f'총 {len(rows)}개 · 선택 {len(selected)}개')
+    with delete:
+        st.button('선택 항목 삭제', key='ra_items_delete', disabled=not selected, width='stretch',
+                  on_click=ra_delete_selected_items, args=(selected, record_id))
 
 
 def ra_render_preparation(meta, actor):
@@ -8787,10 +8854,7 @@ def ra_render_identification(meta):
                 ra_field('유해위험요인','category',row['id'],'select',RA_CATEGORIES)
                 ra_field('유해위험발생상황','factor',row['id'],'area')
                 ra_field('유해위험요인을 확인한 방법','origin',row['id'],'select',RA_ORIGINS)
-                ra_field('이 유해위험요인이 실제 현장에 해당하는지 확인했습니다.','site_confirmed',row['id'],'check')
-                remove=st.checkbox('이 항목 삭제 확인',key='ra_delete_confirm_'+row['id'])
-                st.button('항목 삭제',disabled=not remove,on_click=ra_delete_row,args=(row['id'],),key='ra_delete_'+row['id'])
-    ra_overview(meta,st.session_state.ra_rows)
+    ra_overview(meta,st.session_state.ra_rows,allow_delete=True)
 
 
 def ra_render_rating(meta):
@@ -8897,7 +8961,7 @@ def ra_report_sections(meta, rows, final):
         sections.append((f'평가 항목 {number} · '+row['trade'], [
             ('세부작업·위치·조건', row['work']), ('위험분류 / 유형', row.get('category', '')+' / '+' · '.join(row['hazards'])),
             ('유해·위험발생상황', row['factor']), ('확인 방법 / 출처', row.get('origin', '')+' / '+row['source_note']),
-            ('현장 해당 여부 확인', '확인' if row.get('site_confirmed') else '미확인'), ('현재 안전보건조치', row['existing']),
+            ('현재 안전보건조치', row['existing']),
             ('현재 위험성', f'빈도 {row["frequency"] or "미평가"} × 강도 {row["severity"] or "미평가"} = {before or "미평가"} / '+ra_risk_level(before)[0]),
             ('점수 판단 사유', row['reason']), ('조치 판단', ra_decision(row, meta)),
             ('급박한 위험 / 필수조치 확인', f'{"급박한 위험 우려" if row["urgent"] else "별도 표시 없음"} / {"필수조치 확인·이행 필요" if row["mandatory"] else "별도 표시 없음"}'),
@@ -8914,7 +8978,7 @@ def ra_report_sections(meta, rows, final):
         ('후속 점검 계획',meta.get('followup','') or '선택 기록 · 미기재'),
         ('보완사항 / 완료 예정일',meta.get('supplement','')+' / '+meta.get('supplement_deadline','')),
         ('문서 관리','출력한 결재 문서와 현장 확인자료는 기관·현장의 보존기준에 따라 관리합니다.'),
-        ('작성 자료',RA_PROCEDURE+' / 사용자 첨부 공종 분류 사진 0·0-1·1·1-1·2~8'),
+        ('작성 자료',RA_PROCEDURE),
         ('작성 범위','공단 안전관리자가 현장 자료를 바탕으로 정리한 작성 지원 보고서입니다. 결재는 지면으로 진행합니다.')]))
     return sections
 
@@ -9047,7 +9111,6 @@ def ra_render_sharing(meta, actor):
     else:st.success('주요 작성 항목을 입력했습니다. 출력본을 만들 수 있습니다.')
     ra_field('보고서 구분','report_mode',kind='select',options=['초안','출력본'])
     payload = ra_payload(); sig = ra_hash(payload)
-    st.download_button('작성 내용 JSON 백업', json.dumps(payload, ensure_ascii=False, indent=2).encode(), '위험성평가_작성내용.json', 'application/json', key='ra_json', on_click='ignore')
     if st.button('위험성평가 보고서 만들기', type='primary', key='ra_build'):
         errors = ra_validate(meta, st.session_state.ra_rows, payload['final'])
         if errors:
@@ -9120,7 +9183,7 @@ def ra_record_details(payload):
 
 
 def ra_record_header(meta):
-    name = str(meta.get('assessment_name', '')).strip()
+    name = canonical_site_label(str(meta.get('assessment_name', '')).strip())
     if not name:name=ra_auto_name(meta)
     if len(name)>120:raise ValueError('평가 식별명 길이를 확인해 주세요.')
     meta['assessment_name']=name
@@ -9173,7 +9236,11 @@ def ra_record_list(owner, trashed=False):
                               row_count,current_step,revision,deleted_at FROM risk_assessment_register
                               WHERE owner=? AND '''+condition+' ORDER BY updated DESC,rowid DESC', (owner,))
         names = [column[0] for column in cursor.description]
-        return [dict(zip(names, row)) for row in cursor.fetchall()]
+        records = [dict(zip(names, row)) for row in cursor.fetchall()]
+        for record in records:
+            for field in ('site', 'name'):
+                record[field] = canonical_site_label(record[field])
+        return records
     finally: db.close()
 
 
@@ -9233,7 +9300,9 @@ def ra_record_save(owner, record_id, payload, revision, step=0):
             if 'risk_assessment_register' not in report_history_tables(db): raise PermissionError('먼저 평가를 등록해 주세요.')
             current = db.execute('SELECT revision,deleted_at FROM risk_assessment_register WHERE id=? AND owner=?', (str(record_id), owner)).fetchone()
             if not current or current[1]: raise PermissionError('본인이 보관 중인 평가만 저장할 수 있습니다.')
-            if current[0] != revision: raise ValueError('다른 창에서 이 평가가 변경되었습니다. JSON 백업을 내려받은 뒤 목록에서 다시 열어 주세요.')
+            if current[0] != revision:
+                st.session_state.ra_hub_reload_needed = True
+                raise ValueError('다른 창에서 이 평가가 변경되었습니다. 현재 입력은 유지됩니다. 필요한 내용을 확인한 뒤 아래에서 저장된 최신 내용을 불러오세요.')
             updated = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat()
             db.execute('''UPDATE risk_assessment_register SET updated=?,assessment_year=?,name=?,kind=?,method=?,site=?,status=?,
                           progress=?,row_count=?,current_step=?,payload=?,revision=revision+1
@@ -9284,7 +9353,7 @@ def ra_hub_save(actor, quiet=False):
         if not quiet: st.session_state.ra_notice = '작성 내용을 저장했습니다. 같은 평가에 계속 이어서 기록됩니다.'
         return True
     except (ValueError, PermissionError) as exc: st.session_state.ra_load_error = str(exc)
-    except Exception: st.session_state.ra_load_error = '저장소 연결 확인 필요. 입력 내용은 화면에 유지됩니다. JSON 백업을 내려받거나 다시 저장해 주세요.'
+    except Exception: st.session_state.ra_load_error = '저장소 연결 확인 필요. 입력 내용은 화면에 유지됩니다. 연결을 확인한 뒤 임시 저장을 다시 눌러 주세요.'
     return False
 
 
@@ -9313,6 +9382,7 @@ def ra_hub_open(actor, record_id):
         st.session_state.ra_last_saved_step = RA_STEPS.index(st.session_state.ra_step)
         st.session_state.ra_hub_page = 'writer'
         st.session_state.ra_hub_reload_confirm = False
+        st.session_state.ra_hub_reload_needed = False
     except (ValueError, PermissionError, json.JSONDecodeError) as exc: st.session_state.ra_load_error = str(exc)
     except Exception: st.session_state.ra_load_error = '평가 불러오기 실패. 저장소 연결을 확인한 뒤 다시 열어 주세요.'
 
@@ -9739,7 +9809,7 @@ def ra_render_history(actor):
                 st.button('삭제 확인', key='ra_hub_delete', on_click=ra_hub_change_trash, args=(actor, False), width='stretch')
             with cancel:
                 st.button('취소', key='ra_hub_delete_cancel', on_click=ra_hub_cancel_delete, width='stretch')
-    st.caption('등록일·사업장명·평가명에 마우스를 올리거나 클릭한 뒤 ‘선택한 평가 열기’를 누르세요. 수정·삭제 대상은 체크박스로 선택하세요.' if not trashed else '평가를 체크한 뒤 복원 또는 완전삭제를 선택하세요.')
+    st.caption('등록일·사업장명·평가명을 클릭한 뒤 ‘선택한 평가 열기’를 누르세요. 수정·삭제 대상은 체크박스로 선택하세요.' if not trashed else '평가를 체크한 뒤 복원 또는 완전삭제를 선택하세요.')
     with st.container(key='ra_hub_table'):
         with st.container(key='ra_table_header'):
             columns = st.columns(9, gap='small', vertical_alignment='center')
@@ -9823,40 +9893,34 @@ def ra_apply_standard_models(trade, work, example_ids, include_measures=False):
 
 
 def ra_render_standard_models(meta, trade, work, examples):
-    with st.expander('표준모델로 작성하기',expanded=True):
-        st.caption('유해위험요인·감소대책 예시를 옆에서 참고하거나 작성 초안으로 가져올 수 있습니다.')
-        search=st.text_input('표준모델 검색',key='ra_model_search',placeholder='예: 굴착, 인양, 밀폐공간')
-        options=[model for model in examples if not search.strip() or search.strip().casefold() in (model['title']+' '+model['factor']).casefold()]
-        ids=[model['id'] for model in options]
-        labels={model['id']:model['title'] for model in examples}
-        pick_key='ra_model_picks_'+ra_hash([trade,ids])[:12]
-        picked=st.multiselect('적용할 표준모델 (여러 개 선택 가능)',ids,key=pick_key,format_func=labels.__getitem__)
-        if not options:st.info('검색 조건에 맞는 표준모델이 없습니다. 검색어를 바꿔 주세요.')
-        if st.session_state.get('ra_edit_entry_example') not in [None]+ids:
-            st.session_state.ra_edit_entry_example=None
-            st.session_state.ra_entry['example']=None
-        selected_id=ra_field('참고할 사례','example','entry','select',[None]+ids,
-                             format_func=lambda value:'작업 관련 모델 먼저 보기' if value is None else labels[value])
-        preview_ids=picked or ([selected_id] if selected_id else ids[:1])
-        previews=[model for eid in preview_ids for model in examples if model['id']==eid]
+    with st.expander('표준모델로 작성하기', expanded=True):
+        st.caption('표준모델을 선택하면 유해위험요인과 감소대책을 확인하고 평가 항목에 추가할 수 있습니다.')
+        search = st.text_input('표준모델 검색', key='ra_model_search', placeholder='예: 굴착, 인양, 밀폐공간')
+        options = [model for model in examples if not search.strip() or search.strip().casefold() in (model['title']+' '+model['factor']).casefold()]
+        ids = [model['id'] for model in options]
+        labels = {model['id']: model['title'] for model in examples}
+        pick_key = 'ra_model_picks_'+ra_hash([trade, ids])[:12]
+        picked = st.multiselect('적용할 표준모델 (여러 개 선택 가능)', ids, key=pick_key, format_func=labels.__getitem__)
+        if not options:
+            st.info('검색 조건에 맞는 표준모델이 없습니다. 검색어를 바꿔 주세요.')
+        preview_ids = picked or ids[:1]
+        previews = [model for eid in preview_ids for model in examples if model['id'] == eid]
         for model in previews:
             with st.container(border=True):
                 st.markdown('**'+model['title']+'**')
                 st.write('유해위험요인 · '+model['factor'])
-                for kind,detail in model['controls']:st.write('• '+kind+' / '+detail)
+                for kind, detail in model['controls']:
+                    st.write('• '+kind+' / '+detail)
                 st.caption(model['source'])
-                if model.get('incident'):st.caption('사고사례 요약 · '+model['incident'])
-        include=st.checkbox('감소대책 예시도 함께 가져오기',value=True,key='ra_model_include_measures')
-        if st.button('선택한 표준모델 적용',key='ra_models_apply',type='primary',disabled=not (picked and work.strip())):
+                if model.get('incident'):
+                    st.caption('사고사례 요약 · '+model['incident'])
+        include = st.checkbox('감소대책 예시도 함께 가져오기', value=True, key='ra_model_include_measures')
+        if st.button('선택한 표준모델 적용', key='ra_models_apply', type='primary', disabled=not (picked and work.strip())):
             try:
-                count=ra_apply_standard_models(trade,work,picked,include)
+                count = ra_apply_standard_models(trade, work, picked, include)
                 st.success(f'{count}개 항목을 추가했습니다. 현장 조건에 맞게 확인·수정해 주세요.' if count else '같은 작업·조건·유해위험요인이 이미 있습니다.')
-            except ValueError as exc:st.warning(str(exc))
-        if selected_id and st.button('이 사례를 평가 항목으로 추가',key='ra_add_example',disabled=not work.strip()):
-            try:
-                count=ra_apply_standard_models(trade,work,[selected_id],include)
-                st.success('평가 항목을 추가했습니다. 현장 조건을 확인·수정하세요.' if count else '같은 작업·조건·유해위험요인이 이미 있습니다.')
-            except ValueError as exc:st.warning(str(exc))
+            except ValueError as exc:
+                st.warning(str(exc))
         return previews
 
 
@@ -9892,14 +9956,19 @@ def ra_render_writer(actor):
     else: ra_render_sharing(meta, actor)
     st.divider()
     previous, next_step = st.columns(2)
-    with previous: st.button('이전 단계', on_click=ra_go_step, args=(index-1,), disabled=index == 0, key='ra_previous', width='stretch')
+    with previous:
+        if index == 0:
+            st.button('이전 단계', on_click=ra_hub_back, args=(actor,), key='ra_previous', width='stretch')
+        else:
+            st.button('이전 단계', on_click=ra_go_step, args=(index-1,), key='ra_previous', width='stretch')
     with next_step: st.button('다음 단계', on_click=ra_go_step, args=(index+1,), disabled=index == 5, key='ra_next', width='stretch')
     st.caption('표준모델과 AI는 작성 후보를 제공합니다. 점수와 현장 적용·이행 여부는 공단 작성자가 현장 확인자료를 바탕으로 확인합니다.')
-    with st.expander('작성 내용 백업'):
-        st.download_button('작성 내용 JSON 내려받기', json.dumps(ra_payload(), ensure_ascii=False, indent=2).encode(), '위험성평가_작성내용.json', 'application/json', key='ra_hub_writer_json', on_click='ignore')
-        st.caption('다른 창에서 평가를 수정했다면 필요한 내용을 백업한 뒤 저장된 내용을 다시 불러오세요.')
-        confirmed = st.checkbox('현재 화면의 미저장 입력이 저장된 내용으로 바뀌는 것을 확인합니다.', key='ra_hub_reload_confirm')
-        st.button('저장된 내용 다시 불러오기', key='ra_hub_writer_reload', disabled=not confirmed, on_click=ra_hub_open, args=(actor, st.session_state.ra_active_record_id))
+    if st.session_state.get('ra_hub_reload_needed'):
+        with st.expander('저장된 최신 내용 불러오기', expanded=True):
+            st.caption('다른 창의 변경사항을 불러오면 현재 화면의 미저장 입력이 바뀝니다. 필요한 내용을 확인한 뒤 진행하세요.')
+            confirmed = st.checkbox('현재 화면을 저장된 최신 내용으로 바꿉니다.', key='ra_hub_reload_confirm')
+            st.button('최신 내용 불러오기', key='ra_hub_writer_reload', disabled=not confirmed,
+                      on_click=ra_hub_open, args=(actor, st.session_state.ra_active_record_id))
 
 
 def ra_hardware_back(actor):
@@ -10136,6 +10205,7 @@ def ptw_validate(data):
     for value in data['meta'].values():
         if value is not None and (not isinstance(value, str) or len(value) > 1000):
             raise ValueError('기본정보 입력 길이를 확인해 주세요.')
+    data['meta']['project'] = canonical_site_label(data['meta'].get('project', ''))
     datetime.date.fromisoformat(data['meta']['date'])
     ids = set()
     for work in data['works']:
@@ -10209,7 +10279,7 @@ def ptw_record_list(actor):
     try:
         if 'work_permit_plans' not in report_history_tables(db): return []
         records = db.execute('SELECT id,project,trade,work_date,updated FROM work_permit_plans WHERE owner=? ORDER BY updated DESC LIMIT 100', (actor,)).fetchall()
-        return [dict(zip(('id', 'project', 'trade', 'date', 'updated'), row)) for row in records]
+        return [dict(zip(('id', 'project', 'trade', 'date', 'updated'), (row[0], canonical_site_label(row[1]), *row[2:]))) for row in records]
     finally: db.close()
 
 
@@ -10230,6 +10300,10 @@ def ptw_initialize(actor):
             if key.startswith('ptw_'): del st.session_state[key]
         st.session_state.ptw_actor = str(actor)
     st.session_state.setdefault('ptw_data', ptw_default())
+    st.session_state.ptw_data['meta']['project'] = canonical_site_label(st.session_state.ptw_data['meta'].get('project', ''))
+    for key in list(st.session_state):
+        if str(key).startswith('ptw_w_') and str(key).endswith('_meta_project'):
+            st.session_state[key] = canonical_site_label(st.session_state[key])
     st.session_state.setdefault('ptw_step', PTW_STEPS[0])
     st.session_state.setdefault('ptw_revision', None)
     st.session_state.setdefault('ptw_generation', 0)
