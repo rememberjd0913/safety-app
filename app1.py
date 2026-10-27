@@ -6168,6 +6168,93 @@ def workstation_snapshot(actor):
     return workstation_summarize(rows, department_sites_map, datetime.datetime.now(ZoneInfo('Asia/Seoul')).date())
 
 
+MAIN_TAB_HOME_SCRIPT = '<script>(()=>{\n  let host;try{host=window.parent;void host.document.body;}catch(e){return;}\n  const install=function(){\n  const w=window;\n  const owner=__OWNER__,version=\'home-hover-v3\';\n  const prior=w.__kecoHomeHover;\n  if(prior&&prior.owner===owner&&prior.version===version){prior.refresh();return;}\n  if(prior){\n    if(prior.observer)prior.observer.disconnect();\n    w.clearTimeout(prior.homeTimer);w.clearTimeout(prior.hoverTimer);\n    if(prior.onClick)w.document.removeEventListener(\'click\',prior.onClick,true);\n    if(prior.onHover)w.document.removeEventListener(\'pointerover\',prior.onHover,true);\n    if(!prior.observer&&prior.cleanup)prior.cleanup();\n  }\n  const state={owner,version,homeTimer:null,hoverTimer:null,hoverId:null,lastToken:prior&&prior.owner===owner?prior.lastToken:null};\n  const mainTabs=()=>{const menu=w.document.querySelector(\'.st-key-keco_main_menu\');\n    const list=menu&&menu.querySelector(\'[role="tablist"]\');return list?Array.from(list.querySelectorAll(\'[role="tab"]\')):[];};\n  const scrollHome=()=>{const main=w.document.querySelector(\'[data-testid="stMain"]\');\n    if(main)main.scrollTo({top:0,behavior:\'auto\'});};\n  const clickHome=(index,attempt=0)=>{const button=w.document.querySelector(\'.st-key-keco_tab_home_\'+index+\' button\');\n    if(button&&!button.disabled){button.click();return;}\n    if(attempt<50)state.homeTimer=w.setTimeout(()=>clickHome(index,attempt+1),100);\n  };\n  const onClick=event=>{\n    if(!event.isTrusted)return;\n    const tab=event.target.closest&&event.target.closest(\'[role="tab"]\');\n    if(!tab)return;\n    const tabs=mainTabs(),index=tabs.indexOf(tab);if(index<0)return;\n    w.clearTimeout(state.homeTimer);w.clearTimeout(state.hoverTimer);state.hoverId=null;\n    state.homeTimer=w.setTimeout(()=>clickHome(index),80);\n  };\n  const onHover=event=>{\n    if(!event.isTrusted||!w.matchMedia(\'(hover:hover) and (pointer:fine)\').matches)return;\n    const cell=event.target.closest&&event.target.closest(\'[class*="st-key-ra_hub_focuscell_"]\');\n    if(!cell)return;\n    if(event.relatedTarget&&cell.contains(event.relatedTarget))return;\n    const row=cell.closest(\'[class*="st-key-ra_hub_row_"]\');if(!row)return;\n    if(row.querySelector(\'[class*="st-key-ra_hub_focuscell_active_"]\'))return;\n    const tab=mainTabs()[1];if(!tab||tab.getAttribute(\'aria-selected\')!==\'true\')return;\n    const table=row.closest(\'.st-key-ra_hub_table\');\n    if(table&&table.querySelector(\'[data-testid="stCheckbox"] input:checked\'))return;\n    const rowKey=Array.from(row.classList).find(key=>key.startsWith(\'st-key-ra_hub_row_\'));\n    if(!rowKey)return;\n    const button=cell.querySelector(\'button\');if(!button||button.disabled)return;\n    w.clearTimeout(state.hoverTimer);\n    state.hoverTimer=w.setTimeout(()=>{\n      if(!button.isConnected||!cell.matches(\':hover\'))return;\n      state.hoverId=rowKey;button.click();\n    },150);\n  };\n  const refresh=()=>{\n    const marker=w.document.getElementById(\'keco-tab-home-state\');\n    if(marker&&marker.dataset.token&&state.lastToken!==marker.dataset.token){\n      state.lastToken=marker.dataset.token;state.hoverId=null;\n      w.requestAnimationFrame(scrollHome);\n    }\n  };\n  const observer=new w.MutationObserver(refresh);\n  observer.observe(w.document.body,{childList:true,subtree:true});\n  w.document.addEventListener(\'click\',onClick,true);\n  w.document.addEventListener(\'pointerover\',onHover,true);\n  state.observer=observer;state.onClick=onClick;state.onHover=onHover;\n  state.refresh=refresh;\n  state.cleanup=()=>{observer.disconnect();w.clearTimeout(state.homeTimer);w.clearTimeout(state.hoverTimer);\n    w.document.removeEventListener(\'click\',onClick,true);w.document.removeEventListener(\'pointerover\',onHover,true);};\n  w.__kecoHomeHover=state;refresh();\n  };\n  const script=host.document.createElement(\'script\');\n  script.textContent=\'(\'+install.toString()+\')();\';\n  host.document.head.appendChild(script);script.remove();\n})();</script>\n'
+
+MAIN_TAB_HOME_CSS = '<style>\n.st-key-keco_tab_home_bridge {display:none!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_"] [data-testid="stButton"] button {\n background:transparent!important;background-image:none!important;border:1px solid transparent!important;\n color:#263f33!important;-webkit-text-fill-color:#263f33!important;border-radius:6px!important;box-shadow:none!important;\n min-height:40px!important;height:auto!important;padding:7px 3px!important;width:100%!important;\n justify-content:flex-start!important;text-align:left!important;transform:none!important;font-weight:500!important;\n}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_"] [data-testid="stButton"] button:hover:not(:disabled) {\n background:#e6f3eb!important;border-color:#bed9c8!important;color:#126443!important;\n}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_"] button p,\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_"] button span {\n color:inherit!important;-webkit-text-fill-color:currentColor!important;font-size:14px!important;line-height:1.5!important;\n white-space:normal!important;word-break:keep-all!important;overflow-wrap:anywhere!important;text-align:left!important;\n}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_2_"] button,\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_active_2_"] button {justify-content:center!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_row_"]:has([class*="st-key-ra_hub_focuscell_active_"] button) {background:#e6f3eb!important;box-shadow:inset 3px 0 #16825d!important;}\n.st-key-risk_assessment .st-key-ra_hub_table [class*="st-key-ra_hub_focuscell_"] button:disabled {background:transparent!important;border-color:transparent!important;color:#647365!important;opacity:1!important;}\n\n</style>'
+
+def main_tab_home(actor, index):
+    """Return only the requested section to its entry view, retaining working data."""
+    import uuid
+    if not _perf_actor_allowed(actor) or isinstance(index,bool) or index not in range(7):return
+    if index==0:
+        st.session_state.ws_registration_open=False
+    elif index==1:
+        page=st.session_state.get('ra_hub_page','list')
+        if page in ('writer','guide') and st.session_state.get('ra_active_record_id') and st.session_state.get('ra_meta'):
+            if not ra_hub_save(actor,quiet=True):
+                st.session_state.ws_navigation=dict(index=index,token=uuid.uuid4().hex)
+                return
+        st.session_state.ra_hub_page='list'
+        st.session_state.ra_hub_area='평가 목록'
+        st.session_state.ra_hub_site_info=None
+        st.session_state.ra_hub_delete_confirm=False
+        ra_hub_filter_reset()
+        year=str(ra_current_year())
+        st.session_state.ra_hub_filter_year=year
+        st.session_state.ra_hub_filters['year']=year
+        st.session_state.ra_hub_page_number=1
+        st.session_state.keco_back_revision=st.session_state.get('keco_back_revision',0)+1
+    elif index==2:
+        if st.session_state.get('ptw_dirty') and not ptw_try_save(actor):
+            st.session_state.ws_navigation=dict(index=index,token=uuid.uuid4().hex)
+            return
+        st.session_state.ptw_step=PTW_STEPS[0]
+        st.session_state.pop('ptw_delete_work',None)
+        st.session_state.ptw_back_revision=st.session_state.get('ptw_back_revision',0)+1
+    elif index==4:
+        st.session_state.safety_doc_search=''
+        st.session_state.safety_doc_filter='전체'
+        st.session_state.pop('safety_doc_selected',None)
+    elif index==5:
+        today=datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
+        st.session_state.update(cal_selected_day=today,cal_year=today.year,cal_month=today.month,
+                                cal_jump_day=today,cal_view='월간 달력',cal_filter_dept='전체',cal_form_open=False,cal_detail=None)
+    elif index==6:
+        owner=str(actor)
+        st.session_state.inspection_history_menu='내 리포트'
+        st.session_state['report_history_view:'+owner]='보관 중'
+        st.session_state['report_history_search:'+owner]=''
+        st.session_state['report_history_period:'+owner]='전체 기간'
+        st.session_state['report_history_site:'+owner]='전체 현장'
+        for key in list(st.session_state):
+            if key in ('report_history_open:'+owner,'report_history_preview:'+owner,'report_history_selected:'+owner) or str(key).startswith('report_history_confirm:'+owner+':'):
+                st.session_state.pop(key,None)
+    token=uuid.uuid4().hex
+    st.session_state.ws_navigation=dict(index=index,token=token,home=True)
+    st.session_state.keco_tab_home_command=dict(index=index,token=token)
+
+
+def render_main_tab_home_bridge(actor):
+    if not _perf_actor_allowed(actor):return
+    owner=hashlib.sha256(str(actor).encode()).hexdigest()[:24]
+    st.markdown(MAIN_TAB_HOME_CSS,unsafe_allow_html=True)
+    with st.container(key='keco_tab_home_bridge'):
+        for index in range(7):
+            st.button('상단 메뉴 첫 화면 '+str(index),key='keco_tab_home_'+str(index),on_click=main_tab_home,args=(actor,index))
+        command=st.session_state.get('keco_tab_home_command',{})
+        st.markdown('<span id="keco-tab-home-state" data-token="'+str(command.get('token',''))+'" data-index="'+str(command.get('index',0))+'"></span>',unsafe_allow_html=True)
+        components.html(MAIN_TAB_HOME_SCRIPT.replace('__OWNER__',json.dumps(owner)),height=0,scrolling=False)
+
+
+def ra_hub_focus_record(record_id):
+    st.session_state.ra_hub_focus_id=str(record_id)
+    st.session_state.ra_hub_selection=[]
+    st.session_state.ra_hub_delete_confirm=False
+    st.session_state.pop('ra_hub_purge_ids',None)
+    st.session_state.ra_hub_purge_ack=False
+
+
+def ra_hub_open_target():
+    selected=st.session_state.get('ra_hub_selection',[])
+    if len(selected)==1:return selected[0]
+    if selected:return None
+    return st.session_state.get('ra_hub_focus_id')
+
+
+def ra_hub_cell_label(value):
+    return re.sub(r'([\\`*_{}\[\]<>()#+.!|~-])',r'\\\1',str(value))
+
+
 def workstation_navigate(index, history_mode=None):
     import uuid
     if index in (-1, 0):
@@ -6272,7 +6359,7 @@ def render_workstation_route():
             if(!tabs||!tabs[command.index]||w.document.querySelectorAll('.st-key-keco_main_menu').length!==1){if(++attempts<40)w.setTimeout(navigate,100);return;}
             if(w.__kecoWorkstationCommand===command.token)return;
             w.__kecoWorkstationCommand=command.token;tabs[command.index].click();
-            w.setTimeout(()=>{const target=command.index===0?w.document.querySelector('.st-key-workstation_registration'):menu;
+            w.setTimeout(()=>{if(command.home){const main=w.document.querySelector('[data-testid="stMain"]');if(main)main.scrollTo({top:0,behavior:'auto'});return;}const target=command.index===0?w.document.querySelector(w.document.querySelector('#keco-workstation-view')?.dataset.registration==='yes'?'.st-key-workstation_registration':'.st-key-workstation_home'):menu;
                 if(target)target.scrollIntoView({block:'start',behavior:'auto'});},150);
         };w.setTimeout(navigate,150);})();</script>'''.replace('__COMMAND__', command)
     with st.container(key='workstation_route_frame'):
@@ -9264,6 +9351,7 @@ def ra_hub_filter():
         name=st.session_state.get('ra_hub_filter_name', '전체'), query='')
     st.session_state.ra_hub_page_number = 1
     st.session_state.ra_hub_selection = []
+    st.session_state.ra_hub_focus_id=None
 
 
 def ra_hub_filter_reset():
@@ -9276,6 +9364,7 @@ def ra_hub_filter_reset():
 
     st.session_state.pop('ra_hub_purge_ids',None)
     st.session_state.ra_hub_purge_ack=False
+    st.session_state.ra_hub_focus_id=None
 
 
 def ra_hub_select(record_id, key):
@@ -9284,6 +9373,7 @@ def ra_hub_select(record_id, key):
     else: selected.discard(record_id)
     st.session_state.ra_hub_selection = sorted(selected)
     st.session_state.ra_hub_delete_confirm = False
+    st.session_state.ra_hub_focus_id=None
 
 
 def ra_hub_change_trash(actor, restore):
@@ -9298,6 +9388,7 @@ def ra_hub_change_trash(actor, restore):
 
 def ra_hub_page_move(page):
     st.session_state.ra_hub_page_number = max(1, page)
+    st.session_state.ra_hub_focus_id=None
 
 
 def ra_render_frequency_method():
@@ -9426,14 +9517,15 @@ def ra_hub_select_page(record_ids, key):
     else: selected.difference_update(record_ids)
     st.session_state.ra_hub_selection = sorted(selected)
     st.session_state.ra_hub_delete_confirm = False
+    st.session_state.ra_hub_focus_id=None
 
 
 def ra_hub_open_selected(actor):
-    selected = st.session_state.get('ra_hub_selection', [])
-    if len(selected) != 1:
-        st.session_state.ra_load_error = '작성할 평가를 한 건 선택해 주세요.'
+    record_id=ra_hub_open_target()
+    if not record_id:
+        st.session_state.ra_load_error='작성할 평가를 한 건 선택해 주세요.'
         return
-    ra_hub_open(actor, selected[0])
+    ra_hub_open(actor,record_id)
 
 
 def ra_hub_request_delete():
@@ -9598,19 +9690,22 @@ def ra_render_history(actor):
     page = max(1, min(page_count, st.session_state.get('ra_hub_page_number', 1)))
     st.session_state.ra_hub_page_number = page
     page_records = visible[(page-1)*10:page*10]
+    if trashed or st.session_state.get('ra_hub_focus_id') not in {row['id'] for row in page_records}:
+        st.session_state.ra_hub_focus_id=None
+    focused=st.session_state.get('ra_hub_focus_id')
     selected = set(st.session_state.get('ra_hub_selection', [])) & {r['id'] for r in visible}
     st.session_state.ra_hub_selection = sorted(selected)
     with st.container(key='ra_hub_actions'):
         count, open_box, register, edit, delete = st.columns([3.3, 1.7, 1, 1, 1], gap='small')
         with count:
             label = '휴지통' if trashed else '목록'
-            st.markdown(f'<p class="ra-register-count">{label} (총 {len(visible)}건)<small>선택 {len(selected)}건</small></p>', unsafe_allow_html=True)
+            st.markdown(f'<p class="ra-register-count">{label} (총 {len(visible)}건)<small>체크 {len(selected)}건{(" · 열기 대상 1건" if focused and not selected else "")}</small></p>', unsafe_allow_html=True)
         with open_box:
             if trashed:
                 st.button('선택 평가 복원', key='ra_hub_restore', disabled=not selected, type='primary',
                           on_click=ra_hub_change_trash, args=(actor, True), width='stretch')
             else:
-                st.button('선택한 평가 열기', key='ra_hub_open_selected', disabled=len(selected)!=1, type='primary',
+                st.button('선택한 평가 열기', key='ra_hub_open_selected', disabled=not bool(ra_hub_open_target()), type='primary',
                           on_click=ra_hub_open_selected, args=(actor,), width='stretch')
         with register:
             st.button('＋ 등록', key='ra_hub_new', disabled=trashed, on_click=ra_hub_navigate, args=('registration',), width='stretch')
@@ -9644,7 +9739,7 @@ def ra_render_history(actor):
                 st.button('삭제 확인', key='ra_hub_delete', on_click=ra_hub_change_trash, args=(actor, False), width='stretch')
             with cancel:
                 st.button('취소', key='ra_hub_delete_cancel', on_click=ra_hub_cancel_delete, width='stretch')
-    st.caption('평가를 체크한 뒤 ‘선택한 평가 열기’를 누르면 작성을 이어갈 수 있습니다.' if not trashed else '평가를 체크한 뒤 복원 또는 완전삭제를 선택하세요.')
+    st.caption('등록일·사업장명·평가명에 마우스를 올리거나 클릭한 뒤 ‘선택한 평가 열기’를 누르세요. 수정·삭제 대상은 체크박스로 선택하세요.' if not trashed else '평가를 체크한 뒤 복원 또는 완전삭제를 선택하세요.')
     with st.container(key='ra_hub_table'):
         with st.container(key='ra_table_header'):
             columns = st.columns(9, gap='small', vertical_alignment='center')
@@ -9674,6 +9769,11 @@ def ra_render_history(actor):
                             st.session_state[key] = record_id in selected
                             st.checkbox(f'평가 {number} 선택', key=key, label_visibility='collapsed',
                                         on_change=ra_hub_select, args=(record_id, key))
+                        elif index in (2,3,4):
+                            prefix='ra_hub_focuscell_active_' if record_id==focused else 'ra_hub_focuscell_'
+                            with st.container(key=prefix+str(index)+'_'+record_id):
+                                st.button(ra_hub_cell_label(value),key='ra_hub_focus_'+str(index)+'_'+record_id,disabled=trashed,
+                                          on_click=ra_hub_focus_record,args=(record_id,),width='stretch')
                         elif index == 7:
                             st.markdown('<span class="ra-table-status">'+escape(str(value))+'</span>', unsafe_allow_html=True)
                         else:
@@ -10624,3 +10724,5 @@ with permit_tab:
         render_work_permit(logged_user_id)
 
 render_workstation_route()
+
+render_main_tab_home_bridge(logged_user_id)
