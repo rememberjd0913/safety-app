@@ -3061,92 +3061,241 @@ def render_report_history_import(owner):
                 st.error(str(exc))
 
 
-def render_report_history(owner):
+REPORT_HISTORY_CSS = '<style>\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stHorizontalBlock"] {display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:12px!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stColumn"]:first-child {flex:1 1 auto!important;width:auto!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stColumn"]:last-child {flex:0 0 auto!important;width:118px!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar button {min-height:34px!important;height:auto!important;padding:6px 10px!important;border:1px solid #cfdbd2!important;border-radius:8px!important;background:#f6f8f3!important;color:#456151!important;box-shadow:none!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar button p {font-size:13px!important;white-space:nowrap!important;}\n.st-key-report_history_panel .st-key-report_history_table_header {padding:8px 12px!important;border-bottom:1px solid #cbdccf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] {padding:10px 12px!important;border:1px solid #d7e0d6!important;border-left:4px solid transparent!important;border-radius:10px!important;margin:6px 0!important;background:#fffdf8!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_active_"] {background:#e3f3e9!important;border-color:#65a487!important;border-left-color:#087744!important;box-shadow:0 0 0 1px #b4d6bf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button {background:transparent!important;border:0!important;border-radius:6px!important;box-shadow:none!important;min-height:40px!important;height:auto!important;padding:5px 4px!important;justify-content:flex-start!important;text-align:left!important;transform:none!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button:hover {background:#d9ebdf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button p {color:#1d4430!important;white-space:normal!important;word-break:keep-all!important;overflow-wrap:anywhere!important;text-align:left!important;line-height:1.55!important;font-size:14px!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stCheckbox"] label {padding:4px!important;min-height:36px!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"] {min-width:0!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stCaptionContainer"] p {font-size:12px!important;line-height:1.5!important;word-break:keep-all!important;overflow-wrap:anywhere!important;}\n@media(max-width:800px){\n .st-key-report_history_panel .st-key-report_history_table_header {display:none!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] > [data-testid="stHorizontalBlock"],\n .st-key-report_history_panel [class*="st-key-report_history_row_"] > [data-testid="stLayoutWrapper"] > [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:32px minmax(0,1fr)!important;gap:3px 10px!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"] {width:100%!important;flex:none!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:first-child {grid-column:1!important;grid-row:1 / span 4!important;align-self:start!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:not(:first-child) {grid-column:2!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(2) {grid-row:2!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(3) {grid-row:1!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(4),\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(5) {display:none!important;}\n}\n\n</style>'
+
+def report_history_reset_detail(owner):
+    for key in list(st.session_state):
+        if key in ('report_history_open:'+owner, 'report_history_preview:'+owner) or str(key).startswith('report_history_confirm:'+owner+':'):
+            st.session_state.pop(key, None)
+
+
+def report_history_select(owner, selection, checked_key=None):
     owner = report_history_identity(owner)
-    st.subheader("내 리포트")
-    st.caption("본인이 저장한 리포트를 조회·삭제하거나 PDF·한글 파일을 다시 내려받습니다.")
-    st.button("리포트 목록 새로고침",key="report_history_refresh:"+owner,width="stretch")
-    notice = st.session_state.pop("report_history_notice:" + owner, None)
-    if notice:
-        st.success(notice)
-    error = st.session_state.pop("report_history_error:" + owner, None)
-    if error:
-        st.error(error)
-    view = st.radio("리포트 보관함", ["보관 중", "휴지통"], horizontal=True, key="report_history_view:"+owner)
-    trashed = view == "휴지통"
-    if trashed:
-        st.caption("휴지통의 안전점검 보고서는 점검 현황 집계와 취합 대상에서 제외됩니다. 복원하면 다시 반영됩니다.")
+    if checked_key is not None and not st.session_state.get(checked_key):
+        selection = None
+    st.session_state['report_history_selected:'+owner] = selection
+    report_history_reset_detail(owner)
+
+
+def report_history_selection_changed(owner):
+    owner = report_history_identity(owner)
+    report_history_reset_detail(owner)
+
+
+def report_history_toggle_open(owner, selection):
+    owner = report_history_identity(owner)
+    if not selection or st.session_state.get('report_history_selected:'+owner) != selection:
+        return
+    key = 'report_history_open:'+owner
+    if st.session_state.get(key) == selection:
+        st.session_state.pop(key, None)
     else:
-        render_report_history_import(owner)
+        st.session_state[key] = selection
+    st.session_state.pop('report_history_preview:'+owner, None)
+
+
+def report_history_confirmation_key(owner, selection, *, permanent=False):
+    purpose = 'purge:' if permanent else 'trash:'
+    return 'report_history_confirm:'+str(owner)+':'+purpose+hashlib.sha256(str(selection).encode()).hexdigest()
+
+
+def report_history_clear_exports(owner, source, report_id):
+    report_history_reset_detail(owner)
+    st.session_state.pop('report_history_selected:'+owner, None)
+    if source == 'inspection':
+        for key in ('inspection_report_key', 'inspection_report_archived_key', 'inspection_report_bytes',
+                    'inspection_report_name', 'inspection_pdf_bytes'):
+            st.session_state.pop(key, None)
+    if source == 'inspection' or (source == 'generated' and str(report_id).startswith('batch:')):
+        for key in ('batch_key', 'batch_output', 'inspection_batch_selection'):
+            st.session_state.pop(key, None)
+    if source == 'generated' and str(report_id).startswith('risk:'):
+        st.session_state.pop('ra_output', None)
+        st.session_state.pop('ra_last_saved_sig', None)
+
+
+def report_history_purge(owner, source, report_id):
+    """Permanently remove one owned, already-trashed report and queue its files."""
+    owner = report_history_identity(owner)
+    table = {'inspection':'reports', 'generated':'generated_reports', 'uploaded':'personal_report_imports'}.get(source)
+    if table is None:
+        raise PermissionError('본인의 휴지통에 있는 리포트만 완전삭제할 수 있습니다.')
+    report_id = str(report_id)
+    db = inspection_store()
+    compacted = True
     try:
-        records = report_history_list(owner, trashed=trashed)
-    except StorageError as exc:
-        st.error(str(exc))
+        with db:
+            db.execute('BEGIN IMMEDIATE')
+            tables = report_history_tables(db)
+            if table not in tables or 'report_trash' not in tables:
+                raise PermissionError('본인의 휴지통에 있는 리포트만 완전삭제할 수 있습니다.')
+            owned = db.execute('SELECT 1 FROM '+table+' WHERE id=? AND owner=?', (report_id, owner)).fetchone()
+            marker = db.execute('SELECT 1 FROM report_trash WHERE source=? AND report_id=? AND owner=?',
+                                (source, report_id, owner)).fetchone()
+            if not owned or not marker:
+                raise PermissionError('본인의 휴지통에 있는 리포트만 완전삭제할 수 있습니다.')
+            keys = set()
+            refs = None
+            if source == 'inspection':
+                if 'report_files' in tables:
+                    refs = db.execute('SELECT hex(hwpx),hex(pdf) FROM report_files WHERE id=?', (report_id,)).fetchone()
+                encoded = db.execute('SELECT payload FROM reports WHERE id=? AND owner=?', (report_id, owner)).fetchone()[0]
+                try:
+                    payload = json.loads(encoded)
+                    items = payload.values() if isinstance(payload, dict) else []
+                    for item in items:
+                        if not isinstance(item, dict): continue
+                        for field in ('before_files', 'after_files'):
+                            values = item.get(field, [])
+                            if not isinstance(values, list): continue
+                            for value in values:
+                                if isinstance(value, str) and value.startswith(PHOTO_REF):
+                                    key = value[len(PHOTO_REF):]
+                                    if re.fullmatch(r'images/[0-9a-f]{64}\.[a-z0-9]+', key): keys.add(key)
+                except (ValueError, TypeError):
+                    pass
+            else:
+                refs = db.execute('SELECT hex(hwpx),hex(pdf) FROM '+table+' WHERE id=? AND owner=?', (report_id, owner)).fetchone()
+            for encoded in refs or ():
+                try:
+                    raw = bytes.fromhex(encoded or '')
+                    if not raw.startswith(b'KECO-NHN-BLOB-V1:'): continue
+                    key = raw[len(b'KECO-NHN-BLOB-V1:'):].decode('ascii')
+                except (ValueError, UnicodeError):
+                    continue
+                if re.fullmatch(r'files/[0-9a-f]{64}\.[a-z0-9]+', key): keys.add(key)
+            db.execute('CREATE TABLE IF NOT EXISTS risk_file_cleanup (object_key TEXT PRIMARY KEY)')
+            for key in keys:
+                db.execute('INSERT OR IGNORE INTO risk_file_cleanup VALUES (?)', (key,))
+            if source == 'inspection' and 'report_files' in tables:
+                db.execute('DELETE FROM report_files WHERE id=?', (report_id,))
+            if source == 'generated':
+                if 'generated_report_info' in tables:
+                    db.execute('DELETE FROM generated_report_info WHERE id=? AND owner=?', (report_id, owner))
+                if 'risk_assessment_artifacts' in tables:
+                    db.execute('DELETE FROM risk_assessment_artifacts WHERE generated_id=? AND owner=?', (report_id, owner))
+            db.execute('DELETE FROM '+table+' WHERE id=? AND owner=?', (report_id, owner))
+            db.execute('DELETE FROM report_trash WHERE source=? AND report_id=? AND owner=?', (source, report_id, owner))
+        try:
+            db.execute('VACUUM')
+        except Exception:
+            compacted = False
+    finally:
+        db.close()
+    try:
+        pending = ra_cleanup_files()
+    except Exception:
+        pending = -1
+    return dict(count=1, compacted=compacted, cleanup_pending=pending)
+
+
+def report_history_purge_action(owner, selection):
+    owner = str(owner)
+    if (st.session_state.get('report_history_view:'+owner) != '휴지통'
+            or st.session_state.get('report_history_selected:'+owner) != selection
+            or not st.session_state.get(report_history_confirmation_key(owner, selection, permanent=True))):
+        st.session_state['report_history_error:'+owner] = '삭제할 리포트를 선택하고 완전삭제 확인란을 체크해 주세요.'
         return
-    if not records:
-        st.info("휴지통이 비어 있습니다." if trashed else "보관 중인 리포트가 없습니다. 보고서를 만들거나 예전 파일을 가져와 주세요. 삭제한 리포트는 위의 ‘휴지통’에서 복원할 수 있습니다.")
+    try:
+        source, report_id = json.loads(selection)
+        result = report_history_purge(owner, source, report_id)
+    except (StorageError, PermissionError, ValueError, TypeError) as exc:
+        st.session_state['report_history_error:'+owner] = str(exc)
         return
-    left,right = st.columns(2)
-    search = left.text_input("리포트 검색", placeholder="현장명·리포트 제목", key="report_history_search:" + owner).strip().casefold()
-    period = right.selectbox("리포트 기간", ["전체 기간","최근 30일","최근 90일"], key="report_history_period:" + owner)
-    sites = ["전체 현장"] + sorted({row["site"] for row in records if row["site"]})
-    key = "report_history_site:" + owner
-    if st.session_state.get(key) not in sites:
-        st.session_state[key] = "전체 현장"
-    site = st.selectbox("리포트 현장", sites, key=key)
-    threshold = (datetime.datetime.now(ZoneInfo("Asia/Seoul")).date()-datetime.timedelta(days=29 if period=="최근 30일" else 89)).isoformat()
-    shown = [row for row in records if (site=="전체 현장" or row["site"]==site)
-             and (not search or search in (row["title"]+" "+row["site"]+" "+row["dept"]).casefold())
-             and (period=="전체 기간" or threshold <= row["created"][:10] <= datetime.datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat())]
-    if not shown:
-        st.info("조건에 맞는 리포트가 없습니다. 기간이나 검색어를 변경해 주세요.")
+    except Exception:
+        st.session_state['report_history_error:'+owner] = '완전삭제 결과를 확인하지 못했습니다. 새로고침하여 기록을 확인해 주세요.'
         return
-    st.caption(f"리포트 {len(shown)}건")
-    st.dataframe([{"작성일":row["created"].replace("T"," ")[:19] or "날짜 미확인", "리포트":row["title"], "현장":row["site"], "종류":row["kind"],
-                   **({"삭제일":row["deleted_at"].replace("T"," ")[:19]} if trashed else {}),
-                   "저장 파일":" · ".join(label for flag,label in ((row["has_pdf"],"PDF"),(row["has_hwpx"],"한글")) if flag) or "점검 내용·사진"}
-                  for row in shown], hide_index=True, width="stretch")
-    choices = {json.dumps([row["source"],row["id"]]):row for row in shown}
-    select_key = "report_history_selected:" + owner
-    if st.session_state.get(select_key) not in choices:
-        st.session_state[select_key] = next(iter(choices))
-    selection = st.selectbox("복원할 리포트" if trashed else "조회·삭제할 리포트", list(choices), format_func=lambda token:
-        f"{choices[token]['created'].replace('T',' ')[:19] or '날짜 미확인'} | {choices[token]['site'] or choices[token]['title']} | {choices[token]['kind']} | {choices[token]['id'][-6:]}", key=select_key)
-    selection_scope = json.dumps([trashed,selection])
-    if st.session_state.get("report_history_selection_scope:"+owner) != selection_scope:
-        for key in list(st.session_state):
-            if str(key).startswith("report_history_confirm:"+owner+":"):
-                st.session_state.pop(key, None)
-        st.session_state.pop("report_history_open:"+owner, None)
-        st.session_state.pop("report_history_preview:"+owner, None)
-        st.session_state["report_history_selection_scope:"+owner] = selection_scope
-    row = choices[selection]
-    st.markdown("**" + row["title"] + "**")
-    st.caption(" · ".join(value for value in (row["created"].replace("T"," ")[:19],row["dept"],row["site"]) if value))
+    report_history_clear_exports(owner, source, report_id)
+    st.session_state['report_history_cleanup_pending:'+owner] = result['cleanup_pending']
+    st.session_state['report_history_notice:'+owner] = '선택한 리포트를 완전삭제했습니다.'
+    if not result['compacted']:
+        st.session_state['report_history_notice:'+owner] += ' 기록은 삭제했으며 저장 공간 압축은 확인이 필요합니다.'
+    st.session_state.pop('report_history_error:'+owner, None)
+    st.session_state['report_history_reload:'+owner] = True
+
+
+def report_history_retry_cleanup(owner):
+    owner = report_history_identity(owner)
+    try:
+        pending = ra_cleanup_files()
+        st.session_state['report_history_cleanup_pending:'+owner] = pending
+        st.session_state['report_history_notice:'+owner] = ('남은 파일 정리를 마쳤습니다.' if pending == 0 else '일부 파일 정리가 남아 있습니다. 다시 시도해 주세요.')
+    except Exception:
+        st.session_state['report_history_error:'+owner] = '파일 정리를 완료하지 못했습니다. 저장소 연결·삭제 권한을 확인해 주세요.'
+
+
+def render_report_history_rows(owner, shown, selection, *, trashed=False):
+    with st.container(key='report_history_rows'):
+        with st.container(key='report_history_table_header'):
+            columns = st.columns([.4, 1.5, 3.3, 1, 1])
+            for column, label in zip(columns, ['선택', '작성일', '현장 / 리포트', '종류', '저장 파일']):
+                column.markdown('**'+label+'**')
+        for row in shown:
+            token = json.dumps([row['source'], row['id']])
+            digest = hashlib.sha256((owner+token).encode()).hexdigest()[:20]
+            selected = token == selection
+            row_key = 'report_history_row_'+('active_' if selected else '')+digest
+            check_key = 'report_history_rowchecked:'+owner+':'+digest
+            st.session_state[check_key] = selected
+            with st.container(key=row_key):
+                check, date, title, kind, files = st.columns([.4, 1.5, 3.3, 1, 1], vertical_alignment='center')
+                with check:
+                    st.checkbox('리포트 선택 · '+(row['site'] or row['title'])+' · '+row['id'][-6:], key=check_key,
+                                label_visibility='collapsed', on_change=report_history_select, args=(owner, token, check_key))
+                with date:
+                    st.button(row['created'].replace('T', ' ')[:19] or '날짜 미확인', key='report_history_rowdate:'+digest,
+                              on_click=report_history_select, args=(owner, token), width='stretch')
+                    if trashed:
+                        st.caption('삭제 '+row.get('deleted_at', '').replace('T', ' ')[:16])
+                with title:
+                    st.button(row['site'] or row['title'], key='report_history_rowtitle:'+digest,
+                              on_click=report_history_select, args=(owner, token), width='stretch')
+                    st.caption(row['title'])
+                kind.write(row['kind'])
+                files.caption(' · '.join(label for flag, label in ((row['has_hwpx'], '한글'), (row['has_pdf'], 'PDF')) if flag) or '점검 내용·사진')
+
+
+def render_report_history_management(owner, choices, selection, *, trashed=False):
+    st.divider()
+    if not trashed:
+        render_report_history_import(owner)
+    select_key = 'report_history_selected:'+owner
+    st.selectbox('복원·완전삭제할 리포트' if trashed else '조회·삭제할 리포트', list(choices), index=None,
+                 placeholder='위 목록에서 선택하거나 여기에서 리포트를 선택하세요', disabled=not choices,
+                 format_func=lambda token: f"{choices[token]['created'].replace('T',' ')[:19] or '날짜 미확인'} | {choices[token]['site'] or choices[token]['title']} | {choices[token]['kind']} | {choices[token]['id'][-6:]}",
+                 key=select_key, on_change=report_history_selection_changed, args=(owner,))
     if trashed:
-        st.button("선택한 리포트 복원", key="report_history_untrash:"+owner, width="stretch",
-                  on_click=report_history_trash_action, args=(owner,selection,True))
-        return
-    with st.expander("선택한 리포트 삭제"):
-        st.caption("휴지통으로 옮긴 리포트는 목록에서 빠집니다. 안전점검 보고서는 점검 현황 집계와 취합 대상에서도 제외됩니다. 잘못 삭제했다면 휴지통에서 복원하세요.")
-        confirm_key = "report_history_confirm:"+owner+":"+hashlib.sha256(selection.encode()).hexdigest()
-        confirmed = st.checkbox("선택한 리포트를 휴지통으로 옮기는 데 동의합니다.", key=confirm_key)
-        st.button("휴지통으로 이동", key="report_history_trash:"+owner, disabled=not confirmed, width="stretch",
-                  on_click=report_history_trash_action, args=(owner,selection,False))
-    if st.button("선택한 리포트 열기", key="report_history_open_button:" + owner, width="stretch"):
-        st.session_state["report_history_open:" + owner] = selection
-    if st.session_state.get("report_history_open:" + owner) != selection:
-        return
+        st.button('선택한 리포트 복원', key='report_history_untrash:'+owner, disabled=not selection,
+                  on_click=report_history_trash_action, args=(owner, selection, True))
+        with st.expander('선택한 리포트 완전삭제'):
+            st.warning('완전삭제하면 해당 리포트와 저장 파일을 복원할 수 없습니다.')
+            if selection:
+                row = choices[selection]
+                st.write('삭제 대상: '+(row['site'] or row['title'])+' · '+row['created'].replace('T', ' ')[:19]+' · '+row['id'][-6:])
+            confirmed = st.checkbox('선택한 리포트와 저장 파일을 복원할 수 없음을 확인했습니다.',
+                                    key=report_history_confirmation_key(owner, selection, permanent=True), disabled=not selection)
+            st.button('선택한 리포트 완전삭제', key='report_history_purge:'+owner, type='primary', disabled=not (selection and confirmed),
+                      on_click=report_history_purge_action, args=(owner, selection))
+    else:
+        with st.expander('선택한 리포트 삭제'):
+            st.caption('선택한 리포트를 휴지통으로 옮깁니다. 잘못 삭제했다면 휴지통에서 복원할 수 있습니다.')
+            confirmed = st.checkbox('선택한 리포트를 휴지통으로 옮기는 데 동의합니다.',
+                                    key=report_history_confirmation_key(owner, selection), disabled=not selection)
+            st.button('휴지통으로 이동', key='report_history_trash:'+owner, disabled=not (selection and confirmed),
+                      on_click=report_history_trash_action, args=(owner, selection, False))
+
+
+def render_report_history_detail(owner, row, selection):
     try:
         detail = report_history_get(owner,row["source"],row["id"])
     except (StorageError, PermissionError, ValueError) as exc:
         st.error(str(exc))
         return
     filename = re.sub(r'[\\/:*?"<>|\x00-\x1f]',"_",row["title"]+"_"+row["site"])[:100] + "_" + row["id"][-6:]
-    if detail["pdf"]:
-        st.download_button("저장한 PDF 내려받기",detail["pdf"],filename+".pdf","application/pdf",key="report_history_pdf_download:"+owner,on_click="ignore",width="stretch")
     if detail["hwpx"]:
         st.download_button("저장한 한글 내려받기",detail["hwpx"],filename+".hwpx","application/vnd.hancom.hwpx",key="report_history_hwpx_download:"+owner,on_click="ignore",width="stretch")
+    if detail["pdf"]:
+        st.download_button("저장한 PDF 내려받기",detail["pdf"],filename+".pdf","application/pdf",key="report_history_pdf_download:"+owner,on_click="ignore",width="stretch")
     if detail["pdf"]:
         if st.button("PDF 화면에서 보기",key="report_history_preview_button:"+owner,width="stretch"):
             st.session_state["report_history_preview:"+owner] = selection
@@ -3183,6 +3332,75 @@ def render_report_history(owner):
                 if item.get("ai_analysis"):
                     st.markdown("**저장한 AI 분석**")
                     st.text(str(item["ai_analysis"]))
+
+
+
+def render_report_history(owner):
+    owner = report_history_identity(owner)
+    st.markdown(REPORT_HISTORY_CSS, unsafe_allow_html=True)
+    with st.container(key='report_history_panel'):
+        with st.container(key='report_history_toolbar'):
+            heading, refresh = st.columns([1, .2], vertical_alignment='center')
+            heading.subheader('내 리포트')
+            with refresh:
+                st.button('새로고침', icon=':material/refresh:', help='리포트 목록 새로고침',
+                          key='report_history_refresh:'+owner, width='content')
+        st.caption('본인이 저장한 리포트를 조회하거나 PDF·한글 파일을 다시 내려받습니다.')
+        notice = st.session_state.pop('report_history_notice:'+owner, None)
+        if notice: st.success(notice)
+        error = st.session_state.pop('report_history_error:'+owner, None)
+        if error: st.error(error)
+        if st.session_state.get('report_history_cleanup_pending:'+owner, 0) != 0:
+            st.warning('리포트 기록은 삭제했으며 일부 저장 파일 정리가 남아 있습니다.')
+            st.button('남은 파일 정리 다시 시도', key='report_history_cleanup_retry:'+owner,
+                      on_click=report_history_retry_cleanup, args=(owner,))
+        view = st.radio('리포트 보관함', ['보관 중', '휴지통'], horizontal=True, key='report_history_view:'+owner)
+        trashed = view == '휴지통'
+        if trashed:
+            st.caption('휴지통의 안전점검 보고서는 점검 현황 집계와 취합 대상에서 제외됩니다. 복원하면 다시 반영됩니다.')
+        try:
+            records = report_history_list(owner, trashed=trashed)
+        except StorageError as exc:
+            st.error(str(exc))
+            return
+        shown = []
+        if records:
+            left, right = st.columns(2)
+            search = left.text_input('리포트 검색', placeholder='현장명·리포트 제목', key='report_history_search:'+owner).strip().casefold()
+            period = right.selectbox('리포트 기간', ['전체 기간', '최근 30일', '최근 90일'], key='report_history_period:'+owner)
+            sites = ['전체 현장']+sorted({row['site'] for row in records if row['site']})
+            site_key = 'report_history_site:'+owner
+            if st.session_state.get(site_key) not in sites: st.session_state[site_key] = '전체 현장'
+            site = st.selectbox('리포트 현장', sites, key=site_key)
+            today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
+            threshold = (today-datetime.timedelta(days=29 if period == '최근 30일' else 89)).isoformat()
+            shown = [row for row in records if (site == '전체 현장' or row['site'] == site)
+                     and (not search or search in (row['title']+' '+row['site']+' '+row['dept']).casefold())
+                     and (period == '전체 기간' or threshold <= row['created'][:10] <= today.isoformat())]
+        choices = {json.dumps([row['source'], row['id']]):row for row in shown}
+        select_key = 'report_history_selected:'+owner
+        selection = st.session_state.get(select_key)
+        if selection not in choices:
+            selection = None
+            st.session_state[select_key] = None
+        scope = json.dumps([trashed, selection])
+        if st.session_state.get('report_history_selection_scope:'+owner) != scope:
+            report_history_reset_detail(owner)
+            st.session_state['report_history_selection_scope:'+owner] = scope
+        if shown:
+            st.caption(f'리포트 {len(shown)}건 · 선택 {1 if selection else 0}건')
+            render_report_history_rows(owner, shown, selection, trashed=trashed)
+        else:
+            st.info('조건에 맞는 리포트가 없습니다. 기간이나 검색어를 변경해 주세요.' if records else
+                    '휴지통이 비어 있습니다.' if trashed else '보관 중인 리포트가 없습니다. 아래에서 예전 파일을 가져올 수 있습니다.')
+        if not trashed and shown:
+            opened = bool(selection and st.session_state.get('report_history_open:'+owner) == selection)
+            st.button('선택한 리포트 닫기' if opened else '선택한 리포트 열기', key='report_history_open_button:'+owner,
+                      disabled=not selection, on_click=report_history_toggle_open, args=(owner, selection))
+            if opened:
+                render_report_history_detail(owner, choices[selection], selection)
+        render_report_history_management(owner, choices, selection, trashed=trashed)
+
 
 
 # --- 점검 건 중심 업무 흐름: 저장 / 조치 / 승인 / 불변 보고서 ---
@@ -8009,13 +8227,17 @@ def ra_record_purge(owner, record_ids):
 
 
 def ra_cleanup_files():
-    """Release only queued report objects with no reference in any app database.
+    """Release only queued report files and photos with no reference in any app database.
     App DB locks prevent a concurrent record writer during reference checks;
     the store file lock protects its content-addressed upload cache.
     """
     from contextlib import ExitStack
     storage=nhn_storage_backend()
-    if storage is None:return 0
+    if storage is None:
+        db=inspection_store()
+        try:
+            return db.execute('SELECT count(*) FROM risk_file_cleanup').fetchone()[0] if 'risk_file_cleanup' in report_history_tables(db) else 0
+        finally:db.close()
     with ExitStack() as stack:
         databases=[]
         for name in ('reports.sqlite3','safety_calendar.sqlite3','safety_documents.sqlite3'):
@@ -8034,10 +8256,10 @@ def ra_cleanup_files():
                 fields=[quote(row[1]) for row in connection.execute('PRAGMA table_info('+quote(table)+')').fetchall()]
                 if fields:columns.append((quote(table),fields))
             catalogs.append((connection,columns))
-        # Reports use category files; photo objects are never removed here.
+        # Only queued report files and photos are eligible; every other reference is retained.
         with storage._files_lock:
             for key in queue:
-                if not re.fullmatch(r'files/[0-9a-f]{64}\.[a-z0-9]+',key):continue
+                if not re.fullmatch(r'(?:files|images)/[0-9a-f]{64}\.[a-z0-9]+',key):continue
                 referenced=False
                 for connection,tables in catalogs:
                     for table,fields in tables:
@@ -8051,6 +8273,7 @@ def ra_cleanup_files():
                     storage._uploaded.discard(key)
                 with db:db.execute('DELETE FROM risk_file_cleanup WHERE object_key=?',(key,))
         return db.execute('SELECT count(*) FROM risk_file_cleanup').fetchone()[0]
+
 
 
 def ra_hub_retry_cleanup():
@@ -9228,7 +9451,8 @@ def ra_render_execution(meta):
     st.write(f'**현재 {before or "미평가"} → 개선 후 {after or "미평가"} · {label}**')
     if after >= 8: st.warning('개선 후에도 8점 이상입니다. 추가 감소대책과 후속 점검을 작성하세요.')
     ra_field('잔여 위험·추가 개선계획', 'followup', row['id'], 'area', placeholder='추가 개선내용 / 담당 / 기한 / 후속 확인 방법')
-    st.caption('현재 빈도·강도와 개선 후 점수는 자동으로 낮추지 않습니다. 절차서 붙임 16의 실행결과 항목에 반영됩니다.')
+    st.caption('개선 후 점수와 개선 완료일은 최종 평가표의 해당란에 반영됩니다.')
+
 
 
 def ra_report_sections(meta, rows, final):
@@ -9284,101 +9508,316 @@ def ra_evaluation_grid(rows):
     return headers, values
 
 
-def ra_pdf(meta, rows, final):
+RA_FORM14_VERSION = 'keco-form14-20261030-v1'
+
+
+def ra_form14_text(value):
+    text = '' if value is None else str(value)
+    text = text.replace('\r\n', '\n').replace('\r', '\n').replace('\t', ' ')
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\U00010000-\U0010ffff\u2600-\u27bf\ufe0f]', '', text)
+
+
+def ra_form14_font():
+    if 'KecoNanum' not in pdfmetrics.getRegisteredFontNames():
+        generate_inspection_pdf('', '', '', {})
+    return 'KecoNanum'
+
+
+def ra_form14_wrap(value, width, size):
+    """Wrap without truncation, using the embedded Korean font's actual widths."""
+    font = ra_form14_font()
+    text = str(value or '')
+    result = []
+    for line in text.split('\n'):
+        current = ''
+        for char in line:
+            if current and pdfmetrics.stringWidth(current+char, font, size) > width:
+                split=current.rfind(' ')
+                if split > len(current)*.45:
+                    result.append(current[:split])
+                    current=current[split+1:]
+                else:
+                    result.append(current)
+                    current = ''
+            current += char
+        result.append(current)
+    return result or ['']
+
+
+def ra_form14_layout(meta, rows, final):
+    """One shared, measured page model for the PDF and editable HWPX forms."""
     from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib import colors
-    from reportlab.lib.styles import ParagraphStyle
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-    from xml.sax.saxutils import escape
-    if 'KecoNanum' not in pdfmetrics.getRegisteredFontNames(): generate_inspection_pdf('', '', '', {})
-    style = ParagraphStyle('ra_body', fontName='KecoNanum', fontSize=9.5, leading=14, wordWrap='CJK')
-    small = ParagraphStyle('ra_small', parent=style, fontSize=7.4, leading=10.5)
-    compact = ParagraphStyle('ra_overview', parent=style, fontSize=9, leading=11.8)
-    title = ParagraphStyle('ra_title', parent=style, fontSize=20, leading=27, alignment=1, spaceAfter=15)
-    heading = ParagraphStyle('ra_heading', parent=style, fontSize=13, leading=18, textColor=colors.HexColor('#086b55'), spaceAfter=9)
-    def para(value, cell_style=style):
-        text = re.sub(r'[\U00010000-\U0010ffff\u2600-\u27bf\ufe0f]', '', str(value if value not in (None, '') else '미입력'))
-        return Paragraph(escape(text).replace('\n', '<br/>'), cell_style)
-    def table_style(header=True):
-        commands = [('GRID', (0, 0), (-1, -1), .35, colors.HexColor('#bacfc6')), ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                    ('TOPPADDING', (0, 0), (-1, -1), 5), ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 5), ('RIGHTPADDING', (0, 0), (-1, -1), 5)]
-        if header: commands.append(('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e6f3eb')))
-        return TableStyle(commands)
-    story = [Paragraph('현장 위험성평가 보고서', title), para('공단 작성 항목 반영 / '+('출력본 · 지면 결재 전' if final else '초안 · 미확인 사항 포함')), Spacer(1, 12)]
-    sections = ra_report_sections(meta, rows, final)
-    story.append(Paragraph(sections[0][0], heading))
-    overview = Table([[para(label, compact), para(value, compact)] for label, value in sections[0][1]], colWidths=[151, 593], splitByRow=1, splitInRow=1)
-    overview.setStyle(table_style(False))
-    overview.setStyle(TableStyle([('TOPPADDING', (0, 0), (-1, -1), 3), ('BOTTOMPADDING', (0, 0), (-1, -1), 3)]))
-    story.append(overview)
-    story.extend([PageBreak(), Paragraph('위험성평가표 · 위험성 결정', heading), para('절차서 붙임 14의 작성 항목 반영. 완료 확인 전 개선 후 점수는 예상값입니다.'), Spacer(1, 10)])
-    headers, values = ra_evaluation_grid(rows)
-    grid = Table([[para(value, small) for value in line] for line in [headers]+values],
-                 colWidths=[24, 74, 54, 116, 72, 24, 24, 34, 106, 50, 40, 42, 42, 42], repeatRows=1, splitByRow=1, splitInRow=1)
-    grid.setStyle(table_style()); story.append(grid)
-    story.extend([Spacer(1, 12), para('8점 이상: 감소대책 수립 / 13~15점: 긴급 임시안전대책 / 16~20점: 즉시 작업 중지·즉시 개선')])
-    for name, pairs in sections[1:]:
-        story.extend([PageBreak(), Paragraph(name, heading)])
-        detail = Table([[para(label), para(value)] for label, value in pairs], colWidths=[151, 593], splitByRow=1, splitInRow=1)
-        detail.setStyle(table_style(False)); story.append(detail)
+    width, height = landscape(A4)
+    margin = 24.0
+    table_width = width-2*margin
+    ratios = [38,155,201,214,61,63,67,136,208,60,48,48,55]
+    columns = [table_width*value/sum(ratios) for value in ratios]
+    sizes = [7.4,7.5,7.5,7.5,7.5,7.5,7.5,6.7,7.5,7.0,6.8,6.8,7.2]
+    leading = [10.0,10.3,10.3,10.3,10.0,10.0,10.0,9.2,10.3,9.5,9.0,9.0,10.0]
+    info_widths = [table_width*v for v in [.075,.14,.075,.275,.055,.14,.07,.17]]
+    minimum = 62.0
+    def blank_row():
+        cells=[[''] for _ in range(13)]
+        labels='\n'.join(f'{i}. {label} □' for i,label in enumerate(RA_CONTROL_TYPES,1))
+        cells[7]=ra_form14_wrap(labels,columns[7]-8,sizes[7])
+        return dict(cells=cells,height=minimum,number=None,continued=False)
+    groups = []
+    for number, row in enumerate(rows, 1):
+        key = (ra_form14_text(row.get('trade')), ra_form14_text(row.get('work')))
+        if not groups or groups[-1]['key'] != key:
+            groups.append(dict(key=key, items=[]))
+        groups[-1]['items'].append((number, row))
+    if not groups:
+        groups.append(dict(key=('', ''), items=[]))
+    pages = []
+    for group in groups:
+        trade, work = group['key']
+        major, separator, subtask = trade.partition(' / ')
+        process = major if separator else (trade or ra_form14_text(meta.get('construction_type')))
+        work_text = '\n'.join(v for v in ([subtask] if separator else [])+[work or ra_form14_text(meta.get('work_scope'))] if v)
+        info = ['공정분류', process, '작업내용', work_text, '부  명', ra_form14_text(meta.get('department')), '담당자', ra_form14_text(meta.get('evaluator'))]
+        info_lines = [ra_form14_wrap(value, info_widths[i]-8, 8.0) for i,value in enumerate(info)]
+        overflow = []
+        # Exceptionally long context is continued in the first situation cell.
+        # Keep a readable, bounded header and retain every character in the form.
+        if len(info_lines[3]) > 7:
+            overflow = info_lines[3][6:]
+            info_lines[3] = info_lines[3][:6]+['작업내용 계속: 아래 위험발생상황란']
+        for index in (1,5,7):
+            if len(info_lines[index]) > 7:
+                overflow += [info[index-1]+'(계속)']+info_lines[index][6:]
+                info_lines[index] = info_lines[index][:6]+['계속: 아래 참조']
+        info_height = max(32.0, max(len(v) for v in info_lines)*10.5+8)
+        # Reserve room for table-object baselines in Hancom as well as footers.
+        body_height = height-2*margin-16-30-info_height-54-22-14
+        capacity = body_height
+        segments = []
+        for item_index,(number,row) in enumerate(group['items']):
+            score = ra_score(row)
+            residual = ra_score(row, True)
+            after = str(residual) if residual else ''
+            if residual and row.get('status') != '완료·현장 확인': after += '\n(예상)'
+            types = {ra_canonical_control(value) for value in row.get('control_types', [])}
+            controls = '\n'.join(f'{i}. {label} '+('■' if label in types else '□') for i,label in enumerate(RA_CONTROL_TYPES,1))
+            situation = ra_form14_text(row.get('factor'))
+            if item_index == 0 and overflow:
+                situation = '\n'.join(overflow)+'\n위험발생상황\n'+situation
+            deadline=ra_form14_text(row.get('deadline'))
+            completed=ra_form14_text(row.get('verified_date')) if row.get('status') == '완료·현장 확인' else ''
+            if re.fullmatch(r'\d{4}-\d{2}-\d{2}',deadline): deadline=deadline[:4]+'\n'+deadline[5:]
+            if re.fullmatch(r'\d{4}-\d{2}-\d{2}',completed): completed=completed[:4]+'\n'+completed[5:]
+            values = [str(number),ra_form14_text(row.get('category')),situation,
+                      ra_form14_text(row.get('existing')),str(row.get('frequency') or ''),str(row.get('severity') or ''),
+                      str(score or ''),controls,ra_form14_text(row.get('measures')),after,
+                      deadline,completed,
+                      ra_form14_text(row.get('owner'))]
+            wrapped = [ra_form14_wrap(value, columns[i]-8, sizes[i]) for i,value in enumerate(values)]
+            persistent = {0,4,5,6,7,9}
+            remaining = {i:list(v) for i,v in enumerate(wrapped) if i not in persistent}
+            continued = False
+            while True:
+                cells = []
+                for col in range(13):
+                    if col in persistent:
+                        cells.append(list(wrapped[col]))
+                    else:
+                        count = max(1, int((capacity-10)/leading[col]))
+                        cells.append(remaining[col][:count] or [''])
+                        remaining[col] = remaining[col][count:]
+                if continued: cells[0] = [str(number)]+ra_form14_wrap('계속',columns[0]-8,sizes[0])
+                needed = max(minimum, max(len(v)*leading[i]+10 for i,v in enumerate(cells)))
+                segments.append(dict(cells=cells, height=min(capacity,needed), number=number, continued=continued))
+                if not any(remaining.values()): break
+                continued = True
+        if not segments:
+            segments.append(blank_row())
+        current = []
+        used = 0
+        for segment in segments:
+            if current and (len(current) >= 5 or used+segment['height'] > body_height+.01):
+                pages.append(dict(info=info_lines,info_height=info_height,rows=current,body_height=body_height))
+                current=[];used=0
+            current.append(segment);used += segment['height']
+        if current:
+            pages.append(dict(info=info_lines,info_height=info_height,rows=current,body_height=body_height))
+    for page in pages:
+        body = page['rows']
+        while len(body) < 5 and sum(row['height'] for row in body)+minimum <= page['body_height']+.01:
+            body.append(blank_row())
+        spare = max(0,page['body_height']-sum(row['height'] for row in body))/len(body)
+        for row in body: row['height'] += spare
+    site = ra_form14_text(meta.get('site'))
+    meta_line = ' / '.join(v for v in [site,ra_form14_text(meta.get('date')),ra_form14_text(meta.get('kind')),'' if final else '초안'] if v)
+    return dict(width=width,height=height,margin=margin,table_width=table_width,columns=columns,
+                sizes=sizes,leading=leading,info_widths=info_widths,pages=pages,meta_line=meta_line)
+
+
+
+def ra_pdf(meta, rows, final):
+    from reportlab.pdfgen import canvas
+    model = ra_form14_layout(meta, rows, final)
     output = io.BytesIO()
-    def footer(canvas, document):
-        canvas.setFont('KecoNanum', 8)
-        canvas.drawString(40, 22, '한국환경공단 위험성평가 작성 지원 / '+('출력본 · 지면 결재 전' if final else '초안'))
-        canvas.drawRightString(802, 22, str(document.page))
-    SimpleDocTemplate(output, pagesize=landscape(A4), leftMargin=40, rightMargin=40, topMargin=38, bottomMargin=38).build(story, onFirstPage=footer, onLaterPages=footer)
+    pdf = canvas.Canvas(output,pagesize=(model['width'],model['height']))
+    pdf.setTitle('위험성평가(위험성 결정)')
+    font = ra_form14_font()
+    margin, table_width = model['margin'], model['table_width']
+    def cell(x,top,width,height,lines,*,size=8,leading=10.5,align='left',bold=False,gray=False,border=True,center=False):
+        pdf.saveState()
+        pdf.setLineWidth(.45)
+        if gray:
+            pdf.setFillColorRGB(.945,.945,.945)
+            pdf.rect(x,top-height,width,height,fill=1,stroke=0)
+        pdf.setFillColorRGB(0,0,0);pdf.setStrokeColorRGB(0,0,0)
+        if border:pdf.rect(x,top-height,width,height,fill=0,stroke=1)
+        offset = max(4,(height-len(lines)*leading)/2) if center else 4
+        baseline = top-offset-size
+        for line in lines:
+            text_width = pdfmetrics.stringWidth(line,font,size)
+            left = x+(width-text_width)/2 if align=='center' else x+width-4-text_width if align=='right' else x+4
+            text=pdf.beginText(left,baseline);text.setFont(font,size)
+            if bold:text.setTextRenderMode(2);pdf.setLineWidth(.15)
+            text.textOut(line);pdf.drawText(text);baseline -= leading
+        pdf.restoreState()
+    for page_number,page in enumerate(model['pages'],1):
+        top = model['height']-margin
+        cell(margin,top,table_width,16,['[붙임 14]'],size=9,border=False)
+        meta_size=7.1
+        meta_lines = ra_form14_wrap(model['meta_line'],table_width-92,meta_size)
+        # A long site name stays readable in two lines in the same metadata band.
+        if len(meta_lines)>2:
+            meta_size=6.0
+            meta_lines = ra_form14_wrap(model['meta_line'],table_width-92,meta_size)
+        cell(margin+88,top,table_width-88,16,meta_lines,size=meta_size,leading=7.8,align='right',border=False)
+        top -= 16
+        cell(margin,top,table_width,30,['위험성평가(위험성 결정)'],size=16,leading=19,align='center',bold=True,gray=True,center=True)
+        top -= 30
+        x=margin
+        for i,(width,lines) in enumerate(zip(model['info_widths'],page['info'])):
+            cell(x,top,width,page['info_height'],lines,size=8,align='center' if i%2==0 else 'left',bold=i%2==0,gray=i%2==0,center=True)
+            x += width
+        top -= page['info_height']
+        xs=[margin]
+        for width in model['columns']:xs.append(xs[-1]+width)
+        # Two-level merged headers follow the supplied form's thirteen columns.
+        for col in (0,3,9,10,11,12):
+            label={0:'번\n호',3:'현재의\n안전보건조치',9:'개선후\n위험성',10:'개선\n예정일',11:'개선\n완료일',12:'담당자'}[col]
+            cell(xs[col],top,model['columns'][col],54,label.split('\n'),size=7.5,align='center',bold=True,gray=True,center=True)
+        for start,end,label in [(1,3,'유해위험요인 파악'),(4,7,'현재 위험성'),(7,9,'위험성 감소대책')]:
+            cell(xs[start],top,xs[end]-xs[start],24,[label],size=9,align='center',bold=True,gray=True,center=True)
+        for col,label in {1:'위험분류',2:'위험발생상황',4:'가능성\n(빈도)',5:'중대성\n(강도)',6:'위험성',7:'감소대책',8:'감소대책 방법'}.items():
+            cell(xs[col],top-24,model['columns'][col],30,label.split('\n'),size=8,align='center',bold=True,gray=True,center=True)
+        top -= 54
+        for row in page['rows']:
+            for col,lines in enumerate(row['cells']):
+                cell(xs[col],top,model['columns'][col],row['height'],lines,size=model['sizes'][col],leading=model['leading'][col],
+                     align='center' if col in (0,4,5,6,9,10,11,12) else 'left',center=col in (0,4,5,6,9,10,11,12))
+            top -= row['height']
+        pdf.setLineWidth(.9);pdf.line(margin,top,margin+table_width,top)
+        cell(margin,45,table_width/3,16,['붙임 KECO-P-610-10'],size=8.5,border=False)
+        cell(margin+table_width/3,45,table_width/3,16,['한국환경공단'],size=9,align='center',border=False)
+        cell(margin+table_width*2/3,45,table_width/3,16,['A4(210mm×297mm)'],size=8.5,align='right',border=False)
+        cell(margin,28,table_width,10,[f'{page_number} / {len(model["pages"])}'],size=7,align='center',border=False)
+        pdf.showPage()
+    pdf.save()
     return output.getvalue()
+
 
 
 def ra_hwpx(meta, rows, final):
+    """Editable native tables, with the same measured pages as the PDF form."""
+    model = ra_form14_layout(meta,rows,final)
     doc = HwpxDocument.new()
-    if hasattr(doc, 'page'):
-        doc.page.setup(paper_size='A4', orientation='LANDSCAPE', margin_left_mm=14, margin_right_mm=14, margin_top_mm=14, margin_bottom_mm=14)
-    elif hasattr(doc, 'set_page_setup'):
-        doc.set_page_setup(paper_size='A4', orientation='LANDSCAPE', margin_left_mm=14, margin_right_mm=14, margin_top_mm=14, margin_bottom_mm=14)
+    hp = 'http://www.hancom.co.kr/hwpml/2011/paragraph'
+    if hasattr(doc,'page'):
+        doc.page.setup(paper_size='A4',orientation='LANDSCAPE',margin_left_mm=24*25.4/72,margin_right_mm=24*25.4/72,
+                       margin_top_mm=24*25.4/72,margin_bottom_mm=24*25.4/72,header_margin_mm=0,footer_margin_mm=0)
     else:
-        doc.set_page_size(width=59528, height=84189, orientation='LANDSCAPE')
-        doc.set_page_margins(left=3969, right=3969, top=3969, bottom=3969)
-    apply_format = doc.styles.apply_paragraph_format if hasattr(doc, 'styles') else doc.set_paragraph_format
-    def paragraph(text, size=10, bold=False, page_break=False):
-        # Each paragraph starts from the body style; headings must not propagate
-        # centering or page-break settings to the paragraphs that follow them.
-        p = doc.add_paragraph('', para_pr_id_ref='0')
-        p.add_run(str(text or '미입력'), font='맑은 고딕', size=size, bold=bold)
-        if page_break: apply_format(paragraphs=[p], page_break_before=True)
-        return p
-    title = paragraph('현장 위험성평가 보고서', 20, True)
-    apply_format(paragraphs=[title], alignment='CENTER')
-    paragraph('공단 작성 항목 반영 / '+('출력본 · 지면 결재 전' if final else '초안 · 미확인 사항 포함'))
-    sections = ra_report_sections(meta, rows, final)
-    paragraph(sections[0][0], 13, True)
-    for label, value in sections[0][1]:
-        paragraph(label, 10, True)
-        for line in str(value or '미입력').splitlines(): paragraph(line)
-    paragraph('위험성평가표 · 위험성 결정', 13, True, True)
-    paragraph('절차서 붙임 14의 작성 항목 반영. 긴 문구의 전체 내용은 뒤의 항목별 상세기록에 표시됩니다.', 9)
-    headers, lines = ra_evaluation_grid(rows)
-    widths = [2400, 7400, 5400, 11600, 7200, 2400, 2400, 3400, 10600, 5000, 4000, 4200, 4200, 4200]
-    # Repeat small tables rather than a fixed-height table spanning many HWP pages.
-    for offset in range(0, len(lines), 3):
-        values = [headers]+lines[offset:offset+3]
-        table = doc.add_table(rows=len(values), cols=len(headers), width=sum(widths), height=7000*len(values))
-        for i, line in enumerate(values):
-            for j, value in enumerate(line):
-                text = str(value)
-                limit = max(12, int(widths[j]/750)*5)
-                if len(text) > limit: text = text[:limit]+'…'
-                cell = table.cell(i, j); cell.set_size(width=widths[j], height=7000); cell.set_text('')
-                cell.paragraphs[0].add_run(text, font='맑은 고딕', size=8, bold=i == 0)
-        paragraph('')
-    for name, pairs in sections[1:]:
-        paragraph(name, 13, True, True)
-        for label, value in pairs:
-            paragraph(label, 10, True)
-            for line in str(value or '미입력').splitlines(): paragraph(line)
-    output = io.BytesIO(); doc.save_to_stream(output)
+        page = doc.sections[0].element.find('.//{%s}pagePr'%hp)
+        page.set('width','59528');page.set('height','84189');page.set('landscape','NARROWLY')
+        margins=page.find('{%s}margin'%hp)
+        for key,value in [('left','2400'),('right','2400'),('top','2400'),('bottom','2400'),('header','0'),('footer','0')]:margins.set(key,value)
+    styles = doc.styles if hasattr(doc,'styles') else doc
+    apply_format = styles.apply_paragraph_format if hasattr(styles,'apply_paragraph_format') else doc.set_paragraph_format
+    make_fill = styles.ensure_border_fill if hasattr(styles,'ensure_border_fill') else doc.ensure_border_fill
+    plain = make_fill(border_color='#000000',border_width='0.12 mm')
+    gray = make_fill(border_color='#000000',border_width='0.12 mm',fill_color='#F1F1F1')
+    no_border = make_fill(border_color='#FFFFFF',border_width='0.12 mm',active_borders=[])
+    formats = {}
+    def paragraph_style(align, percent=137):
+        key=(align,percent)
+        if key not in formats:
+            p=doc.add_paragraph('',para_pr_id_ref='0')
+            apply_format(paragraphs=[p],alignment=align,line_spacing_percent=percent,spacing_before_pt=0,spacing_after_pt=0,
+                         indent_left_mm=0,indent_right_mm=0,first_line_indent_mm=0)
+            formats[key]=p.element.get('paraPrIDRef');p.remove()
+        return formats[key]
+    # Precreate formats before page blocks so temporary paragraphs cannot split a page.
+    for align in ('LEFT','CENTER','RIGHT'):
+        for percent in (100,130,137):paragraph_style(align,percent)
+    first=doc.paragraphs[0]
+    if not first.text.strip():
+        first.element.set('paraPrIDRef',paragraph_style('LEFT',100))
+        marker=first.add_run('',font='맑은 고딕',size=1)
+        for run in first.runs:run.element.set('charPrIDRef',marker.element.get('charPrIDRef'))
+    def text(cell,lines,*,size=8,align='LEFT',bold=False,fill=None,center=False,percent=137):
+        cell.set_text('')
+        cell.element.set('borderFillIDRef',str(fill if fill is not None else plain))
+        cell.element.set('hasMargin','1')
+        margin=cell.element.find('{%s}cellMargin'%hp)
+        if margin is not None:
+            for name in ('left','right','top','bottom'):margin.set(name,'400')
+        sublist=cell.element.find('{%s}subList'%hp)
+        sublist.set('vertAlign','CENTER' if center else 'TOP')
+        # Lines are already measured and explicitly separated. Hancom fits each
+        # line to its cell rather than rewrapping it with a substitute font.
+        sublist.set('lineWrap','SQUEEZE')
+        for index,line in enumerate(lines or ['']):
+            p=cell.paragraphs[0] if index==0 else cell.add_paragraph('')
+            p.element.set('paraPrIDRef',paragraph_style(align,percent));p.element.set('styleIDRef','0')
+            # Empty template runs otherwise impose a 10pt minimum line height.
+            for run in list(p.runs):p.element.remove(run.element)
+            p.add_run(line,font='맑은 고딕',size=size,bold=bold)
+    def table(widths,heights,*,new_page=False,fill=None):
+        widths=[round(v*100) for v in widths];heights=[round(v*100) for v in heights]
+        obj=doc.add_table(rows=len(heights),cols=len(widths),width=sum(widths),height=sum(heights),
+                          border_fill_id_ref=fill if fill is not None else plain,para_pr_id_ref=paragraph_style('LEFT',100))
+        obj.element.set('pageBreak','NONE');obj.element.set('repeatHeader','0')
+        p=obj.paragraph
+        if new_page:apply_format(paragraphs=[p],page_break_before=True)
+        for r,height in enumerate(heights):
+            for c,width in enumerate(widths):obj.cell(r,c).set_size(width=width,height=height)
+        return obj
+    width=model['table_width']
+    for page_number,page in enumerate(model['pages'],1):
+        top=table([88,width-88],[16],new_page=page_number>1,fill=no_border)
+        text(top.cell(0,0),['[붙임 14]'],size=9,fill=no_border,center=True,percent=100)
+        meta_lines=ra_form14_wrap(model['meta_line'],width-96,7.1)
+        text(top.cell(0,1),meta_lines,size=7.1,align='RIGHT',fill=no_border,center=True,percent=100)
+        title=table(model['info_widths'],[30,page['info_height']])
+        title.merge_cells(0,0,0,7)
+        text(title.cell(0,0),['위험성평가(위험성 결정)'],size=16,align='CENTER',bold=True,fill=gray,center=True,percent=100)
+        for col,lines in enumerate(page['info']):
+            text(title.cell(1,col),lines,size=8,align='CENTER' if col%2==0 else 'LEFT',bold=col%2==0,
+                 fill=gray if col%2==0 else plain,center=True,percent=130)
+        grid=table(model['columns'],[24,30]+[row['height'] for row in page['rows']])
+        for col in (0,3,9,10,11,12):grid.merge_cells(0,col,1,col)
+        for start,end in ((1,2),(4,6),(7,8)):grid.merge_cells(0,start,0,end)
+        for col,label in {0:'번\n호',3:'현재의\n안전보건조치',9:'개선후\n위험성',10:'개선\n예정일',11:'개선\n완료일',12:'담당자',
+                          1:'유해위험요인 파악',4:'현재 위험성',7:'위험성 감소대책'}.items():
+            text(grid.cell(0,col),label.split('\n'),size=7.5 if col in (0,3,9,10,11,12) else 9,
+                 align='CENTER',bold=True,fill=gray,center=True,percent=100)
+        for col,label in {1:'위험분류',2:'위험발생상황',4:'가능성\n(빈도)',5:'중대성\n(강도)',6:'위험성',7:'감소대책',8:'감소대책 방법'}.items():
+            text(grid.cell(1,col),label.split('\n'),size=8,align='CENTER',bold=True,fill=gray,center=True,percent=100)
+        for index,row in enumerate(page['rows'],2):
+            for col,lines in enumerate(row['cells']):
+                centered=col in (0,4,5,6,9,10,11,12)
+                text(grid.cell(index,col),lines,size=model['sizes'][col],align='CENTER' if centered else 'LEFT',center=centered)
+        footer=table([width/3]*3,[27],fill=no_border)
+        for col,label in enumerate(['붙임 KECO-P-610-10',f'한국환경공단\n{page_number} / {len(model["pages"])}','A4(210mm×297mm)']):
+            text(footer.cell(0,col),label.split('\n'),size=8,align=['LEFT','CENTER','RIGHT'][col],fill=no_border,center=True,percent=100)
+    output=io.BytesIO();doc.save_to_stream(output)
     return output.getvalue()
+
 
 
 def ra_render_sharing(meta, actor):
@@ -9393,21 +9832,23 @@ def ra_render_sharing(meta, actor):
         ra_field('후속 점검 계획','followup',kind='area')
         ra_field('보완사항','supplement',kind='area')
         ra_field('보완 완료 예정일','supplement_deadline')
-    with st.expander('보고서 평가표 미리보기',expanded=True):ra_overview(meta,st.session_state.ra_rows)
+    with st.expander('보고서에 반영할 평가 항목 확인',expanded=True):ra_overview(meta,st.session_state.ra_rows)
     missing=ra_validation_issues(meta,st.session_state.ra_rows,True)
     if missing:
         st.warning(f'출력본 작성 전 확인할 항목 {len(missing)}개')
     else:st.success('주요 작성 항목을 입력했습니다. 출력본을 만들 수 있습니다.')
+    ra_render_validation_links(missing, actor)
     ra_field('보고서 구분','report_mode',kind='select',options=['초안','출력본'])
-    payload = ra_payload(); sig = ra_hash(payload)
+    st.caption('붙임 14 양식 · A4 가로 방향 · 작성 내용에 따라 여러 장으로 출력됩니다.')
+    payload = ra_payload(); sig = ra_hash([RA_FORM14_VERSION, payload])
     if st.button('위험성평가 보고서 만들기', type='primary', key='ra_build'):
         errors = ra_validate(meta, st.session_state.ra_rows, payload['final'])
         if errors:
-            st.warning('아래 미작성 항목을 눌러 필요한 내용을 보완해 주세요.')
+            st.warning('위 미작성 항목을 눌러 필요한 내용을 보완해 주세요.')
         else:
             previous = st.session_state.get('ra_output', {})
             outputs = dict(previous) if previous.get('sig') == sig else {'sig': sig}
-            with keco_loading('평가표와 상세기록을 보고서로 만들고 있습니다…', kind='steps', steps=('PDF 작성', '한글 작성', '보고서 보관')):
+            with keco_loading('위험성평가표를 보고서로 만들고 있습니다…', kind='steps', steps=('PDF 작성', '한글 작성', '보고서 보관')):
                 if not outputs.get('pdf'):
                     keco_loading_stage(0)
                     try: outputs['pdf'] = ra_pdf(meta, st.session_state.ra_rows, payload['final'])
@@ -9422,17 +9863,17 @@ def ra_render_sharing(meta, actor):
                         keco_loading_stage(2)
                         ra_archive(actor, payload)
                         ra_archive_report(actor,st.session_state.ra_active_record_id,'risk:'+str(actor)+':'+sig,outputs.get('hwpx'),outputs.get('pdf'))
-                        st.session_state.ra_last_saved_sig = sig
+                        st.session_state.ra_last_saved_sig = ra_hash(payload)
                         outputs['archived_files_sig'] = file_sig
                     except ValueError as exc: st.warning(str(exc))
                     except Exception: st.warning('보고서는 생성했으나 저장소 보관 확인 필요. 다운로드해 보관해 주세요.')
             st.session_state.ra_output = outputs
-    ra_render_validation_links(missing, actor)
     outputs = st.session_state.get('ra_output', {})
     if outputs.get('sig') == sig:
         if outputs.get('pdf'): st.download_button('출력용 PDF 다운로드', outputs['pdf'], '위험성평가_보고서.pdf', 'application/pdf', key='ra_pdf_download', on_click='ignore')
         if outputs.get('hwpx'): st.download_button('편집용 한글 HWPX 다운로드', outputs['hwpx'], '위험성평가_보고서.hwpx', 'application/hwp+zip', key='ra_hwpx_download', on_click='ignore')
     elif outputs: st.caption('작성 내용이 바뀌었습니다. 보고서를 다시 만들어 주세요.')
+
 
 
 RA_KINDS = ['최초평가', '정기평가', '수시평가']
@@ -10252,7 +10693,9 @@ def ra_render_writer(actor):
             st.button('이전 단계', on_click=ra_hub_back, args=(actor,), key='ra_previous', width='stretch')
         else:
             st.button('이전 단계', on_click=ra_go_step, args=(index-1,), key='ra_previous', width='stretch')
-    with next_step: st.button('다음 단계', on_click=ra_go_step, args=(index+1,), disabled=index == 5, key='ra_next', width='stretch')
+    with next_step:
+        if index < len(RA_STEPS)-1:
+            st.button('다음 단계', on_click=ra_go_step, args=(index+1,), key='ra_next', width='stretch')
     if st.session_state.get('ra_hub_reload_needed'):
         with st.expander('저장된 최신 내용 불러오기', expanded=True):
             st.caption('다른 창의 변경사항을 불러오면 현재 화면의 미저장 입력이 바뀝니다. 필요한 내용을 확인한 뒤 진행하세요.')
