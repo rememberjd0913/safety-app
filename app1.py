@@ -8101,6 +8101,7 @@ RA_SEVERITY = [
     ('최대', '사망·영구적 근로불능 또는 장애가 남는 부상·질병'),
 ]
 RA_CATEGORIES = ['기계(설비)적 요인', '전기적 요인', '화학(물질)적 요인', '생물학적 요인', '작업특성 요인', '작업환경 요인']
+RA_CATEGORY_OPTIONS = RA_CATEGORIES + ['직접 입력']
 RA_CONTROL_TYPES = ['유해위험 제거·저감', '공학적 대책', '관리적 대책', '개인보호구']
 RA_ORIGINS = ['사업장 순회점검', '근로자 청취·제안', '아차사고', '안전보건자료·체크리스트', '공단 가이드 사례', 'AI 작성 후보', '직접 입력']
 RA_CHECK_ITEMS = [
@@ -8519,7 +8520,7 @@ def ra_normalize_payload(payload, actor, require_review=True):
         if not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', row['id']) or row['id'] in seen:
             raise ValueError('평가 항목 번호의 형식을 확인해 주세요.')
         seen.add(row['id'])
-        if row['category'] not in RA_CATEGORIES: row['category'] = ''
+        if row['category'] not in RA_CATEGORY_OPTIONS: row['category'] = ''
         if row['origin'] not in RA_ORIGINS: row['origin'] = '직접 입력'
         if row['status'] not in ('미착수', '진행 중', '완료·현장 확인'): row['status'] = '미착수'
         if row['budget_note'] not in ('미정', '추가 비용 최소화', '50만원 이내', '100만원 이내', '500만원 이내', '직접 입력'): row['budget_note'] = '직접 입력'
@@ -9057,17 +9058,17 @@ def ra_canonical_control(value):
     return '유해위험 제거·저감' if value == '위험 제거·저감' else value
 
 def ra_add_entry_factors(data, source, signature, chosen, manual_text):
-    if not data.get('trade') or not data.get('work') or data.get('category') not in RA_CATEGORIES:
+    if not data.get('trade') or not data.get('work') or data.get('category') not in RA_CATEGORY_OPTIONS:
         raise ValueError('세부작업, 현장조건과 유해위험요인을 입력해 주세요.')
     if chosen and not data.get('hazards'):
         raise ValueError('AI 후보에 적용할 재해유형을 선택해 주세요.')
-    manual = list(dict.fromkeys(line.strip() for line in str(manual_text or '').splitlines() if line.strip()))
+    manual = list(dict.fromkeys(line.strip() for line in str(manual_text or '').splitlines() if line.strip())) if data.get('category') == '직접 입력' else []
     cache = st.session_state.get('ra_factors', {})
     if chosen and cache.get('sig') != signature:
         raise ValueError('입력 조건이 바뀌었습니다. AI 후보를 다시 받거나 유해위험요인을 직접 입력해 주세요.')
     ai = list(dict.fromkeys(value.strip() for value in chosen if value in cache.get('items', []) and value.strip()))
     if not manual and not ai:
-        raise ValueError('유해위험요인을 직접 입력하거나 AI 후보를 선택해 주세요.')
+        raise ValueError('직접 입력 내용을 작성하거나 AI 후보를 선택해 주세요.')
     rows = st.session_state.ra_rows
     existing = {row['factor'] for row in rows if row['trade'] == data['trade'] and row['work'] == data['work']}
     manual_pending = [value for value in manual if value not in existing]
@@ -9183,7 +9184,7 @@ def ra_render_report_correction():
             if field == 'work':
                 ra_field('세부작업에 대한 현장조건 입력', 'work', row['id'], 'area')
             elif field == 'category':
-                ra_field('유해위험요인', 'category', row['id'], 'select', ['']+RA_CATEGORIES,
+                ra_field('유해위험요인', 'category', row['id'], 'select', ['']+RA_CATEGORY_OPTIONS,
                          format_func=lambda value:value or '유해위험요인 선택')
             elif field == 'factor':
                 ra_field('유해위험발생상황', 'factor', row['id'], 'area')
@@ -9270,7 +9271,7 @@ def ra_identification_context(meta, trade, work, category, selected_hazards, cus
     missing=[]
     if not data['trade']:missing.append('세부작업')
     if not data['work']:missing.append('세부작업에 대한 현장조건')
-    if category not in RA_CATEGORIES:missing.append('유해위험요인')
+    if category not in RA_CATEGORY_OPTIONS:missing.append('유해위험요인')
     if not hazards:missing.append('발생 가능한 재해유형')
     if other and not ra_custom_tasks(custom):missing.append('기타 재해발생 유형 직접 입력')
     source='\n\n'.join(model['title']+'\n'+model['source']+'\n'+model['factor']+'\n'+
@@ -9312,10 +9313,12 @@ def ra_render_identification(meta):
             work = ra_field('세부작업에 대한 현장조건 입력(투입인력, 작업위치, 투입장비, 작업환경 등)', 'work', 'entry',
                             kind='area', height=120, placeholder='투입인력, 작업위치, 투입장비, 작업환경과 혼재작업 등 실제 현장조건을 입력하세요.')
             origin = ra_field('유해위험요인을 확인한 방법', 'origin', 'entry', 'select', RA_ORIGINS)
-            category = ra_field('유해위험요인', 'category', 'entry', 'select', [None]+RA_CATEGORIES,
+            category = ra_field('유해위험요인', 'category', 'entry', 'select', [None]+RA_CATEGORY_OPTIONS,
                                 format_func=lambda value: value or '유해위험요인 선택')
-            manual_text = ra_field('유해위험요인 직접 입력', 'manual_factors', 'entry', 'area', height=130, max_chars=10000,
-                                   placeholder='한 줄에 유해위험요인 하나를 작성하세요.')
+            manual_text = ''
+            if category == '직접 입력':
+                manual_text = ra_field('유해위험요인 직접 입력', 'manual_factors', 'entry', 'area', height=130, max_chars=10000,
+                                       placeholder='한 줄에 유해위험요인 하나를 작성하세요.')
             with st.expander('유해위험요인 AI 작성 도움'):
                 ai_controls = st.container()
             add_controls = st.container(key='ra_ident_add_controls')
@@ -9343,7 +9346,7 @@ def ra_render_identification(meta):
                         cache = dict(sig=signature, items=ra_ai('factor', data, source))
                     st.session_state.ra_factors = cache
                 except Exception:
-                    st.error('AI 연결 확인 필요. 직접 입력하거나 표준모델로 항목을 추가해 주세요.')
+                    st.error('AI 연결 확인 필요. 유해위험요인에서 ‘직접 입력’을 선택해 작성해 주세요.')
             options = cache.get('items', []) if cache.get('sig') == signature else []
             if cache.get('items') and cache.get('sig') != signature:
                 st.caption('입력 조건 또는 참고 모델이 바뀌었습니다. 현재 조건으로 후보를 다시 받아 주세요.')
@@ -9358,7 +9361,7 @@ def ra_render_identification(meta):
             manual_missing = []
             if not data['trade']: manual_missing.append('세부작업')
             if not data['work']: manual_missing.append('세부작업에 대한 현장조건')
-            if category not in RA_CATEGORIES: manual_missing.append('유해위험요인')
+            if category not in RA_CATEGORY_OPTIONS: manual_missing.append('유해위험요인')
             if manual_missing:
                 st.error('필수 입력 누락: '+' / '.join(manual_missing), icon='❗')
             if st.button('유해위험요인을 평가표에 추가', disabled=bool(manual_missing), key='ra_add', type='primary', width='stretch'):
@@ -10602,37 +10605,17 @@ def ra_render_history(actor):
 
 
 
-def ra_apply_standard_models(trade, work, example_ids, include_measures=False):
-    if not work.strip() or not example_ids: raise ValueError('실제 작업조건과 적용할 표준모델을 선택해 주세요.')
-    models = {model['id']: model for model in RA_KECO_EXAMPLES}
-    if any(eid not in models for eid in example_ids): raise ValueError('표준모델 선택을 확인해 주세요.')
-    pending = [models[eid] for eid in dict.fromkeys(example_ids) if not any(row['trade'] == trade and row['work'] == work and
-               (row.get('standard_model_id') == eid or row['factor'] == models[eid]['factor']) for row in st.session_state.ra_rows)]
-    if len(st.session_state.ra_rows)+len(pending) > 200: raise ValueError('한 평가에 최대 200개 항목까지 작성할 수 있습니다.')
-    added = 0
-    for model in pending:
-        hazards = [label for label in RA_HAZARDS if any(tag in label for tag in model['hazards'])]
-        before = len(st.session_state.ra_rows)
-        ra_add_factors(trade, work, hazards, model['category'], '공단 가이드 사례', [model['factor']], model['source'], '표준모델 작성 초안 · 현장 확인 필요')
-        if len(st.session_state.ra_rows) > before:
-            row = st.session_state.ra_rows[-1]
-            row['standard_model_id'] = model['id']
-            if include_measures:
-                row['measures'] = '\n'.join('['+kind+'] '+detail for kind, detail in model['controls'])
-                row['control_types'] = list(dict.fromkeys(kind for kind, _ in model['controls']))
-            added += 1
-    return added
 
 
 def ra_render_standard_models(meta, trade, work, examples):
-    with st.expander('표준모델로 작성하기', expanded=True):
-        st.caption('표준모델을 선택하면 유해위험요인과 감소대책을 확인하고 평가 항목에 추가할 수 있습니다.')
+    with st.expander('표준모델 참고하기', expanded=True):
+        st.caption('선택한 표준모델의 유해위험요인과 감소대책을 참고할 수 있습니다.')
         search = st.text_input('표준모델 검색', key='ra_model_search', placeholder='예: 굴착, 인양, 밀폐공간')
         options = [model for model in examples if not search.strip() or search.strip().casefold() in (model['title']+' '+model['factor']).casefold()]
         ids = [model['id'] for model in options]
         labels = {model['id']: model['title'] for model in examples}
         pick_key = 'ra_model_picks_'+ra_hash([trade, ids])[:12]
-        picked = st.multiselect('적용할 표준모델 (여러 개 선택 가능)', ids, key=pick_key, format_func=labels.__getitem__)
+        picked = st.multiselect('참고할 표준모델 (여러 개 선택 가능)', ids, key=pick_key, format_func=labels.__getitem__)
         if not options:
             st.info('검색 조건에 맞는 표준모델이 없습니다. 검색어를 바꿔 주세요.')
         preview_ids = picked or ids[:1]
@@ -10645,13 +10628,6 @@ def ra_render_standard_models(meta, trade, work, examples):
                     st.write('• '+kind+' / '+detail)
                 if model.get('incident'):
                     st.caption('사고사례 요약 · '+model['incident'])
-        include = st.checkbox('감소대책 예시도 함께 가져오기', value=True, key='ra_model_include_measures')
-        if st.button('선택한 표준모델 적용', key='ra_models_apply', type='primary', disabled=not (picked and work.strip())):
-            try:
-                count = ra_apply_standard_models(trade, work, picked, include)
-                st.success(f'{count}개 평가 항목을 추가했습니다. 하단 목록에서 확인해 주세요.' if count else '같은 작업·조건·유해위험요인이 이미 있습니다.')
-            except ValueError as exc:
-                st.warning(str(exc))
         return previews
 
 
