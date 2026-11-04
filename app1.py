@@ -7979,7 +7979,7 @@ def ra_hash(data):
 
 def ra_ai(kind, data, source):
     """No invented incident citations; source is explicitly supplied by the operator."""
-    schema = '{"suggestions":["위험요인 후보 문장"]}' if kind=='factor' else '{"suggestions":["조치 유형 / 구체 조치 / 비용 확인사항 / 잔여 위험"]}'
+    schema = '{"suggestions":["위험요인 후보 문장"]}' if kind=='factor' else '{"suggestions":[{"control_type":"감소대책 방법 중 하나","text":"구체 조치 / 비용 확인사항 / 잔여 위험"}]}'
     prompt = ('건설현장 위험성평가 작성 지원입니다. 출력은 다음 JSON만 사용하세요: '+schema+
               '\n최대 8개의 서로 다른 구체적인 후보를 제안하세요. 현장 사실·점수·법령 조문·사고사례·가격을 지어내지 마세요. '
               '위험요인은 작업상황-위험원-노출경로-예상 피해가 드러나게 작성하세요. '
@@ -7994,19 +7994,33 @@ def ra_ai(kind, data, source):
                    '선택한 재해발생 유형과 작업조건에 맞는 구체적인 유해위험발생상황을 추천하세요. '
                    '기타로 직접 입력된 재해발생 유형도 동일하게 반영하세요. '
                    '참고 표준모델과 현장입력이 다르면 현장입력을 우선하고 확인되지 않은 현장 사실을 단정하지 마세요.')
+    if kind == 'measures':
+        prompt += ('\n각 대책 후보의 control_type은 '+json.dumps(RA_CONTROL_TYPES, ensure_ascii=False)+' 중 정확히 하나를 선택하세요. '
+                   '제거·대체는 유해위험 제거·저감, 방호·격리·안전시설·공정 개선은 공학적 대책, '
+                   '절차·교육·유도·출입관리 등은 관리적 대책, 개인에게 착용시키는 보호구는 개인보호구로 구분하세요. '
+                   '한 후보에 서로 다른 방법을 섞지 말고 필요하면 별도 후보로 나누세요. '
+                   'text에는 방법명이나 대괄호 제목을 반복하지 말고 구체 조치·비용 확인사항·잔여 위험을 작성하세요.')
     key = str(st.secrets.get('GEMINI_API_KEY', ''))
     models = _ai_model_candidates('risk')
-    cache_key = ra_hash([hashlib.sha256(key.encode()).hexdigest(), models, 'suggestions-json-v2', prompt])
+    cache_version = 'measure-types-json-v1' if kind == 'measures' else 'suggestions-json-v2'
+    cache_key = ra_hash([hashlib.sha256(key.encode()).hexdigest(), models, cache_version, prompt])
     cached = _perf_cache_get('risk_ai', cache_key)
     if cached is not None: return list(cached)
     keco_loading_stage(1)
+    item_schema = {'type': 'OBJECT', 'properties': {
+        'control_type': {'type': 'STRING', 'enum': RA_CONTROL_TYPES}, 'text': {'type': 'STRING'}},
+        'required': ['control_type', 'text']} if kind == 'measures' else {'type': 'STRING'}
     result = _ai_request(key,prompt,models,config={'response_mime_type':'application/json',
         'response_schema':{'type':'OBJECT','properties':{
-            'suggestions':{'type':'ARRAY','items':{'type':'STRING'}}},'required':['suggestions']}})
+            'suggestions':{'type':'ARRAY','items':item_schema}},'required':['suggestions']}})
     keco_loading_stage(2)
     raw=re.sub(r'^```(?:json)?\s*|\s*```$','',_ai_response_text(result))
     choices=json.loads(raw).get('suggestions')
-    if not isinstance(choices,list) or not choices or len(choices)>8 or any(not isinstance(x,str) or not x.strip() or len(x)>1600 for x in choices):
+    if not isinstance(choices,list) or not choices or len(choices)>8:
+        raise ValueError('추천 결과 형식 확인 필요')
+    if kind == 'measures':
+        choices = ['['+control+'] '+text for control,text in (ra_measure_candidate_parts(value) for value in choices)]
+    elif any(not isinstance(x,str) or not x.strip() or len(x)>1600 for x in choices):
         raise ValueError('추천 결과 형식 확인 필요')
     choices = list(dict.fromkeys(choices))
     _perf_cache_put('risk_ai', cache_key, choices, ttl=900)
@@ -8499,7 +8513,7 @@ def ra_default_meta(actor):
                 threshold=8, criteria_confirmed=False, sharing='', sharing_date='',
                 sharing_method='TBM', sharing_state='공유 예정', followup='',
                 checks={}, supplement='', supplement_deadline='', review_confirmed=False,
-                review_sig='', report_mode='초안', source_kind='app', original_filename='', original_item_count='0')
+                review_sig='', report_mode='초안', source_kind='app', original_filename='', original_item_count='0', execution_supervisor='')
 
 
 
@@ -8962,10 +8976,100 @@ def ra_fill_measures(row_id, example_id):
     ra_set_field(row_id, 'control_types', list(dict.fromkeys(ra_target(row_id)['control_types']+[v[0] for v in example['controls']])))
 
 
+def ra_measure_control_type(value):
+    key = re.sub(r'[^가-힣A-Za-z0-9]', '', str(value or '')).lower()
+    aliases = {
+        '유해위험제거저감': '유해위험 제거·저감', '유해위험요인제거저감': '유해위험 제거·저감',
+        '위험제거저감': '유해위험 제거·저감', '위험제거및저감': '유해위험 제거·저감',
+        '제거대체': '유해위험 제거·저감', '제거및대체': '유해위험 제거·저감',
+        '제거': '유해위험 제거·저감', '대체': '유해위험 제거·저감',
+        '공학적대책': '공학적 대책', '공학적조치': '공학적 대책',
+        '공학적': '공학적 대책', '기술적대책': '공학적 대책', '기술적조치': '공학적 대책',
+        '관리적대책': '관리적 대책', '관리적조치': '관리적 대책',
+        '관리적': '관리적 대책', '행정적대책': '관리적 대책', '행정적조치': '관리적 대책',
+        '개인보호구': '개인보호구', '보호구': '개인보호구', '보호구착용': '개인보호구',
+        '개인보호구착용': '개인보호구', '개인보호구대책': '개인보호구',
+    }
+    return aliases.get(key, '')
+
+
+def ra_measure_candidate_parts(candidate):
+    """Use explicit candidate types, including previous type / text responses."""
+    if isinstance(candidate, dict):
+        control = ra_measure_control_type(candidate.get('control_type'))
+        body = candidate.get('text')
+    elif isinstance(candidate, str):
+        text = candidate.strip()
+        text = re.sub(r'^(?:[-•]\s+|\d+[.)]\s+)', '', text)
+        text = re.sub(r'^(?:조치\s*유형|대책\s*유형|감소대책\s*방법)\s*[:：]\s*', '', text)
+        heading = re.match(r'^\[([^\]\n]{1,80})\]\s*(.*)$', text, flags=re.DOTALL)
+        control, body = '', ''
+        if heading:
+            control = ra_measure_control_type(heading.group(1))
+            body = heading.group(2)
+        else:
+            # Prefer the longest explicit label so 제거/대체 is read together.
+            for separator in re.finditer(r'[/|:：\n]', text):
+                if separator.start() > 80:
+                    break
+                kind = ra_measure_control_type(text[:separator.start()])
+                if kind:
+                    control, body = kind, text[separator.end():].strip()
+    else:
+        control, body = '', ''
+    if control not in RA_CONTROL_TYPES or not isinstance(body, str) or not body.strip() or len(body) > 1600:
+        raise ValueError('후보의 감소대책 방법을 확인할 수 없습니다. AI 개선대책 후보를 다시 받아 주세요.')
+    body = body.strip()
+    repeated = re.match(r'^\[([^\]\n]{1,80})\]\s*(.*)$', body, flags=re.DOTALL)
+    if repeated:
+        repeated_control = ra_measure_control_type(repeated.group(1))
+        if repeated_control and repeated_control != control:
+            raise ValueError('후보에 서로 다른 감소대책 방법이 표시되어 있습니다. AI 후보를 다시 받아 주세요.')
+        if repeated_control == control:
+            body = repeated.group(2).strip()
+    if not body:
+        raise ValueError('구체적인 감소대책 내용이 없습니다. AI 후보를 다시 받아 주세요.')
+    return control, body
+
+
+def ra_append_typed_measure(current, control, body):
+    marker = '['+control+']'
+    # Applying the same candidate again, or restoring its removed heading,
+    # must keep the existing action text exactly once.
+    marked = r'(?m)^'+re.escape(marker)+r'[ \t]*\n?[ \t]*'+re.escape(body)+r'(?=\n|$)'
+    if re.search(marked, current):
+        return current
+    unmarked = re.search(r'(?m)^'+re.escape(body)+r'(?=\n|$)', current)
+    if unmarked:
+        return current[:unmarked.start()]+marker+'\n'+current[unmarked.start():]
+    if current.rstrip().splitlines() and current.rstrip().splitlines()[-1].strip() == marker:
+        return current.rstrip()+'\n'+body
+    return current+('\n\n' if current.strip() else '')+marker+'\n'+body
+
+
 def ra_apply_ai_measures(row_id, key):
     picked = st.session_state.get(key, [])
-    if picked:
-        ra_set_field(row_id, 'measures', '\n'.join(v for v in (ra_target(row_id)['measures'], '\n'.join(picked)) if v))
+    if not picked:
+        return
+    try:
+        if not isinstance(picked, list) or len(picked) > 8:
+            raise ValueError('반영할 대책 후보를 다시 선택해 주세요.')
+        parts = [ra_measure_candidate_parts(candidate) for candidate in picked]
+        row = ra_target(row_id)
+        controls = [ra_canonical_control(value) for value in row.get('control_types', [])
+                    if ra_canonical_control(value) in RA_CONTROL_TYPES]
+        current = str(row.get('measures') or '')
+        for control, body in parts:
+            controls.append(control)
+            current = ra_append_typed_measure(current, control, body)
+        ra_set_field(row_id, 'control_types', list(dict.fromkeys(controls)))
+        ra_set_field(row_id, 'measures', current)
+        ra_sync_control_headings(row)
+        st.session_state['ra_measure_apply_notice_'+row_id] = '선택한 대책과 감소대책 방법을 최종 작성란에 반영했습니다.'
+        st.session_state.pop('ra_measure_apply_error_'+row_id, None)
+    except ValueError as exc:
+        st.session_state['ra_measure_apply_error_'+row_id] = str(exc)
+        st.session_state.pop('ra_measure_apply_notice_'+row_id, None)
 
 
 def ra_sharing_draft():
@@ -9258,7 +9362,8 @@ def ra_validation_issues(meta, rows, final=False):
                 if not row.get('control_types'):
                     fields.insert(1, 'control_types')
                 if fields:
-                    add(3, '④ '+prefix+'감소대책·대책방법·담당자·기한을 입력하세요.', fields, row)
+                    labels = {'measures':'감소대책', 'control_types':'대책방법', 'owner':'담당자', 'deadline':'기한'}
+                    add(3, '④ '+prefix+'·'.join(labels[field] for field in fields)+' 입력이 필요합니다.', fields, row)
             if ra_is_implemented(row):
                 fields = [field for field in ('verified_by','verified_date','evidence') if not ra_text_ready(row.get(field))]
                 if row.get('verified_date') and not ra_iso_date(row['verified_date']):
@@ -9587,6 +9692,10 @@ def ra_render_measures(meta):
                     picked.append(candidate)
         st.session_state[pick_key] = picked
         st.button('선택 대책을 작성 내용에 추가', disabled=not picked, on_click=ra_apply_ai_measures, args=(row['id'], pick_key), key='ra_measure_apply_'+row['id'])
+        notice = st.session_state.pop('ra_measure_apply_notice_'+row['id'], None)
+        if notice: st.success(notice)
+        error = st.session_state.pop('ra_measure_apply_error_'+row['id'], None)
+        if error: st.error(error)
     with st.container(key='ra_measures_final'):
         st.markdown('#### 3. 최종 감소대책 작성')
         ra_sync_control_headings(row)
@@ -9595,6 +9704,7 @@ def ra_render_measures(meta):
         left, right = st.columns(2)
         with left: ra_field('개선 담당자', 'owner', row['id'])
         with right: ra_row_date_input(row, 'deadline', '개선 예정일·이행기한')
+        ra_render_photo(row, 'before_photo', '조치 전 사진')
 
 
 def ra_render_execution(meta):
@@ -9610,6 +9720,7 @@ def ra_render_execution(meta):
     with left: ra_field('완료 확인자', 'verified_by', row['id'])
     with right: ra_row_date_input(row, 'verified_date', '개선 완료일·확인일')
     ra_field('이행 증빙·점검 결과', 'evidence', row['id'], 'area', placeholder='사진·점검표의 보관 위치, 실제 개선 내용, 현장 확인 결과')
+    ra_render_photo(row, 'after_photo', '조치 후 사진')
     ra_score_input(row, 'residual_f', '개선 후 빈도', 5)
     ra_score_input(row, 'residual_s', '개선 후 강도', 4)
     before, after = row['frequency']*row['severity'], row['residual_f']*row['residual_s']
@@ -9674,7 +9785,296 @@ def ra_evaluation_grid(rows):
     return headers, values
 
 
-RA_FORM14_VERSION = 'keco-form14-20261104-v2'
+RA_FORM16_VERSION = 'keco-form16-20261104-v1'
+
+
+def ra_photo_encode(raw):
+    from PIL import ImageOps
+    raw = bytes(raw)
+    if not raw or len(raw) > 20*1024*1024:
+        raise ValueError('사진은 20MB 이하의 파일을 선택해 주세요.')
+    try:
+        with Image.open(io.BytesIO(raw)) as opened:
+            if opened.width*opened.height > 40000000:
+                raise ValueError('사진 해상도가 큽니다. 크기를 줄여 다시 등록해 주세요.')
+            picture = ImageOps.exif_transpose(opened)
+            if 'A' in picture.getbands():
+                background = Image.new('RGB', picture.size, 'white')
+                background.paste(picture, mask=picture.getchannel('A'))
+                picture = background
+            else:
+                picture = picture.convert('RGB')
+            picture.thumbnail((1400,1400), Image.Resampling.LANCZOS)
+            for quality in (82,72,62):
+                output = io.BytesIO()
+                picture.save(output, format='JPEG', quality=quality, optimize=True)
+                if output.tell() <= 350*1024:
+                    break
+            if output.tell() > 350*1024:
+                picture.thumbnail((1000,1000), Image.Resampling.LANCZOS)
+                output = io.BytesIO()
+                picture.save(output, format='JPEG', quality=65, optimize=True)
+            return base64.b64encode(output.getvalue()).decode('ascii')
+    except (OSError, Image.DecompressionBombError) as exc:
+        raise ValueError('사진 파일을 읽지 못했습니다. JPG·PNG·WEBP 파일을 다시 선택해 주세요.') from exc
+
+
+def ra_photo_info(value):
+    if not value:
+        return None
+    try:
+        encoded = str(value).split(',',1)[-1] if str(value).startswith('data:image/') else str(value)
+        raw = base64.b64decode(encoded, validate=True)
+        with Image.open(io.BytesIO(raw)) as picture:
+            width,height = picture.size
+            format_name = picture.format
+            orientation = picture.getexif().get(274,1)
+            picture.verify()
+        if format_name not in ('JPEG','PNG') or orientation != 1:
+            return ra_photo_info(ra_photo_encode(raw))
+        return dict(data=raw,width=width,height=height,format='jpg' if format_name=='JPEG' else 'png')
+    except (ValueError, OSError, Image.DecompressionBombError) as exc:
+        raise ValueError('등록한 사진의 형식 확인이 필요합니다. 해당 사진을 다시 등록해 주세요.') from exc
+
+
+def ra_photo_changed(row_id, field, upload_key, state_key):
+    if not _perf_actor_allowed(st.session_state.get('ra_actor')):
+        return
+    try:
+        upload = st.session_state.get(upload_key)
+        encoded = ra_photo_encode(upload.getvalue()) if upload is not None else ''
+        ra_set_field(row_id, field, encoded)
+        st.session_state.pop(state_key+'_error',None)
+    except (ValueError, OSError) as exc:
+        st.session_state[state_key+'_error'] = str(exc)
+        st.session_state[state_key+'_generation'] = st.session_state.get(state_key+'_generation',0)+1
+
+
+def ra_photo_remove(row_id, field, state_key):
+    if not _perf_actor_allowed(st.session_state.get('ra_actor')):
+        return
+    ra_set_field(row_id,field,'')
+    st.session_state[state_key+'_generation'] = st.session_state.get(state_key+'_generation',0)+1
+    st.session_state.pop(state_key+'_error',None)
+
+
+def ra_render_photo(row, field, label):
+    state_key = 'ra_photo_'+row['id']+'_'+field
+    generation = st.session_state.get(state_key+'_generation',0)
+    upload_key = state_key+'_upload_'+str(generation)
+    st.file_uploader(label+' (선택)',type=['jpg','jpeg','png','webp'],key=upload_key,
+                     on_change=ra_photo_changed,args=(row['id'],field,upload_key,state_key))
+    error = st.session_state.pop(state_key+'_error',None)
+    if error: st.error(error)
+    if row.get(field):
+        st.caption(label+'이 연결되어 있습니다. 사진도 임시저장·최종저장에 함께 보관됩니다.')
+        with st.expander(label+' 보기·삭제'):
+            try:
+                photo = ra_photo_info(row[field])
+                st.image(photo['data'],width=320)
+            except ValueError as exc:
+                st.warning(str(exc))
+            st.button(label+' 삭제',key=state_key+'_remove',on_click=ra_photo_remove,args=(row['id'],field,state_key))
+
+
+def ra_form16_layout(meta, rows, final):
+    from reportlab.lib.pagesizes import A4, landscape
+    width,height = landscape(A4)
+    margin,gap = 24.0,14.0
+    table_width = width-2*margin
+    panel_width = (table_width-gap)/2
+    columns = [panel_width*v/390 for v in (45,70,80,45,70,80)]
+    body_height = height-2*margin-16-38
+    font_size,leading = 7.3,9.6
+    segments = []
+    for number,row in enumerate(rows,1):
+        info = [str(number)+'. '+ra_form14_text(row.get('trade')), ra_form14_text(meta.get('department')),
+                ra_form14_text(meta.get('execution_supervisor')),
+                '(점검담당) '+ra_form14_text(meta.get('evaluator'))+'\n(개선담당) '+ra_form14_text(row.get('owner'))]
+        info_lines = [ra_form14_wrap(value,columns[1]+columns[2]-8,font_size) for value in info]
+        overflow = []
+        for index,value in enumerate(info_lines):
+            if len(value)>4:
+                overflow += [['공정분류','부명','관리감독자','담당자'][index]+'(계속)']+value[3:]
+                info_lines[index] = value[:3]+['계속: 유해위험요인란']
+        factor = '\n'.join(overflow+[ra_form14_text(row.get('factor'))])
+        factors = ra_form14_wrap(factor,columns[1]+columns[2]-8,font_size)
+        measures = ra_form14_wrap(ra_form14_text(row.get('measures')),columns[4]+columns[5]-8,font_size)
+        try:
+            before = ra_photo_info(row.get('before_photo'))
+            after = ra_photo_info(row.get('after_photo')) if ra_is_implemented(row) else None
+        except ValueError as exc:
+            raise ValueError(f'{number}번 평가 항목: '+str(exc)) from exc
+        count = max(1,(max(len(factors),len(measures))+11)//12)
+        for part in range(count):
+            segments.append(dict(number=number,continued=part>0,info=info_lines,
+                factor=factors[part*12:(part+1)*12] or [''],measures=measures[part*12:(part+1)*12] or [''],
+                before=before if part==0 else None,after=after if part==0 else None,row=row))
+    pages = []
+    for index in range(0,len(segments),2):
+        pair = segments[index:index+2]
+        info1 = max(25,max(max(len(panel['info'][0]),len(panel['info'][1])) for panel in pair)*leading+8)
+        info2 = max(29,max(max(len(panel['info'][2]),len(panel['info'][3])) for panel in pair)*leading+8)
+        description = max(62,max(max(len(panel['factor']),len(panel['measures'])) for panel in pair)*leading+8)
+        heights = [info1,info2,30,18,description,0,22,27,24,28]
+        heights[5] = body_height-sum(heights)
+        if heights[5]<110:
+            raise ValueError('이행결과 보고서의 표시 분량 확인 필요')
+        panels = []
+        for panel in pair:
+            row = panel['row']
+            cells = []
+            def add(r,c,span,text,size=font_size,align='left',gray=False,photo=None):
+                lines = list(text) if isinstance(text,list) else str(text).split('\n')
+                cells.append(dict(r=r,c=c,span=span,lines=lines,size=size,align=align,gray=gray,photo=photo))
+            add(0,0,1,'공정분류',align='center',gray=True);add(0,1,2,panel['info'][0])
+            add(0,3,1,'부  명',align='center',gray=True);add(0,4,2,panel['info'][1])
+            add(1,0,1,'관리감독자',align='center',gray=True);add(1,1,2,panel['info'][2])
+            add(1,3,1,'담당자',align='center',gray=True);add(1,4,2,panel['info'][3])
+            title = '위험성 감소대책 수립 및 이행결과'
+            add(2,0,6,title,size=14,align='center',gray=True)
+            add(3,0,3,'개선 전',align='center',gray=True);add(3,3,3,'개선 후',align='center',gray=True)
+            add(4,0,1,'유해위험\n요인',align='center',gray=True);add(4,1,2,panel['factor'])
+            add(4,3,1,'감소\n대책',align='center',gray=True);add(4,4,2,panel['measures'])
+            continued = '같은 평가 항목의 사진은 앞쪽 참조' if panel['continued'] else ''
+            add(5,0,3,continued or '조치 전 사진 미등록',align='center',photo=panel['before'])
+            add(5,3,3,continued or ('조치 후 사진 미등록' if ra_is_implemented(row) else '저감조치 완료 후 등록'),align='center',photo=panel['after'])
+            add(6,0,3,'현재 위험성',align='center',gray=True);add(6,3,3,'개선 후 위험성',align='center',gray=True)
+            for c,label in enumerate(['가능성\n(빈도)','중대성\n(강도)','위험성']*2):
+                add(7,c,1,label,align='center')
+            scores = [row.get('frequency') or '',row.get('severity') or '',ra_score(row) or '',
+                      row.get('residual_f') or '' if ra_is_implemented(row) else '',
+                      row.get('residual_s') or '' if ra_is_implemented(row) else '',ra_completed_score(row) or '']
+            for c,value in enumerate(scores):add(8,c,1,value,align='center')
+            add(9,0,3,'완료여부'+(' · 계속' if panel['continued'] else ''),align='center',gray=True)
+            add(9,3,3,ra_implementation_status(row.get('status')),align='center',gray=True)
+            panels.append(dict(cells=cells,number=panel['number'],continued=panel['continued']))
+        pages.append(dict(panels=panels,heights=heights))
+    meta_line = ' / '.join(ra_form14_text(meta.get(key)) for key in ('site','date','kind') if meta.get(key))
+    return dict(width=width,height=height,margin=margin,gap=gap,table_width=table_width,
+                panel_width=panel_width,columns=columns,pages=pages,meta_line=meta_line,leading=leading)
+
+
+def ra_form16_draw_pdf(pdf, model, start_page=0, total_pages=None):
+    from reportlab.lib.utils import ImageReader
+    font = ra_form14_font()
+    total_pages = total_pages or start_page+len(model['pages'])
+    def cell(x,top,width,height,item):
+        pdf.saveState();pdf.setLineWidth(.45);pdf.setStrokeColorRGB(0,0,0)
+        if item['gray']:
+            pdf.setFillColorRGB(.945,.945,.945);pdf.rect(x,top-height,width,height,fill=1,stroke=0)
+        pdf.rect(x,top-height,width,height,fill=0,stroke=1)
+        photo = item.get('photo')
+        if photo:
+            scale = min((width-12)/photo['width'],(height-12)/photo['height'])
+            photo_width,photo_height = photo['width']*scale,photo['height']*scale
+            pdf.drawImage(ImageReader(io.BytesIO(photo['data'])),x+(width-photo_width)/2,
+                          top-height+(height-photo_height)/2,width=photo_width,height=photo_height,mask='auto')
+        else:
+            lines,size = item['lines'],item['size']
+            leading = model['leading'] if size<10 else size*1.2
+            centered = item['align']=='center'
+            baseline = top-(max(4,(height-len(lines)*leading)/2) if centered else 4)-size
+            pdf.setFillColorRGB(0,0,0)
+            for line in lines:
+                text_width = pdfmetrics.stringWidth(line,font,size)
+                left = x+(width-text_width)/2 if centered else x+4
+                text=pdf.beginText(left,baseline);text.setFont(font,size)
+                if item['r']==2:text.setTextRenderMode(2);pdf.setLineWidth(.15)
+                text.textOut(line);pdf.drawText(text);baseline-=leading
+        pdf.restoreState()
+    for page_number,page in enumerate(model['pages'],start_page+1):
+        margin = model['margin'];top=model['height']-margin
+        pdf.setFont(font,9);pdf.drawString(margin,top-10,'[붙임 16]')
+        meta_lines = ra_form14_wrap(model['meta_line'],model['table_width']-95,6.8)
+        for offset,line in enumerate(meta_lines[:2]):
+            pdf.setFont(font,6.8);pdf.drawRightString(model['width']-margin,top-8-offset*7.5,line)
+        top-=16
+        for side,panel in enumerate(page['panels']):
+            left = margin+side*(model['panel_width']+model['gap'])
+            for item in panel['cells']:
+                x=left+sum(model['columns'][:item['c']]);y=top-sum(page['heights'][:item['r']])
+                width=sum(model['columns'][item['c']:item['c']+item['span']])
+                cell(x,y,width,page['heights'][item['r']],item)
+        pdf.setFont(font,8.5);pdf.drawString(margin,36,'붙임 KECO-P-610-12')
+        pdf.drawCentredString(model['width']/2,36,'한국환경공단')
+        pdf.drawRightString(model['width']-margin,36,'A4(210mm×297mm)')
+        pdf.setFont(font,7);pdf.drawCentredString(model['width']/2,20,f'{page_number} / {total_pages}')
+        pdf.showPage()
+
+
+def ra_form16_append_hwpx(doc, model, start_page=0, total_pages=None):
+    hp='http://www.hancom.co.kr/hwpml/2011/paragraph'
+    total_pages=total_pages or start_page+len(model['pages'])
+    styles=doc.styles if hasattr(doc,'styles') else doc
+    apply_format=styles.apply_paragraph_format if hasattr(styles,'apply_paragraph_format') else doc.set_paragraph_format
+    make_fill=styles.ensure_border_fill if hasattr(styles,'ensure_border_fill') else doc.ensure_border_fill
+    plain=make_fill(border_color='#000000',border_width='0.12 mm')
+    gray=make_fill(border_color='#000000',border_width='0.12 mm',fill_color='#F1F1F1')
+    empty=make_fill(border_color='#FFFFFF',border_width='0.12 mm',active_borders=[])
+    formats={}
+    for key,align,percent in [('LEFT','LEFT',130),('CENTER','CENTER',130),('RIGHT','RIGHT',130),('PICTURE','CENTER',100)]:
+        p=doc.add_paragraph('',para_pr_id_ref='0')
+        apply_format(paragraphs=[p],alignment=align,line_spacing_percent=percent,
+                     spacing_before_pt=0,spacing_after_pt=0,indent_left_mm=0,indent_right_mm=0,first_line_indent_mm=0)
+        formats[key]=p.element.get('paraPrIDRef');p.remove()
+    def put(cell,lines,size=7.3,align='LEFT',fill=None,bold=False):
+        cell.set_text('');cell.element.set('borderFillIDRef',str(plain if fill is None else fill))
+        cell.element.set('hasMargin','1')
+        margins=cell.element.find('{%s}cellMargin'%hp)
+        if margins is not None:
+            for side in ('left','right','top','bottom'):margins.set(side,'400')
+        sublist=cell.element.find('{%s}subList'%hp)
+        sublist.set('vertAlign','CENTER' if align!='LEFT' else 'TOP');sublist.set('lineWrap','SQUEEZE')
+        for index,line in enumerate(lines):
+            p=cell.paragraphs[0] if index==0 else cell.add_paragraph('')
+            p.element.set('paraPrIDRef',formats[align]);p.element.set('styleIDRef','0')
+            for run in list(p.runs):p.element.remove(run.element)
+            p.add_run(str(line),font='맑은 고딕',size=size,bold=bold)
+    def table(widths,heights,new_page=False,border=None):
+        widths=[round(value*100) for value in widths];heights=[round(value*100) for value in heights]
+        obj=doc.add_table(rows=len(heights),cols=len(widths),width=sum(widths),height=sum(heights),
+                          border_fill_id_ref=plain if border is None else border,para_pr_id_ref=formats['LEFT'])
+        obj.element.set('pageBreak','NONE');obj.element.set('repeatHeader','0')
+        if new_page:apply_format(paragraphs=[obj.paragraph],page_break_before=True)
+        for r,height in enumerate(heights):
+            for c,width in enumerate(widths):obj.cell(r,c).set_size(width=width,height=height)
+        return obj
+    for page_number,page in enumerate(model['pages'],start_page+1):
+        header=table([90,model['table_width']-90],[16],new_page=True,border=empty)
+        put(header.cell(0,0),['[붙임 16]'],size=9,fill=empty)
+        put(header.cell(0,1),ra_form14_wrap(model['meta_line'],model['table_width']-98,6.8),size=6.8,align='RIGHT',fill=empty)
+        widths=model['columns']+[model['gap']]+model['columns']
+        grid=table(widths,page['heights'])
+        grid.merge_cells(0,6,9,6);put(grid.cell(0,6),[''],fill=empty)
+        for side in range(2):
+            start=side*7
+            if side>=len(page['panels']):
+                grid.merge_cells(0,start,9,start+5);put(grid.cell(0,start),[''],fill=empty)
+                continue
+            for item in page['panels'][side]['cells']:
+                r,c,span=item['r'],start+item['c'],item['span']
+                if span>1:grid.merge_cells(r,c,r,c+span-1)
+                target=grid.cell(r,c)
+                put(target,item['lines'],size=item['size'],align='CENTER' if item['align']=='center' else 'LEFT',fill=gray if item['gray'] else plain,bold=item['r']==2)
+                photo=item.get('photo')
+                if photo:
+                    width=sum(model['columns'][item['c']:item['c']+span])-14
+                    height=page['heights'][r]-22
+                    scale=min(width/photo['width'],height/photo['height'])
+                    obj=doc.add_picture(photo['data'],photo['format'],width_mm=photo['width']*scale*25.4/72,
+                                        height_mm=photo['height']*scale*25.4/72,align='CENTER',para_pr_id_ref=formats['PICTURE'])
+                    picture_p=obj.element
+                    while picture_p.tag!='{%s}p'%hp:picture_p=picture_p.getparent()
+                    sublist=target.element.find('{%s}subList'%hp)
+                    for child in list(sublist):sublist.remove(child)
+                    sublist.set('vertAlign','CENTER');sublist.append(picture_p)
+        footer=table([model['table_width']/3]*3,[27],border=empty)
+        for col,label in enumerate(['붙임 KECO-P-610-12',f'한국환경공단\n{page_number} / {total_pages}','A4(210mm×297mm)']):
+            put(footer.cell(0,col),label.split('\n'),size=8,align=['LEFT','CENTER','RIGHT'][col],fill=empty)
+
+
+RA_FORM14_VERSION = 'keco-risk-report-20261104-form14-form16-v1'
 
 
 def ra_form14_text(value):
@@ -9817,12 +10217,14 @@ def ra_form14_layout(meta, rows, final):
 
 
 
-def ra_pdf(meta, rows, final):
+def ra_pdf(meta, rows, final, include_execution=True):
     from reportlab.pdfgen import canvas
     model = ra_form14_layout(meta, rows, final)
+    execution = ra_form16_layout(meta, rows, final) if include_execution else None
+    total_pages = len(model["pages"])+(len(execution["pages"]) if execution else 0)
     output = io.BytesIO()
     pdf = canvas.Canvas(output,pagesize=(model['width'],model['height']))
-    pdf.setTitle('위험성평가(위험성 결정)')
+    pdf.setTitle('위험성평가 및 감소대책 수립·이행결과' if include_execution else '위험성평가(위험성 결정)')
     font = ra_form14_font()
     margin, table_width = model['margin'], model['table_width']
     def cell(x,top,width,height,lines,*,size=8,leading=10.5,align='left',bold=False,gray=False,border=True,center=False):
@@ -9880,16 +10282,20 @@ def ra_pdf(meta, rows, final):
         cell(margin,45,table_width/3,16,['붙임 KECO-P-610-10'],size=8.5,border=False)
         cell(margin+table_width/3,45,table_width/3,16,['한국환경공단'],size=9,align='center',border=False)
         cell(margin+table_width*2/3,45,table_width/3,16,['A4(210mm×297mm)'],size=8.5,align='right',border=False)
-        cell(margin,28,table_width,10,[f'{page_number} / {len(model["pages"])}'],size=7,align='center',border=False)
+        cell(margin,28,table_width,10,[f'{page_number} / {total_pages}'],size=7,align='center',border=False)
         pdf.showPage()
+    if execution:
+        ra_form16_draw_pdf(pdf, execution, start_page=len(model["pages"]), total_pages=total_pages)
     pdf.save()
     return output.getvalue()
 
 
 
-def ra_hwpx(meta, rows, final):
+def ra_hwpx(meta, rows, final, include_execution=True):
     """Editable native tables, with the same measured pages as the PDF form."""
     model = ra_form14_layout(meta,rows,final)
+    execution = ra_form16_layout(meta,rows,final) if include_execution else None
+    total_pages = len(model["pages"])+(len(execution["pages"]) if execution else 0)
     doc = HwpxDocument.new()
     hp = 'http://www.hancom.co.kr/hwpml/2011/paragraph'
     if hasattr(doc,'page'):
@@ -9977,8 +10383,10 @@ def ra_hwpx(meta, rows, final):
                 centered=col in (0,4,5,6,9,10,11,12)
                 text(grid.cell(index,col),lines,size=model['sizes'][col],align='CENTER' if centered else 'LEFT',center=centered)
         footer=table([width/3]*3,[27],fill=no_border)
-        for col,label in enumerate(['붙임 KECO-P-610-10',f'한국환경공단\n{page_number} / {len(model["pages"])}','A4(210mm×297mm)']):
+        for col,label in enumerate(['붙임 KECO-P-610-10',f'한국환경공단\n{page_number} / {total_pages}','A4(210mm×297mm)']):
             text(footer.cell(0,col),label.split('\n'),size=8,align=['LEFT','CENTER','RIGHT'][col],fill=no_border,center=True,percent=100)
+    if execution:
+        ra_form16_append_hwpx(doc,execution,start_page=len(model["pages"]),total_pages=total_pages)
     output=io.BytesIO();doc.save_to_stream(output)
     return output.getvalue()
 
@@ -9987,6 +10395,10 @@ def ra_hwpx(meta, rows, final):
 def ra_render_sharing(meta, actor):
     meta['report_mode'] = '출력본'
     st.info('공단 작성자가 내용을 확인해 보고서를 만듭니다. 결재는 PDF·한글 보고서를 출력한 뒤 지면으로 진행합니다.')
+    meta.setdefault('execution_supervisor','')
+    with st.expander('이행결과 보고서 표시정보 (선택)'):
+        ra_field('관리감독자 (붙임 16 표시용·선택)','execution_supervisor',max_chars=120)
+        st.caption('점검담당자는 사전준비의 작성자, 개선담당자는 각 항목의 개선 담당자와 연결됩니다.')
     with st.expander('현장 전달·후속 점검 기록 (선택)'):
         left,right=st.columns(2)
         with left:
@@ -10002,7 +10414,7 @@ def ra_render_sharing(meta, actor):
         st.warning(f'보고서 작성 전 확인할 항목 {len(missing)}개')
     else:st.success('주요 작성 항목을 입력했습니다. 보고서를 만들 수 있습니다.')
     ra_render_validation_links(missing, actor)
-    st.caption('붙임 14 양식 · A4 가로 방향 · 작성 내용에 따라 여러 장으로 출력됩니다.')
+    st.caption('붙임 14 위험성평가표와 붙임 16 감소대책 수립·이행결과를 함께 작성합니다. A4 가로 방향이며 붙임 16은 한 장에 최대 2개 항목을 배치합니다. 사진이 없으면 미등록으로 표시합니다.')
     payload = ra_payload(); sig = ra_hash([RA_FORM14_VERSION, payload])
     if st.button('위험성평가 보고서 만들기', type='primary', key='ra_build'):
         errors = ra_validate(meta, st.session_state.ra_rows, payload['final'])
@@ -10011,14 +10423,16 @@ def ra_render_sharing(meta, actor):
         else:
             previous = st.session_state.get('ra_output', {})
             outputs = dict(previous) if previous.get('sig') == sig else {'sig': sig}
-            with keco_loading('위험성평가표를 보고서로 만들고 있습니다…', kind='steps', steps=('PDF 작성', '한글 작성', '보고서 보관')):
+            with keco_loading('위험성평가표와 이행결과 보고서를 만들고 있습니다…', kind='steps', steps=('PDF 작성', '한글 작성', '보고서 보관')):
                 if not outputs.get('pdf'):
                     keco_loading_stage(0)
                     try: outputs['pdf'] = ra_pdf(meta, st.session_state.ra_rows, payload['final'])
+                    except ValueError as exc: st.error(str(exc))
                     except Exception: st.error('PDF 생성 실패. 글꼴·문서 라이브러리 확인 필요.')
                 if not outputs.get('hwpx'):
                     keco_loading_stage(1)
                     try: outputs['hwpx'] = ra_hwpx(meta, st.session_state.ra_rows, payload['final'])
+                    except ValueError as exc: st.error(str(exc))
                     except Exception: st.error('한글 생성 실패. HWPX 라이브러리 확인 필요.')
                 file_sig = ra_hash([sig, bool(outputs.get('hwpx')), bool(outputs.get('pdf'))])
                 if (outputs.get('hwpx') or outputs.get('pdf')) and outputs.get('archived_files_sig') != file_sig:
@@ -10033,8 +10447,8 @@ def ra_render_sharing(meta, actor):
             st.session_state.ra_output = outputs
     outputs = st.session_state.get('ra_output', {})
     if outputs.get('sig') == sig:
-        if outputs.get('pdf'): st.download_button('출력용 PDF 다운로드', outputs['pdf'], '위험성평가_보고서.pdf', 'application/pdf', key='ra_pdf_download', on_click='ignore')
-        if outputs.get('hwpx'): st.download_button('편집용 한글 HWPX 다운로드', outputs['hwpx'], '위험성평가_보고서.hwpx', 'application/hwp+zip', key='ra_hwpx_download', on_click='ignore')
+        if outputs.get('pdf'): st.download_button('평가표·이행결과 PDF 다운로드', outputs['pdf'], '위험성평가_및_이행결과_보고서.pdf', 'application/pdf', key='ra_pdf_download', on_click='ignore')
+        if outputs.get('hwpx'): st.download_button('평가표·이행결과 한글 다운로드', outputs['hwpx'], '위험성평가_및_이행결과_보고서.hwpx', 'application/hwp+zip', key='ra_hwpx_download', on_click='ignore')
     elif outputs: st.caption('작성 내용이 바뀌었습니다. 보고서를 다시 만들어 주세요.')
 
 
