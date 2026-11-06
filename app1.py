@@ -320,7 +320,7 @@ def render_loading_foundation():
 render_loading_foundation()
 
 # Apply the desktop shell before any login or main-screen elements are sent.
-WORKSTATION_CSS = '<style>\n.st-key-workstation_route_frame {display:none!important}\n/* BaseWeb positions the selection indicator separately from the tab buttons. */\n.st-key-keco_main_menu [data-baseweb="tab-highlight"],\n.st-key-keco_main_menu [data-baseweb="tab-border"] {display:none!important;height:0!important;background:transparent!important;border:0!important}\n.ws-brand,.st-key-workstation_home,.st-key-workstation_return {display:none!important}\n@media(min-width:769px){\n .stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"],[data-testid="stHeader"] {background:#eee7d7!important}\n [data-testid="block-container"],.stMainBlockContainer {max-width:1240px!important;padding-top:4rem!important}\n [data-testid="stElementContainer"]:has(.keco-header),[data-testid="stElementContainer"]:has(.top-status-bar),[data-testid="stElementContainer"]:has(.mascot-banner) {display:none!important}\n .ws-brand {display:flex!important;align-items:center;justify-content:space-between;gap:24px;padding:4px 4px 24px;border-bottom:1px solid #d9d3c4;margin-bottom:4px}\n .ws-brand-main {display:flex;align-items:center;gap:14px}\n .ws-brand .ws-logo {width:52px!important;height:46px!important;object-fit:contain;mix-blend-mode:multiply;background:transparent!important;border:0!important;box-shadow:none!important}\n .ws-brand strong {display:block;font-size:22px;font-weight:700;color:#183d2d!important}\n .ws-brand small {display:block;font-size:13px;color:#64766c!important;margin-top:3px}\n .ws-profile {font-size:13px;color:#64766c!important;text-align:right;line-height:1.8}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6)) {gap:8px!important;padding:12px 0 18px!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;border-bottom:1px solid #d9d3c4!important;background:transparent!important;border-radius:0!important;box-shadow:none!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] {min-height:52px!important;height:52px!important;padding:10px 8px!important;border:0!important;border-radius:9px!important;background:#fff!important;box-shadow:none!important;transform:none!important;transition:none!important;flex-direction:row!important;gap:0!important;color:#486356!important;-webkit-text-fill-color:#486356!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] p,.st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] span {font-size:15px!important;color:#486356!important;-webkit-text-fill-color:#486356!important;font-weight:600!important;white-space:nowrap!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]::before,\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]::after {display:none!important;content:none!important;animation:none!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>div:not([role="tab"]) {display:none!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] {background:#087f57!important;color:#fff!important;-webkit-text-fill-color:#fff!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] p,.st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] span {color:#fff!important;-webkit-text-fill-color:#fff!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]:hover:not([aria-selected="true"]) {background:#eef7f2!important}\n .st-key-workstation_home {display:flex!important;gap:18px!important}\n .st-key-workstation_home [data-testid="stMarkdownContainer"] {margin-bottom:0!important}\n .st-key-workstation_registration {display:none!important}\n .st-key-workstation_return {display:flex!important}\n .ws-context {display:flex;justify-content:space-between;align-items:center;gap:20px;margin:12px 0 4px;color:#65796c!important;font-size:13px}\n .ws-context span {color:#65796c!important}\n .st-key-workstation_home [data-testid="stHorizontalBlock"] {gap:18px!important;align-items:stretch!important}\n .st-key-workstation_welcome {background:#087f57!important;border-radius:18px!important;padding:28px!important;min-height:268px!important;height:100%;box-sizing:border-box}\n .st-key-workstation_welcome .ws-eyebrow {color:#c5ead6!important;-webkit-text-fill-color:#c5ead6!important;font-size:12px;letter-spacing:1px;margin-bottom:12px}\n .st-key-workstation_welcome h2,.st-key-workstation_welcome h2 * {font-size:30px!important;line-height:1.5!important;color:#fff!important;-webkit-text-fill-color:#fff!important;margin:0!important;padding:0!important;font-weight:700!important}\n .st-key-workstation_welcome p,.st-key-workstation_welcome p * {color:#e1f2e9!important;-webkit-text-fill-color:#e1f2e9!important;font-size:14px!important;margin:12px 0 15px!important;line-height:1.8!important}\n .st-key-workstation_home [data-testid="stButton"]>button {background:#edf7f1!important;background-image:none!important;border:0!important;border-radius:9px!important;box-shadow:none!important;transform:none!important;color:#08734e!important;min-height:44px!important;padding:9px 18px!important;width:auto!important}\n .st-key-workstation_home [data-testid="stButton"]>button p,.st-key-workstation_home [data-testid="stButton"]>button span {font-size:14px!important;font-weight:600!important;color:#08734e!important;-webkit-text-fill-color:#08734e!important;margin:0!important}\n .st-key-workstation_home [data-testid="stButton"]>button:hover {background:#dcefe4!important}\n .st-key-workstation_welcome [data-testid="stButton"]>button {background:#fff!important;min-height:46px!important}\n .ws-metrics {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}\n .ws-metric {padding:22px 24px;border:1px solid #dfeae3;border-radius:15px;background:#fff;min-height:126px;box-sizing:border-box}\n .ws-label {font-size:13px;color:#65796c!important}\n .ws-number {font-size:34px;line-height:1.5;font-weight:700;color:#173d2a!important;font-variant-numeric:tabular-nums;margin:6px 0 2px}\n .ws-number small {font-size:13px;font-weight:400;margin-left:5px;color:#65796c!important}\n .ws-note {font-size:12px;line-height:1.7;color:#6a7e70!important}\n .ws-panel {border:1px solid #dfeae3;border-radius:15px;padding:22px;background:#fff;box-sizing:border-box;min-height:248px}\n .ws-panel h3,.ws-panel h3 *,.ws-banner h3,.ws-banner h3 * {font-size:17px!important;color:#173d2a!important;-webkit-text-fill-color:#173d2a!important;margin:0 0 16px!important;padding:0!important;font-weight:700!important;line-height:1.5!important}\n .ws-task {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid #edf2ee;min-width:0}\n .ws-task:last-child {border-bottom:0}\n .ws-task strong {display:block;font-size:14px;font-weight:500;line-height:1.6;color:#234d38!important;overflow-wrap:anywhere}\n .ws-task small {display:block;font-size:12px;color:#718174!important;margin-top:4px;line-height:1.6;overflow-wrap:anywhere}\n .ws-badge {background:#fff3da;color:#7b551c!important;border-radius:6px;padding:5px 8px;font-size:12px;white-space:nowrap!important;flex-shrink:0}\n .ws-empty {font-size:14px;color:#667b6c!important;line-height:1.8;padding:24px 0}\n .ws-completion {display:flex;align-items:center;justify-content:center;gap:30px;padding:12px 0 20px}\n .ws-donut {width:144px;height:144px;border-radius:50%;background:conic-gradient(#087f57 0 var(--ws-progress),#edf4ef var(--ws-progress) 100%);position:relative;display:grid;place-items:center;flex-shrink:0}\n .ws-donut::before {content:"";position:absolute;inset:17px;border-radius:50%;background:#fff}\n .ws-donut strong {position:relative;font-size:30px;color:#173d2a!important;font-variant-numeric:tabular-nums}\n .ws-donut small {display:block;font-size:12px;font-weight:400;color:#718174!important;text-align:center;margin-top:4px}\n .ws-legend {font-size:13px;color:#65796c!important;line-height:1.8}\n .ws-legend strong {display:block;font-size:22px;font-weight:600;color:#173d2a!important;margin-bottom:10px;font-variant-numeric:tabular-nums}\n .st-key-workstation_quick_0,.st-key-workstation_quick_1,.st-key-workstation_quick_2 {border:1px solid #dfeae3;border-radius:15px;padding:20px!important;background:#fff;height:100%}\n .ws-quick h3,.ws-quick h3 * {font-size:16px!important;font-weight:600!important;color:#173d2a!important;-webkit-text-fill-color:#173d2a!important;margin:0 0 8px!important;padding:0!important}\n .ws-quick p,.ws-quick p * {font-size:13px!important;color:#65796c!important;-webkit-text-fill-color:#65796c!important;line-height:1.8!important;margin:0 0 14px!important}\n .ws-footer {display:flex;justify-content:space-between;gap:18px;font-size:12px;color:#718174!important;margin-top:14px}\n}\n\n/* Main menu selection uses its green fill without an underline, at every size. */\n.st-key-keco_main_menu [data-baseweb="tab-highlight"],\n.st-key-keco_main_menu [data-baseweb="tab-border"],\n.st-key-keco_main_menu [data-testid="stTabHighlight"],\n.st-key-keco_main_menu [data-testid="stTabBorder"],\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="presentation"] {\n display:none!important;visibility:hidden!important;height:0!important;\n background:transparent!important;border:0!important;box-shadow:none!important;\n}\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"][aria-selected],\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"][aria-selected]:is(:hover,:active,:focus) {\n border-bottom:0!important;box-shadow:none!important;text-decoration:none!important;\n}\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"]::after {\n content:none!important;display:none!important;height:0!important;\n background:transparent!important;border:0!important;box-shadow:none!important;animation:none!important;\n}\n\n/* React Aria tabs place their selection underline inside the selected tab. */\n[role="tablist"] .react-aria-SelectionIndicator {\n display:none!important;visibility:hidden!important;opacity:0!important;\n height:0!important;background:transparent!important;border:0!important;\n box-shadow:none!important;animation:none!important;transition:none!important;\n}\n</style>'
+WORKSTATION_CSS = '<style>\n.st-key-workstation_route_frame {display:none!important}\n/* BaseWeb positions the selection indicator separately from the tab buttons. */\n.st-key-keco_main_menu [data-baseweb="tab-highlight"],\n.st-key-keco_main_menu [data-baseweb="tab-border"] {display:none!important;height:0!important;background:transparent!important;border:0!important}\n.ws-brand,.st-key-workstation_home,.st-key-workstation_return {display:none!important}\n@media(min-width:769px){\n .stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"],[data-testid="stHeader"] {background:#eee7d7!important}\n [data-testid="block-container"],.stMainBlockContainer {max-width:1240px!important;padding-top:4rem!important}\n [data-testid="stElementContainer"]:has(.keco-header),[data-testid="stElementContainer"]:has(.top-status-bar),[data-testid="stElementContainer"]:has(.mascot-banner) {display:none!important}\n .ws-brand {display:flex!important;align-items:center;justify-content:space-between;gap:24px;padding:4px 4px 24px;border-bottom:1px solid #d9d3c4;margin-bottom:4px}\n .ws-brand-main {display:flex;align-items:center;gap:14px}\n .ws-brand .ws-logo {width:52px!important;height:46px!important;object-fit:contain;mix-blend-mode:multiply;background:transparent!important;border:0!important;box-shadow:none!important}\n .ws-brand strong {display:block;font-size:22px;font-weight:700;color:#183d2d!important}\n .ws-brand small {display:block;font-size:13px;color:#64766c!important;margin-top:3px}\n .ws-profile {font-size:13px;color:#64766c!important;text-align:right;line-height:1.8}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6)) {gap:8px!important;padding:12px 0 18px!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;border-bottom:1px solid #d9d3c4!important;background:transparent!important;border-radius:0!important;box-shadow:none!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] {min-height:52px!important;height:52px!important;padding:10px 8px!important;border:0!important;border-radius:9px!important;background:#fff!important;box-shadow:none!important;transform:none!important;transition:none!important;flex-direction:row!important;gap:0!important;color:#486356!important;-webkit-text-fill-color:#486356!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] p,.st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] span {font-size:15px!important;color:#486356!important;-webkit-text-fill-color:#486356!important;font-weight:600!important;white-space:nowrap!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]::before,\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]::after {display:none!important;content:none!important;animation:none!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>div:not([role="tab"]) {display:none!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] {background:#087f57!important;color:#fff!important;-webkit-text-fill-color:#fff!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] p,.st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] span {color:#fff!important;-webkit-text-fill-color:#fff!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]:hover:not([aria-selected="true"]) {background:#eef7f2!important}\n .st-key-workstation_home {display:flex!important;gap:18px!important}\n .st-key-workstation_home [data-testid="stMarkdownContainer"] {margin-bottom:0!important}\n .st-key-workstation_registration {display:none!important}\n .st-key-workstation_return {display:flex!important}\n .ws-context {display:flex;justify-content:space-between;align-items:center;gap:20px;margin:12px 0 4px;color:#65796c!important;font-size:13px}\n .ws-context span {color:#65796c!important}\n .st-key-workstation_home [data-testid="stHorizontalBlock"] {gap:18px!important;align-items:stretch!important}\n .st-key-workstation_welcome {background:#087f57!important;border-radius:18px!important;padding:28px!important;min-height:268px!important;height:100%;box-sizing:border-box}\n .st-key-workstation_welcome .ws-eyebrow {color:#c5ead6!important;-webkit-text-fill-color:#c5ead6!important;font-size:12px;letter-spacing:1px;margin-bottom:12px}\n .st-key-workstation_welcome h2,.st-key-workstation_welcome h2 * {font-size:30px!important;line-height:1.5!important;color:#fff!important;-webkit-text-fill-color:#fff!important;margin:0!important;padding:0!important;font-weight:700!important}\n .st-key-workstation_welcome p,.st-key-workstation_welcome p * {color:#e1f2e9!important;-webkit-text-fill-color:#e1f2e9!important;font-size:14px!important;margin:12px 0 15px!important;line-height:1.8!important}\n .st-key-workstation_home [data-testid="stButton"]>button {background:#edf7f1!important;background-image:none!important;border:0!important;border-radius:9px!important;box-shadow:none!important;transform:none!important;color:#08734e!important;min-height:44px!important;padding:9px 18px!important;width:auto!important}\n .st-key-workstation_home [data-testid="stButton"]>button p,.st-key-workstation_home [data-testid="stButton"]>button span {font-size:14px!important;font-weight:600!important;color:#08734e!important;-webkit-text-fill-color:#08734e!important;margin:0!important}\n .st-key-workstation_home [data-testid="stButton"]>button:hover {background:#dcefe4!important}\n .st-key-workstation_welcome [data-testid="stButton"]>button {background:#fff!important;min-height:46px!important}\n .ws-site-metric {display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px 20px;border:1px solid #dfeae3;border-radius:15px;background:#fff;min-height:78px;box-sizing:border-box}\n .ws-site-metric strong {display:block;font-size:16px;color:#173d2a!important}\n .ws-number {font-size:32px;line-height:1.4;font-weight:700;color:#173d2a!important;font-variant-numeric:tabular-nums}\n .ws-number small {font-size:13px;font-weight:400;margin-left:5px;color:#65796c!important}\n .ws-note {font-size:12px;line-height:1.7;color:#6a7e70!important}\n .st-key-workstation_monthly,.st-key-workstation_files {border:1px solid #dfeae3;border-radius:15px;padding:18px 20px;background:#fff;box-sizing:border-box;height:100%;min-height:324px}\n .st-key-workstation_monthly h3,.st-key-workstation_files h3,.ws-banner h3,.ws-banner h3 * {font-size:17px!important;color:#173d2a!important;-webkit-text-fill-color:#173d2a!important;margin:0!important;padding:0!important;font-weight:700!important;line-height:1.5!important}\n .ws-doc {padding:10px 0;border-bottom:1px solid #edf2ee;min-width:0}\n .ws-doc:last-child {border-bottom:0}\n .ws-doc strong {display:block;font-size:14px;font-weight:600;line-height:1.6;color:#234d38!important;overflow-wrap:anywhere}\n .ws-doc small {display:block;font-size:12px;color:#718174!important;margin-top:3px;line-height:1.6;overflow-wrap:anywhere}\n .st-key-workstation_home [class*="st-key-workstation_quick_"] {border:1px solid #dfeae3;border-radius:15px;padding:clamp(12px,1.45vw,20px)!important;background:#fff;height:100%}\n .st-key-workstation_home [class*="st-key-workstation_quick_"] button {max-width:100%!important}\n .ws-quick h3,.ws-quick h3 * {font-size:16px!important;font-weight:600!important;color:#173d2a!important;-webkit-text-fill-color:#173d2a!important;margin:0 0 8px!important;padding:0!important}\n .ws-quick p,.ws-quick p * {font-size:13px!important;color:#65796c!important;-webkit-text-fill-color:#65796c!important;line-height:1.8!important;margin:0 0 14px!important}\n}\n\n/* Main menu selection uses its green fill without an underline, at every size. */\n.st-key-keco_main_menu [data-baseweb="tab-highlight"],\n.st-key-keco_main_menu [data-baseweb="tab-border"],\n.st-key-keco_main_menu [data-testid="stTabHighlight"],\n.st-key-keco_main_menu [data-testid="stTabBorder"],\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="presentation"] {\n display:none!important;visibility:hidden!important;height:0!important;\n background:transparent!important;border:0!important;box-shadow:none!important;\n}\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"][aria-selected],\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"][aria-selected]:is(:hover,:active,:focus) {\n border-bottom:0!important;box-shadow:none!important;text-decoration:none!important;\n}\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"]::after {\n content:none!important;display:none!important;height:0!important;\n background:transparent!important;border:0!important;box-shadow:none!important;animation:none!important;\n}\n\n/* React Aria tabs place their selection underline inside the selected tab. */\n[role="tablist"] .react-aria-SelectionIndicator {\n display:none!important;visibility:hidden!important;opacity:0!important;\n height:0!important;background:transparent!important;border:0!important;\n box-shadow:none!important;animation:none!important;transition:none!important;\n}\n</style>'
 
 if st.session_state.get("password_correct", False):
     st.html(WORKSTATION_CSS)
@@ -1396,7 +1396,7 @@ st.html("""
         border: 1px solid #DCE6E0;
         border-radius: 18px;
         padding: 18px 24px;
-        margin: 4px 0 22px;
+        margin: 0 0 22px;
         box-shadow: 0 10px 28px rgba(19, 78, 50, 0.08);
         overflow: hidden;
     }
@@ -1636,7 +1636,6 @@ st.html("""
     .login-photo-panel {
         position: relative;
         width: 100%;
-        min-height: 575px;
         overflow: hidden;
         border: 1px solid #DCE7E0;
         border-radius: 22px;
@@ -1733,6 +1732,8 @@ st.html("""
         margin-top: 6px !important;
         margin-bottom: 0 !important;
     }
+    .keco-system-title { font-weight: 900; }
+    .ws-profile .keco-system-title { color: #183D2D; }
     .top-status-bar {
         background-color: #E6F4EA;
         border: 1.5px solid #10B981;
@@ -2089,6 +2090,18 @@ def check_password():
     st.markdown("""
     <style>
     @media (min-width: 769px) {
+        /* 사진을 열 높이 계산에서 제외하고 왼쪽 로그인 영역에 맞춥니다. */
+        [data-testid="stHorizontalBlock"]:has(.login-photo-panel) {
+            align-items: stretch;
+        }
+        :is([data-testid="stColumn"], [data-testid="column"]):has(.login-photo-panel) {
+            position: relative;
+        }
+        [data-testid="stElementContainer"]:has(.login-photo-panel),
+        [data-testid="stHorizontalBlock"] .login-photo-panel {
+            position: absolute;
+            inset: 0;
+        }
         .login-page-heading.login-heading-v24 {
             container-type: inline-size;
             box-sizing: border-box;
@@ -2583,7 +2596,7 @@ def inspection_file_bytes(file):
         file.seek(position)
 
 
-def inspection_report_key(dept, site, inspector, items):
+def inspection_report_key(dept, site, inspector, items, *, weather_note=""):
     payload = [str(dept), str(site), str(inspector)]
     for idx, item in items.items():
         payload.append([idx, item.get("desc_before", ""), item.get("desc_after", ""),
@@ -2591,10 +2604,20 @@ def inspection_report_key(dept, site, inspector, items):
                         [[hashlib.sha256(inspection_file_bytes(f)).hexdigest()
                           for f in item.get(key, [])]
                          for key in ("before_files", "after_files")]])
+    if weather_note:
+        payload.append({"weather_note": weather_note})
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False).encode()).hexdigest()
 
 
-def generate_inspection_hwpx(dept, site, inspector, items, report_title="현장 안전점검 및 조치 결과 보고서"):
+def inspection_payload_parts(encoded):
+    items = json.loads(encoded)
+    if not isinstance(items, dict):
+        raise ValueError("저장된 점검 내용의 형식을 확인해 주세요.")
+    note = items.pop("_weather_note", "")
+    return items, note if isinstance(note, str) else ""
+
+
+def generate_inspection_hwpx(dept, site, inspector, items, report_title="현장 안전점검 및 조치 결과 보고서", *, weather_notes=()):
     """A4 보고서: 가운데 제목, 기본정보, 조치 전후 비교표, AI 분석."""
     from PIL import ImageOps
     if not items:
@@ -2692,6 +2715,9 @@ def generate_inspection_hwpx(dept, site, inspector, items, report_title="현장 
             paragraph("조치 전 사진 AI 분석 결과", size=11, bold=True)
             paragraph(analysis)
             paragraph("※ AI 분석은 참고자료이며 최종 판단은 현장 확인 결과에 따릅니다.", size=9)
+    for note in weather_notes:
+        paragraph("기상특보 및 작업별 안전점검사항", size=13, bold=True, new_page=True)
+        paragraph(note)
     output = io.BytesIO()
     doc.save_to_stream(output)
     return output.getvalue()
@@ -2705,15 +2731,17 @@ def inspection_store():
     return db
 
 
-def archive_inspection(dept, site, owner, items, hwpx=None, pdf=None):
+def archive_inspection(dept, site, owner, items, hwpx=None, pdf=None, *, weather_note=""):
     now = datetime.datetime.now(ZoneInfo("Asia/Seoul"))
     day = now.strftime("%Y-%m-%d")
-    key = day + ":" + inspection_report_key(dept, site, owner, items)
+    key = day + ":" + inspection_report_key(dept, site, owner, items, weather_note=weather_note)
     payload = {}
     for idx, item in items.items():
         payload[str(idx)] = {k: str(item.get(k, "")) for k in ("desc_before", "desc_after", "ai_analysis")}
         for field in ("before_files", "after_files"):
             payload[str(idx)][field] = [inspection_photo_pack(f) for f in item.get(field, [])]
+    if weather_note:
+        payload["_weather_note"] = weather_note
     db = inspection_store()
     try:
         with db:
@@ -2729,7 +2757,7 @@ def archive_inspection(dept, site, owner, items, hwpx=None, pdf=None):
     return key
 
 
-def generate_inspection_pdf(dept, site, inspector, items, report_title="현장 안전점검 및 조치 결과 보고서"):
+def generate_inspection_pdf(dept, site, inspector, items, report_title="현장 안전점검 및 조치 결과 보고서", *, weather_notes=()):
     """HWPX와 동일한 입력으로 만드는 A4 출력용 PDF. 긴 설명은 표 밖에서 이어짐."""
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
@@ -2779,6 +2807,11 @@ def generate_inspection_pdf(dept, site, inspector, items, report_title="현장 �
         if analysis and analysis != "분석 미실행":
             story.extend([p("조치 전 사진 AI 분석 결과"), p(analysis), Spacer(1, 8),
                           p("※ AI 분석은 참고자료이며 최종 판단은 현장 확인 결과에 따릅니다.")])
+    if weather_notes:
+        heading = ParagraphStyle("WeatherHeading", parent=style, fontSize=13, leading=20, spaceAfter=10)
+        for note in weather_notes:
+            story.extend([PageBreak(), p("기상특보 및 작업별 안전점검사항", heading)])
+            story.extend(p(line) if line else Spacer(1, 8) for line in note.splitlines())
     def footer(canvas, doc):
         canvas.setFont("KecoNanum", 9)
         canvas.drawCentredString(A4[0]/2, 25, str(doc.page))
@@ -2812,7 +2845,7 @@ def report_history_require_active(db, source, report_id):
         raise ValueError("같은 리포트가 휴지통에 있습니다. ‘점검 기록 보기 → 내 리포트 → 휴지통’에서 복원하거나 내용을 바꿔 새 리포트를 만들어 주세요.")
 
 
-def report_history_inspection_rows(db, owner=None):
+def report_history_inspection_rows(db, owner=None, *, created_only=False):
     """Use the same active inspections for history, statistics and batch exports."""
     conditions, params = [], []
     if owner is not None:
@@ -2821,9 +2854,12 @@ def report_history_inspection_rows(db, owner=None):
     if "report_trash" in report_history_tables(db):
         conditions.append("""NOT EXISTS (SELECT 1 FROM report_trash t
             WHERE t.source='inspection' AND t.report_id=r.id AND t.owner=r.owner)""")
-    sql = "SELECT r.id,r.owner,r.dept,r.site,r.created,r.payload FROM reports r"
+    fields = "r.created" if created_only else "r.id,r.owner,r.dept,r.site,r.created,r.payload"
+    sql = "SELECT " + fields + " FROM reports r"
     if conditions:
         sql += " WHERE " + " AND ".join(conditions)
+    if created_only:
+        return [row[0] for row in db.execute(sql, tuple(params))]
     rows = db.execute(sql + " ORDER BY r.created DESC,r.rowid DESC", tuple(params)).fetchall()
     return [tuple(row[:3])+(canonical_site_label(row[3]),)+tuple(row[4:]) for row in rows]
 
@@ -2837,74 +2873,14 @@ def report_history_active_inspections(owner):
         db.close()
 
 
-def report_history_change_trash(owner, source, report_id, *, restore=False):
-    owner = report_history_identity(owner)
-    # Table identifiers come only from this whitelist, never from a widget value.
-    table = {"inspection":"reports", "generated":"generated_reports", "uploaded":"personal_report_imports"}.get(source)
-    if table is None:
-        raise PermissionError("이 계정에서 변경할 수 있는 리포트가 아닙니다.")
-    report_id = str(report_id)
-    db = inspection_store()
-    try:
-        with db:
-            tables = report_history_tables(db)
-            if table not in tables or not db.execute(
-                    "SELECT 1 FROM " + table + " WHERE id=? AND owner=?", (report_id,owner)).fetchone():
-                raise PermissionError("이 계정에서 변경할 수 있는 리포트가 아닙니다.")
-            if "report_trash" in tables:
-                marker = db.execute("SELECT owner FROM report_trash WHERE source=? AND report_id=?", (source,report_id)).fetchone()
-                if marker and marker[0] != owner:
-                    raise PermissionError("이 계정에서 변경할 수 있는 리포트가 아닙니다.")
-            else:
-                marker = None
-            if restore:
-                if not marker:
-                    return False
-                db.execute("DELETE FROM report_trash WHERE source=? AND report_id=? AND owner=?", (source,report_id,owner))
-            else:
-                if marker:
-                    return False
-                db.execute("""CREATE TABLE IF NOT EXISTS report_trash (
-                    source TEXT NOT NULL, report_id TEXT NOT NULL, owner TEXT NOT NULL, deleted_at TEXT NOT NULL,
-                    PRIMARY KEY (source,report_id))""")
-                db.execute("INSERT INTO report_trash VALUES (?,?,?,?)", (source,report_id,owner,case_now()))
-        return True
-    finally:
-        db.close()
-
-
-def report_history_trash_action(owner, selection, restore=False):
-    """Callbacks clear affected cached exports before the widgets are rendered."""
-    try:
-        source, report_id = json.loads(selection)
-        changed = report_history_change_trash(owner, source, report_id, restore=restore)
-    except (StorageError, PermissionError, ValueError, TypeError) as exc:
-        st.session_state["report_history_error:" + str(owner)] = str(exc)
-        return
-    except Exception:
-        st.session_state["report_history_error:" + str(owner)] = "리포트 변경을 저장하지 못했습니다. 저장소 연결을 확인하고 다시 시도해 주세요."
-        return
-    owner = str(owner)
-    for key in list(st.session_state):
-        if key in ("report_history_open:"+owner, "report_history_preview:"+owner, "report_history_selected:"+owner) or str(key).startswith("report_history_confirm:"+owner+":"):
-            st.session_state.pop(key, None)
-    if source == "inspection":
-        for key in ("inspection_report_key", "inspection_report_archived_key", "inspection_report_bytes",
-                    "inspection_report_name", "inspection_pdf_bytes"):
-            st.session_state.pop(key, None)
-    if source == "inspection" or (source == "generated" and str(report_id).startswith("batch:")):
-        for key in ("batch_key", "batch_output", "inspection_batch_selection"):
-            st.session_state.pop(key, None)
-    if source == "generated" and str(report_id).startswith("risk:"):
-        st.session_state.pop("ra_output", None)
-        st.session_state.pop("ra_last_saved_sig", None)
-    message = ("리포트를 복원했습니다." if restore else "리포트를 휴지통으로 옮겼습니다.") if changed else (
-        "이미 복원된 리포트입니다." if restore else "이미 휴지통에 있는 리포트입니다.")
-    if source == "inspection":
-        message += " 점검 현황 집계와 취합 대상에 다시 반영됩니다." if restore else " 점검 현황 집계와 취합 대상에서 제외됩니다."
-    st.session_state.pop("report_history_error:" + owner, None)
-    st.session_state["report_history_notice:" + owner] = message
-    st.session_state["report_history_reload:" + owner] = True
+def report_history_imports(db, owner):
+    columns = {row[1] for row in db.execute("PRAGMA table_info(personal_report_imports)")}
+    if not columns:
+        return []
+    kind = "kind" if "kind" in columns else "'과거 파일'"
+    return db.execute(
+        "SELECT id,created,dept,site,title,hwpx IS NOT NULL,pdf IS NOT NULL," + kind +
+        " FROM personal_report_imports WHERE owner=?", (owner,)).fetchall()
 
 
 def report_history_list(owner, *, trashed=False):
@@ -2938,12 +2914,10 @@ def report_history_list(owner, *, trashed=False):
                 records.append({"source":"generated", "id":rid, "created":created or "", "dept":dept or "",
                                 "site":site or "", "title":title or default_kind + " 보고서", "kind":kind or default_kind,
                                 "has_hwpx":bool(hwpx), "has_pdf":bool(pdf)})
-        if "personal_report_imports" in tables:
-            sql = "SELECT id,created,dept,site,title,hwpx IS NOT NULL,pdf IS NOT NULL FROM personal_report_imports WHERE owner=?"
-            for rid, created, dept, site, title, hwpx, pdf in db.execute(sql, (owner,)).fetchall():
-                records.append({"source":"uploaded", "id":rid, "created":created or "", "dept":dept or "",
-                                "site":site or "", "title":title, "kind":"과거 파일",
-                                "has_hwpx":bool(hwpx), "has_pdf":bool(pdf)})
+        for rid, created, dept, site, title, hwpx, pdf, kind in report_history_imports(db, owner):
+            records.append({"source":"uploaded", "id":rid, "created":created or "", "dept":dept or "",
+                            "site":site or "", "title":title, "kind":kind,
+                            "has_hwpx":bool(hwpx), "has_pdf":bool(pdf)})
         trash = report_history_trash_map(db, owner)
         records = [row for row in records if ((row["source"],row["id"]) in trash) == bool(trashed)]
         if trashed:
@@ -2969,7 +2943,9 @@ def report_history_get(owner, source, report_id):
             if row is None:
                 raise PermissionError("이 계정에서 조회할 수 있는 리포트가 아닙니다.")
             files = db.execute("SELECT hwpx,pdf FROM report_files WHERE id=?", (row[0],)).fetchone() if "report_files" in tables else None
-            return {"id":row[0], "created":row[1], "dept":row[2], "site":canonical_site_label(row[3]), "payload":json.loads(row[4]),
+            items, weather_note = inspection_payload_parts(row[4])
+            return {"id":row[0], "created":row[1], "dept":row[2], "site":canonical_site_label(row[3]),
+                    "payload":items, "weather_note":weather_note,
                     "hwpx":files[0] if files else None, "pdf":files[1] if files else None}
         if source == "generated" and "generated_reports" in tables:
             row = db.execute("SELECT hwpx,pdf FROM generated_reports WHERE id=? AND owner=?", (str(report_id),owner)).fetchone()
@@ -3006,7 +2982,7 @@ def report_history_pdf_page(raw, page_number=1):
         return picture.tobytes("png"),document.page_count,page_number
 
 
-def report_history_save_upload(owner, title, site, created, hwpx=None, pdf=None):
+def report_history_save_upload(owner, title, site, created, hwpx=None, pdf=None, *, inspection=False):
     owner = report_history_identity(owner)
     title, site = str(title).strip()[:180], str(site).strip()[:180]
     if not title:
@@ -3021,18 +2997,26 @@ def report_history_save_upload(owner, title, site, created, hwpx=None, pdf=None)
     signature = [owner,title,site,created,hashlib.sha256(hwpx).hexdigest() if hwpx else "",hashlib.sha256(pdf).hexdigest() if pdf else ""]
     report_id = hashlib.sha256(json.dumps(signature, ensure_ascii=False).encode()).hexdigest()
     dept = str(st.secrets.get("user_departments", {}).get(owner, ""))
+    kind = "기존 안전점검" if inspection else "과거 파일"
     db = inspection_store()
     try:
         with db:
+            db.execute("BEGIN IMMEDIATE")
             report_history_require_active(db, "uploaded", report_id)
             db.execute("""CREATE TABLE IF NOT EXISTS personal_report_imports (
                 id TEXT PRIMARY KEY, owner TEXT, created TEXT, title TEXT, dept TEXT, site TEXT,
-                hwpx BLOB, pdf BLOB, uploaded TEXT)""")
-            existing = db.execute("SELECT 1 FROM personal_report_imports WHERE id=? AND owner=?", (report_id,owner)).fetchone()
+                hwpx BLOB, pdf BLOB, uploaded TEXT, kind TEXT NOT NULL DEFAULT '과거 파일')""")
+            if "kind" not in {row[1] for row in db.execute("PRAGMA table_info(personal_report_imports)")}:
+                db.execute("ALTER TABLE personal_report_imports ADD COLUMN kind TEXT NOT NULL DEFAULT '과거 파일'")
+            existing = db.execute("SELECT kind FROM personal_report_imports WHERE id=? AND owner=?", (report_id,owner)).fetchone()
             if existing:
-                return False
-            db.execute("INSERT INTO personal_report_imports VALUES (?,?,?,?,?,?,?,?,?)",
-                       (report_id,owner,created,title,dept,site,hwpx,pdf,case_now()))
+                if not inspection or existing[0] == kind:
+                    return False
+                db.execute("UPDATE personal_report_imports SET kind=? WHERE id=? AND owner=?", (kind,report_id,owner))
+            else:
+                db.execute("""INSERT INTO personal_report_imports
+                    (id,owner,created,title,dept,site,hwpx,pdf,uploaded,kind) VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                    (report_id,owner,created,title,dept,site,hwpx,pdf,case_now(),kind))
         return True
     finally:
         db.close()
@@ -3042,8 +3026,9 @@ def report_history_restore_files(owner, report_id):
     owner = report_history_identity(owner)
     record = report_history_get(owner, "inspection", report_id)
     items = case_unpack(record["payload"])
-    hwpx = record["hwpx"] or generate_inspection_hwpx(record["dept"],record["site"],owner,items)
-    pdf = record["pdf"] or generate_inspection_pdf(record["dept"],record["site"],owner,items)
+    weather_notes = (record["weather_note"],) if record["weather_note"] else ()
+    hwpx = record["hwpx"] or generate_inspection_hwpx(record["dept"],record["site"],owner,items,weather_notes=weather_notes)
+    pdf = record["pdf"] or generate_inspection_pdf(record["dept"],record["site"],owner,items,weather_notes=weather_notes)
     db = inspection_store()
     try:
         with db:
@@ -3056,27 +3041,33 @@ def report_history_restore_files(owner, report_id):
         db.close()
 
 
-def render_report_history_import(owner):
-    with st.expander("예전에 만든 리포트 가져오기", expanded=False):
-        st.caption("PC나 이메일에 보관한 파일을 등록하면 웹에서 다시 내려받을 수 있습니다.")
-        with st.form("report_history_upload:" + owner):
+def render_report_history_import(owner, *, inspection=False):
+    title_label = "기존 안전점검 자료 등록" if inspection else "예전에 만든 리포트 가져오기"
+    form_key = ("inspection_original_upload:" if inspection else "report_history_upload:") + owner
+    notice_key = ("inspection_import_notice:" if inspection else "report_history_notice:") + owner
+    with st.expander(title_label, expanded=False):
+        st.caption("보관 중인 안전점검 보고서의 작성일과 현장을 등록하면 점검 이력에 반영됩니다." if inspection else
+                   "PC나 이메일에 보관한 파일을 등록하면 웹에서 다시 내려받을 수 있습니다.")
+        with st.form(form_key):
             title = st.text_input("리포트 제목", placeholder="예: 9월 현장 안전점검", max_chars=180)
             site = st.text_input("점검 현장", max_chars=180)
             original_day = st.date_input("작성일 (모르면 비워 두세요)", value=None)
-            pdf_file = st.file_uploader("보관한 PDF", type=["pdf"], key="report_history_pdf:" + owner)
-            hwpx_file = st.file_uploader("보관한 한글 HWPX", type=["hwpx"], key="report_history_hwpx:" + owner)
-            save = st.form_submit_button("내 리포트에 저장", width="stretch")
+            pdf_file = st.file_uploader("보관한 PDF", type=["pdf"], key=form_key+":pdf")
+            hwpx_file = st.file_uploader("보관한 한글 HWPX", type=["hwpx"], key=form_key+":hwpx")
+            save = st.form_submit_button("점검 자료 등록" if inspection else "내 리포트에 저장", width="stretch")
         if save:
             try:
                 added = report_history_save_upload(owner,title,site,original_day,
-                    hwpx=hwpx_file.getvalue() if hwpx_file else None, pdf=pdf_file.getvalue() if pdf_file else None)
-                st.session_state["report_history_notice:" + owner] = "과거 리포트를 저장했습니다." if added else "이미 저장한 리포트입니다."
+                    hwpx=hwpx_file.getvalue() if hwpx_file else None, pdf=pdf_file.getvalue() if pdf_file else None,
+                    inspection=inspection)
+                st.session_state[notice_key] = ("기존 안전점검 자료를 등록했습니다." if inspection else
+                                                "과거 리포트를 저장했습니다.") if added else "이미 저장한 리포트입니다."
                 st.rerun()
             except (ValueError, StorageError, PermissionError) as exc:
                 st.error(str(exc))
 
 
-REPORT_HISTORY_CSS = '<style>\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stHorizontalBlock"] {display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:12px!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stColumn"]:first-child {flex:1 1 auto!important;width:auto!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stColumn"]:last-child {flex:0 0 auto!important;width:118px!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar button {min-height:34px!important;height:auto!important;padding:6px 10px!important;border:1px solid #cfdbd2!important;border-radius:8px!important;background:#f6f8f3!important;color:#456151!important;box-shadow:none!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar button p {font-size:13px!important;white-space:nowrap!important;}\n.st-key-report_history_panel .st-key-report_history_table_header {padding:8px 12px!important;border-bottom:1px solid #cbdccf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] {padding:10px 12px!important;border:1px solid #d7e0d6!important;border-left:4px solid transparent!important;border-radius:10px!important;margin:6px 0!important;background:#fffdf8!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_active_"] {background:#e3f3e9!important;border-color:#65a487!important;border-left-color:#087744!important;box-shadow:0 0 0 1px #b4d6bf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button {background:transparent!important;border:0!important;border-radius:6px!important;box-shadow:none!important;min-height:40px!important;height:auto!important;padding:5px 4px!important;justify-content:flex-start!important;text-align:left!important;transform:none!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button:hover {background:#d9ebdf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button p {color:#1d4430!important;white-space:normal!important;word-break:keep-all!important;overflow-wrap:anywhere!important;text-align:left!important;line-height:1.55!important;font-size:14px!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stCheckbox"] label {padding:4px!important;min-height:36px!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"] {min-width:0!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stCaptionContainer"] p {font-size:12px!important;line-height:1.5!important;word-break:keep-all!important;overflow-wrap:anywhere!important;}\n@media(max-width:800px){\n .st-key-report_history_panel .st-key-report_history_table_header {display:none!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] > [data-testid="stHorizontalBlock"],\n .st-key-report_history_panel [class*="st-key-report_history_row_"] > [data-testid="stLayoutWrapper"] > [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:32px minmax(0,1fr)!important;gap:3px 10px!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"] {width:100%!important;flex:none!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:first-child {grid-column:1!important;grid-row:1 / span 4!important;align-self:start!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:not(:first-child) {grid-column:2!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(2) {grid-row:2!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(3) {grid-row:1!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(4),\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(5) {display:none!important;}\n}\n\n.st-key-report_history_panel .st-key-report_history_trash_header {padding:8px 12px!important;border-bottom:1px solid #cbdccf!important;}\n.st-key-report_history_panel .st-key-report_history_trash_actions [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}\n.st-key-report_history_panel .st-key-report_history_trash_actions [data-testid="stColumn"] {width:100%!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_trash_actions button {min-height:44px!important;}\n.st-key-report_history_panel .st-key-report_history_trash_actions button p {white-space:normal!important;word-break:keep-all!important;line-height:1.4!important;}\n@media(max-width:800px){\n .st-key-report_history_panel .st-key-report_history_trash_header [data-testid="stColumn"]:not(:first-child) {display:none!important;}\n .st-key-report_history_panel .st-key-report_history_trash_header [data-testid="stColumn"]:first-child {width:100%!important;flex:1 1 auto!important;}\n}\n</style>'
+REPORT_HISTORY_CSS = '<style>\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stHorizontalBlock"] {display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:12px!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stColumn"]:first-child {flex:1 1 auto!important;width:auto!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stColumn"]:last-child {flex:0 0 auto!important;width:118px!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar button {min-height:34px!important;height:auto!important;padding:6px 10px!important;border:1px solid #cfdbd2!important;border-radius:8px!important;background:#f6f8f3!important;color:#456151!important;box-shadow:none!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar button p {font-size:13px!important;white-space:nowrap!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] {padding:10px 12px!important;border:1px solid #d7e0d6!important;border-left:4px solid transparent!important;border-radius:10px!important;margin:6px 0!important;background:#fffdf8!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_active_"] {background:#e3f3e9!important;border-color:#65a487!important;border-left-color:#087744!important;box-shadow:0 0 0 1px #b4d6bf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button {background:transparent!important;border:0!important;border-radius:6px!important;box-shadow:none!important;min-height:40px!important;height:auto!important;padding:5px 4px!important;justify-content:flex-start!important;text-align:left!important;transform:none!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button:hover {background:#d9ebdf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button p {color:#1d4430!important;white-space:normal!important;word-break:keep-all!important;overflow-wrap:anywhere!important;text-align:left!important;line-height:1.55!important;font-size:14px!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stCheckbox"] label {padding:4px!important;min-height:36px!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"] {min-width:0!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stCaptionContainer"] p {font-size:12px!important;line-height:1.5!important;word-break:keep-all!important;overflow-wrap:anywhere!important;}\n@media(max-width:800px){\n .st-key-report_history_panel [class*="st-key-report_history_row_"] > [data-testid="stHorizontalBlock"],\n .st-key-report_history_panel [class*="st-key-report_history_row_"] > [data-testid="stLayoutWrapper"] > [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:32px minmax(0,1fr)!important;gap:3px 10px!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"] {width:100%!important;flex:none!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:first-child {grid-column:1!important;grid-row:1 / span 4!important;align-self:start!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:not(:first-child) {grid-column:2!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(2) {grid-row:2!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(3) {grid-row:1!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(4),\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(5) {display:none!important;}\n}\n\n.st-key-report_history_panel .st-key-report_history_list_header {padding:8px 12px!important;border-bottom:1px solid #cbdccf!important;}\n.st-key-report_history_panel .st-key-report_history_actions [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}\n.st-key-report_history_panel .st-key-report_history_actions [data-testid="stColumn"] {width:100%!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_actions button {min-height:44px!important;}\n.st-key-report_history_panel .st-key-report_history_actions button p {white-space:normal!important;word-break:keep-all!important;line-height:1.4!important;}\n@media(max-width:800px){\n .st-key-report_history_panel .st-key-report_history_list_header [data-testid="stColumn"]:not(:first-child) {display:none!important;}\n .st-key-report_history_panel .st-key-report_history_list_header [data-testid="stColumn"]:first-child {width:100%!important;flex:1 1 auto!important;}\n}\n</style>'
 
 def report_history_reset_detail(owner):
     st.session_state.pop('report_history_purge_request:'+owner, None)
@@ -3091,10 +3082,16 @@ def report_history_reset_selection(owner):
     report_history_reset_detail(owner)
 
 
+def report_history_selection_key(owner, trashed):
+    return ('report_history_trash_selected:' if trashed else 'report_history_selected:') + owner
+
+
 def report_history_select(owner, selection, checked_key=None, trashed=False):
     owner = report_history_identity(owner)
-    if trashed:
-        key = 'report_history_trash_selected:'+owner
+    key = report_history_selection_key(owner, trashed)
+    if checked_key is None and not trashed:
+        st.session_state[key] = [selection]
+    else:
         selected = list(st.session_state.get(key, []))
         checked = st.session_state.get(checked_key, False) if checked_key is not None else selection not in selected
         if checked and selection not in selected:
@@ -3102,29 +3099,20 @@ def report_history_select(owner, selection, checked_key=None, trashed=False):
         elif not checked and selection in selected:
             selected.remove(selection)
         st.session_state[key] = selected
-    else:
-        if checked_key is not None and not st.session_state.get(checked_key):
-            selection = None
-        st.session_state['report_history_selected:'+owner] = selection
     report_history_reset_detail(owner)
 
 
-def report_history_select_all(owner, tokens, checked_key):
+def report_history_select_all(owner, tokens, checked_key, trashed):
     owner = report_history_identity(owner)
-    if st.session_state.get('report_history_view:'+owner) != '휴지통':
+    if st.session_state.get('report_history_view:'+owner) != ('휴지통' if trashed else '보관 중'):
         return
-    st.session_state['report_history_trash_selected:'+owner] = list(tokens) if st.session_state.get(checked_key) else []
-    report_history_reset_detail(owner)
-
-
-def report_history_selection_changed(owner):
-    owner = report_history_identity(owner)
+    st.session_state[report_history_selection_key(owner, trashed)] = list(tokens) if st.session_state.get(checked_key) else []
     report_history_reset_detail(owner)
 
 
 def report_history_toggle_open(owner, selection):
     owner = report_history_identity(owner)
-    if not selection or st.session_state.get('report_history_selected:'+owner) != selection:
+    if not selection or st.session_state.get(report_history_selection_key(owner, False)) != [selection]:
         return
     key = 'report_history_open:'+owner
     if st.session_state.get(key) == selection:
@@ -3197,19 +3185,24 @@ def report_history_remove_trashed(db, tables, owner, source, report_id, table):
     db.execute('DELETE FROM '+table+' WHERE id=? AND owner=?', (report_id, owner))
 
 
-def report_history_trash_batch(owner, targets, *, permanent=False):
-    """Validate all selected reports and apply one transaction to the trash."""
+def report_history_trash_batch(owner, targets, *, permanent=False, move_to_trash=False):
+    """Apply a single transaction after validating every selected report."""
     owner = report_history_identity(owner)
     items = tuple(dict.fromkeys((source, str(report_id)) for source, report_id in targets))
     if not items:
-        raise ValueError('휴지통에서 처리할 리포트를 선택해 주세요.')
+        raise ValueError('처리할 리포트를 선택해 주세요.')
     table_by_source = {'inspection':'reports', 'generated':'generated_reports', 'uploaded':'personal_report_imports'}
-    denied = '본인의 휴지통에 있는 리포트만 '+('완전삭제' if permanent else '복원')+'할 수 있습니다.'
+    denied = ('본인의 보관 중인 리포트만 휴지통으로 옮길 수 있습니다. 목록을 새로고침해 주세요.' if move_to_trash else
+              '본인의 휴지통에 있는 리포트만 '+('완전삭제' if permanent else '복원')+'할 수 있습니다.')
     db = inspection_store()
     compacted = True
     try:
         with db:
             db.execute('BEGIN IMMEDIATE')
+            if move_to_trash:
+                db.execute("""CREATE TABLE IF NOT EXISTS report_trash (
+                    source TEXT NOT NULL, report_id TEXT NOT NULL, owner TEXT NOT NULL, deleted_at TEXT NOT NULL,
+                    PRIMARY KEY (source,report_id))""")
             tables = report_history_tables(db)
             if 'report_trash' not in tables:
                 raise PermissionError(denied)
@@ -3219,18 +3212,22 @@ def report_history_trash_batch(owner, targets, *, permanent=False):
                 if table not in tables or not db.execute('SELECT 1 FROM '+table+' WHERE id=? AND owner=?',
                                                          (report_id, owner)).fetchone():
                     raise PermissionError(denied)
-                marker = db.execute('SELECT 1 FROM report_trash WHERE source=? AND report_id=? AND owner=?',
-                                    (source, report_id, owner)).fetchone()
-                if not marker:
+                marker = db.execute('SELECT owner FROM report_trash WHERE source=? AND report_id=?',
+                                    (source, report_id)).fetchone()
+                if (move_to_trash and marker) or (not move_to_trash and (not marker or marker[0] != owner)):
                     raise PermissionError(denied)
                 verified.append((source, report_id, table))
             if permanent:
                 db.execute('CREATE TABLE IF NOT EXISTS risk_file_cleanup (object_key TEXT PRIMARY KEY)')
+            deleted_at = case_now() if move_to_trash else ''
             for source, report_id, table in verified:
-                if permanent:
-                    report_history_remove_trashed(db, tables, owner, source, report_id, table)
-                db.execute('DELETE FROM report_trash WHERE source=? AND report_id=? AND owner=?',
-                           (source, report_id, owner))
+                if move_to_trash:
+                    db.execute('INSERT INTO report_trash VALUES (?,?,?,?)', (source, report_id, owner, deleted_at))
+                else:
+                    if permanent:
+                        report_history_remove_trashed(db, tables, owner, source, report_id, table)
+                    db.execute('DELETE FROM report_trash WHERE source=? AND report_id=? AND owner=?',
+                               (source, report_id, owner))
         if permanent:
             try:
                 db.execute('VACUUM')
@@ -3259,12 +3256,14 @@ def report_history_request_purge(owner, selection):
         st.session_state['report_history_purge_request:'+owner] = selection
 
 
-def report_history_apply_trash_selection(owner, selection, permanent=False):
+def report_history_apply_trash_selection(owner, selection, permanent=False, *, move_to_trash=False):
     owner = str(owner)
     error_key = 'report_history_error:'+owner
-    if (st.session_state.get('report_history_view:'+owner) != '휴지통' or not selection
-            or tuple(st.session_state.get('report_history_trash_selected:'+owner, ())) != selection):
-        st.session_state[error_key] = '휴지통에서 처리할 리포트를 다시 선택해 주세요.'
+    view = '보관 중' if move_to_trash else '휴지통'
+    selection_key = report_history_selection_key(owner, not move_to_trash)
+    if (st.session_state.get('report_history_view:'+owner) != view or not selection
+            or tuple(st.session_state.get(selection_key, ())) != selection):
+        st.session_state[error_key] = view+' 목록에서 처리할 리포트를 다시 선택해 주세요.'
         return
     if permanent and (st.session_state.get('report_history_purge_request:'+owner) != selection
             or not st.session_state.get(report_history_confirmation_key(owner, selection, permanent=True))):
@@ -3272,23 +3271,24 @@ def report_history_apply_trash_selection(owner, selection, permanent=False):
         return
     try:
         targets = [json.loads(token) for token in selection]
-        result = report_history_trash_batch(owner, targets, permanent=permanent)
+        result = report_history_trash_batch(owner, targets, permanent=permanent, move_to_trash=move_to_trash)
     except (StorageError, PermissionError, ValueError, TypeError) as exc:
         st.session_state[error_key] = str(exc)
         return
     except Exception:
-        action = '완전삭제' if permanent else '복원'
+        action = '휴지통 이동' if move_to_trash else '완전삭제' if permanent else '복원'
         st.session_state[error_key] = action+' 결과를 확인하지 못했습니다. 목록을 새로고침해 주세요.'
         return
     report_history_clear_exports(owner, targets)
-    action = '완전삭제' if permanent else '복원'
-    message = f'리포트 {result["count"]}건을 {action}했습니다.'
+    outcome = '휴지통으로 옮겼습니다.' if move_to_trash else '완전삭제했습니다.' if permanent else '복원했습니다.'
+    message = f'리포트 {result["count"]}건을 {outcome}'
     if permanent:
         st.session_state['report_history_cleanup_pending:'+owner] = result['cleanup_pending']
         if not result['compacted']:
             message += ' 기록은 삭제했으며 저장 공간 압축은 확인이 필요합니다.'
     elif any(source == 'inspection' for source, _ in targets):
-        message += ' 점검 현황 집계와 취합 대상에 다시 반영됩니다.'
+        message += (' 점검 현황 집계와 취합 대상에서 제외됩니다.' if move_to_trash else
+                    ' 점검 현황 집계와 취합 대상에 다시 반영됩니다.')
     st.session_state['report_history_notice:'+owner] = message
     st.session_state.pop(error_key, None)
     st.session_state['report_history_reload:'+owner] = True
@@ -3305,19 +3305,16 @@ def report_history_retry_cleanup(owner):
 
 
 def render_report_history_rows(owner, shown, selection, *, trashed=False):
-    widths = [.85 if trashed else .4, 1.5, 3.3, 1, 1]
-    selected_tokens = set(selection) if trashed else {selection}
+    widths = [.85, 1.5, 3.3, 1, 1]
+    selected_tokens = set(selection)
     with st.container(key='report_history_rows'):
-        with st.container(key='report_history_trash_header' if trashed else 'report_history_table_header'):
+        with st.container(key='report_history_list_header'):
             columns = st.columns(widths, vertical_alignment='center')
-            if trashed:
-                tokens = tuple(json.dumps([row['source'], row['id']]) for row in shown)
-                all_key = 'report_history_trash_all:'+owner
-                st.session_state[all_key] = bool(tokens) and set(tokens).issubset(selected_tokens)
-                columns[0].checkbox('선택', key=all_key, help='현재 목록의 리포트를 모두 선택하거나 해제합니다.',
-                                    on_change=report_history_select_all, args=(owner, tokens, all_key))
-            else:
-                columns[0].markdown('**선택**')
+            tokens = tuple(json.dumps([row['source'], row['id']]) for row in shown)
+            all_key = ('report_history_trash_all:' if trashed else 'report_history_all:')+owner
+            st.session_state[all_key] = bool(tokens) and set(tokens).issubset(selected_tokens)
+            columns[0].checkbox('선택', key=all_key, help='현재 목록의 리포트를 모두 선택하거나 해제합니다.',
+                                on_change=report_history_select_all, args=(owner, tokens, all_key, trashed))
             for column, label in zip(columns[1:], ['작성일', '현장 / 리포트', '종류', '저장 파일']):
                 column.markdown('**'+label+'**')
         for row in shown:
@@ -3346,41 +3343,40 @@ def render_report_history_rows(owner, shown, selection, *, trashed=False):
 
 
 def render_report_history_management(owner, choices, selection, *, trashed=False):
-    st.divider()
-    if trashed:
-        with st.container(key='report_history_trash_actions'):
-            restore, purge = st.columns(2, gap='small')
-            restore.button('선택한 리포트 복원', key='report_history_untrash:'+owner, type='secondary',
-                           disabled=not selection, width='stretch',
-                           on_click=report_history_apply_trash_selection, args=(owner, selection))
-            purge.button('선택한 리포트 완전삭제', key='report_history_request_purge:'+owner, type='secondary',
-                         disabled=not selection, width='stretch',
-                         on_click=report_history_request_purge, args=(owner, selection))
-        if selection and st.session_state.get('report_history_purge_request:'+owner) == selection:
-            st.warning(f'선택한 리포트 {len(selection)}건과 저장 파일을 완전삭제합니다. 삭제한 리포트는 복원할 수 없습니다.')
-            if len(selection) == 1:
-                row = choices[selection[0]]
-                st.write('삭제 대상: '+(row['site'] or row['title'])+' · '+row['created'].replace('T', ' ')[:19]+' · '+row['id'][-6:])
-            confirmed = st.checkbox('선택한 리포트와 저장 파일을 복원할 수 없음을 확인했습니다.',
-                                    key=report_history_confirmation_key(owner, selection, permanent=True))
-            execute, cancel = st.columns(2, gap='small')
-            execute.button('완전삭제 실행', key='report_history_purge:'+owner, type='primary',
-                           disabled=not confirmed, width='stretch',
-                           on_click=report_history_apply_trash_selection, args=(owner, selection, True))
-            cancel.button('취소', key='report_history_cancel_purge:'+owner, width='stretch',
-                          on_click=report_history_reset_detail, args=(owner,))
+    if not trashed:
+        single = selection[0] if len(selection) == 1 else None
+        opened = bool(single and st.session_state.get('report_history_open:'+owner) == single)
+        with st.container(key='report_history_actions'):
+            view, trash = st.columns(2, gap='small')
+            view.button('선택한 리포트 닫기' if opened else '선택한 리포트 열기', key='report_history_open_button:'+owner,
+                        help='리포트 한 건을 선택해 열 수 있습니다.', disabled=single is None, width='stretch',
+                        on_click=report_history_toggle_open, args=(owner, single))
+            trash.button('휴지통으로 이동', key='report_history_trash:'+owner, disabled=not selection, width='stretch',
+                         help='선택한 리포트를 휴지통으로 옮깁니다. 휴지통에서 복원할 수 있습니다.',
+                         on_click=report_history_apply_trash_selection, args=(owner, selection), kwargs={'move_to_trash': True})
         return
-    render_report_history_import(owner)
-    st.selectbox('조회·삭제할 리포트', list(choices), index=None,
-                 placeholder='위 목록에서 선택하거나 여기에서 리포트를 선택하세요', disabled=not choices,
-                 format_func=lambda token: f"{choices[token]['created'].replace('T',' ')[:19] or '날짜 미확인'} | {choices[token]['site'] or choices[token]['title']} | {choices[token]['kind']} | {choices[token]['id'][-6:]}",
-                 key='report_history_selected:'+owner, on_change=report_history_selection_changed, args=(owner,))
-    with st.expander('선택한 리포트 삭제'):
-        st.caption('선택한 리포트를 휴지통으로 옮깁니다. 잘못 삭제했다면 휴지통에서 복원할 수 있습니다.')
-        confirmed = st.checkbox('선택한 리포트를 휴지통으로 옮기는 데 동의합니다.',
-                                key=report_history_confirmation_key(owner, selection), disabled=not selection)
-        st.button('휴지통으로 이동', key='report_history_trash:'+owner, disabled=not (selection and confirmed),
-                  on_click=report_history_trash_action, args=(owner, selection, False))
+    st.divider()
+    with st.container(key='report_history_actions'):
+        restore, purge = st.columns(2, gap='small')
+        restore.button('선택한 리포트 복원', key='report_history_untrash:'+owner, type='secondary',
+                       disabled=not selection, width='stretch',
+                       on_click=report_history_apply_trash_selection, args=(owner, selection))
+        purge.button('선택한 리포트 완전삭제', key='report_history_request_purge:'+owner, type='secondary',
+                     disabled=not selection, width='stretch',
+                     on_click=report_history_request_purge, args=(owner, selection))
+    if selection and st.session_state.get('report_history_purge_request:'+owner) == selection:
+        st.warning(f'선택한 리포트 {len(selection)}건과 저장 파일을 완전삭제합니다. 삭제한 리포트는 복원할 수 없습니다.')
+        if len(selection) == 1:
+            row = choices[selection[0]]
+            st.write('삭제 대상: '+(row['site'] or row['title'])+' · '+row['created'].replace('T', ' ')[:19]+' · '+row['id'][-6:])
+        confirmed = st.checkbox('선택한 리포트와 저장 파일을 복원할 수 없음을 확인했습니다.',
+                                key=report_history_confirmation_key(owner, selection, permanent=True))
+        execute, cancel = st.columns(2, gap='small')
+        execute.button('완전삭제 실행', key='report_history_purge:'+owner, type='primary',
+                       disabled=not confirmed, width='stretch',
+                       on_click=report_history_apply_trash_selection, args=(owner, selection, True))
+        cancel.button('취소', key='report_history_cancel_purge:'+owner, width='stretch',
+                      on_click=report_history_reset_detail, args=(owner,))
 
 
 def render_report_history_detail(owner, row, selection):
@@ -3477,35 +3473,30 @@ def render_report_history(owner):
                      and (not search or search in (row['title']+' '+row['site']+' '+row['dept']).casefold())
                      and (period == '전체 기간' or threshold <= row['created'][:10] <= today.isoformat())]
         choices = {json.dumps([row['source'], row['id']]):row for row in shown}
-        if trashed:
-            select_key = 'report_history_trash_selected:'+owner
-            selected = set(st.session_state.get(select_key, ()))
-            selection = tuple(token for token in choices if token in selected)
-            st.session_state[select_key] = list(selection)
-        else:
-            select_key = 'report_history_selected:'+owner
-            selection = st.session_state.get(select_key)
-            if selection not in choices:
-                selection = None
-                st.session_state[select_key] = None
-        scope = (trashed, selection, tuple(choices) if trashed else ())
+        select_key = report_history_selection_key(owner, trashed)
+        stored = st.session_state.get(select_key) or ()
+        selected = {stored} if isinstance(stored, str) else set(stored)
+        selection = tuple(token for token in choices if token in selected)
+        st.session_state[select_key] = list(selection)
+        scope = (trashed, selection, tuple(choices))
         if st.session_state.get('report_history_selection_scope:'+owner) != scope:
             report_history_reset_detail(owner)
             st.session_state['report_history_selection_scope:'+owner] = scope
         if shown:
-            count = len(selection) if trashed else int(selection is not None)
-            st.caption(f'리포트 {len(shown)}건 · 선택 {count}건')
+            st.caption(f'리포트 {len(shown)}건 · 선택 {len(selection)}건')
+            if not trashed:
+                render_report_history_management(owner, choices, selection)
             render_report_history_rows(owner, shown, selection, trashed=trashed)
         else:
             st.info('조건에 맞는 리포트가 없습니다. 기간이나 검색어를 변경해 주세요.' if records else
                     '휴지통이 비어 있습니다.' if trashed else '보관 중인 리포트가 없습니다. 아래에서 예전 파일을 가져올 수 있습니다.')
-        if not trashed and shown:
-            opened = bool(selection and st.session_state.get('report_history_open:'+owner) == selection)
-            st.button('선택한 리포트 닫기' if opened else '선택한 리포트 열기', key='report_history_open_button:'+owner,
-                      disabled=not selection, on_click=report_history_toggle_open, args=(owner, selection))
-            if opened:
-                render_report_history_detail(owner, choices[selection], selection)
-        render_report_history_management(owner, choices, selection, trashed=trashed)
+        if trashed:
+            render_report_history_management(owner, choices, selection, trashed=True)
+        else:
+            opened = st.session_state.get('report_history_open:'+owner)
+            if selection == (opened,):
+                render_report_history_detail(owner, choices[opened], opened)
+            render_report_history_import(owner)
 
 
 
@@ -3521,6 +3512,8 @@ def case_new_registration():
                                 'after_imgs_', 'before_cam_', 'after_cam_', 'mode_b_', 'mode_a_',
                                 'before_analysis_fingerprint_', 'inspection_report_', 'inspection_pdf_')):
             del st.session_state[key]
+    for key in ('wx_result', 'wx_warnings', 'wx_weather_ai'):
+        st.session_state.pop(key, None)
     st.session_state.item_count = 1
     st.session_state.ai_results = {}
     st.session_state.pop("_perf_private_cache", None)
@@ -3845,36 +3838,6 @@ def _send_inspection_email_once(dept_name, site_name, inspector_id, form_data, r
     except Exception as e:
         return False, ("전송 결과 확인 필요: 보낸메일 확인 후 관리자에게 문의하세요. " if smtp_started else "") + str(e)
 
-def storage_csv_rows(raw):
-    """Read legacy CSV bytes locally; never request Google credentials."""
-    import csv
-    raw = bytes(raw)
-    if not raw or len(raw) > 10 * 1024 * 1024 or b'\x00' in raw:
-        raise ValueError('CSV 파일(10MB 이하)을 선택해 주세요.')
-    text = None
-    for encoding in ('utf-8-sig', 'cp949'):
-        try:
-            text = raw.decode(encoding)
-            break
-        except UnicodeDecodeError:
-            continue
-    if text is None:
-        raise ValueError('CSV 문자 인코딩을 확인해 주세요. UTF-8 또는 CP949를 지원합니다.')
-    try:
-        rows = []
-        for row in csv.reader(io.StringIO(text, newline=''), strict=True):
-            if not any(value.strip() for value in row):
-                continue
-            rows.append(row)
-            if len(rows) > 20001:
-                raise ValueError('한 번에 20,000개 이하의 기록을 가져와 주세요.')
-        if not rows:
-            raise ValueError('CSV에 가져올 기록이 없습니다.')
-        return rows
-    except csv.Error:
-        raise ValueError('CSV 형식을 확인해 주세요. 쉼표·줄바꿈이 있는 내용은 따옴표로 감싸야 합니다.') from None
-
-
 def inspection_history_actor(actor):
     actor = report_history_identity(actor)
     if st.secrets.get('user_roles', {}).get(actor) == 'contractor':
@@ -3892,8 +3855,8 @@ def inspection_history_record(rid, owner, dept, site, created, encoded):
               '점검 현장': str(site or ''), '작성자': str(owner or ''), '항목수': '',
               'AI분석': '', '지적 분류': '', '사진경로': '', '자료 상태': ''}
     try:
-        payload = json.loads(encoded)
-        if not isinstance(payload, dict) or any(not isinstance(v, dict) for v in payload.values()):
+        payload, _ = inspection_payload_parts(encoded)
+        if any(not isinstance(v, dict) for v in payload.values()):
             raise ValueError()
         analyses, details, photos = [], [], []
         for idx, item in payload.items():
@@ -3916,10 +3879,17 @@ def inspection_history_record(rid, owner, dept, site, created, encoded):
 
 def get_nhn_inspection_records(actor):
     """Aggregate saved metadata without fetching photos or document blobs."""
-    inspection_history_actor(actor)
+    actor = inspection_history_actor(actor)
     db = inspection_store()
     try:
-        return [inspection_history_record(*row) for row in report_history_inspection_rows(db)]
+        records = [inspection_history_record(*row) for row in report_history_inspection_rows(db)]
+        trashed = report_history_trash_map(db, actor)
+        for rid, created, dept, site, title, _, _, kind in report_history_imports(db, actor):
+            if kind == "기존 안전점검" and ("uploaded", rid) not in trashed:
+                records.append({'기록ID': rid, '날짜': created, '점검 부서': dept,
+                                '점검 현장': canonical_site_label(site), '작성자': actor,
+                                '지적 분류': '등록 원본 · ' + title})
+        return records
     finally:
         db.close()
 
@@ -4128,7 +4098,7 @@ if "ai_results" not in st.session_state:
 st.markdown("""
     <div class="keco-header">
         <h2>🌱 한국환경공단 수도권서부환경본부</h2>
-        <p>환경시설관리처 스마트 건설현장 안전관리 시스템</p>
+        <p>환경시설관리처 <span class="keco-system-title">스마트 건설현장 안전관리 시스템</span></p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -4781,7 +4751,8 @@ WX_WARN_SOURCE = 'https://www.data.go.kr/data/15000415/openapi.do'
 WX_WARN_OFFICIAL = 'https://www.weather.go.kr/w/special-report/overall.do'
 WX_WARN_SAFETY = 'https://www.moel.go.kr/local/pyeongtaek/info/dataroom/view.do?bbs_seq=20260501172'
 WX_WARN_CSS = '''<style>
-.wx-warning-intro{background:#f0f6f1;border:1px solid #d6e5d9;border-radius:10px;padding:15px 18px;margin:10px 0;color:#254431;line-height:1.8;}
+.wx-warning-intro{background:#f0f6f1;border:1px solid #d6e5d9;border-radius:8px;padding:8px 11px;color:#254431;font-size:.78rem;line-height:1.55;}
+.wx-warning-intro>strong{display:block;font-size:.86rem;margin-bottom:3px;}
 .wx-warning-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0;}
 .wx-warning-stat{background:#fff;border:1px solid #dde6df;border-radius:10px;padding:14px;min-width:0;}
 .wx-warning-stat b{display:block;font-size:24px;color:#176146;}.wx-warning-stat span{font-size:13px;color:#5f7266;line-height:1.5;}
@@ -5207,11 +5178,47 @@ def wx_weather_ai_analyze(data):
         raise ValueError('AI 안전점검사항의 응답 형식을 확인하지 못했습니다. 조회 버튼을 눌러 다시 시도해 주세요.') from None
 
 
+def wx_weather_report_note(analysis):
+    data = analysis['data']
+    result = analysis['result']
+    weather, warnings = data['기상청 날씨'], data['기상청 특보']
+    lines = [f"현장: {data['현장']} · 조회 지역: {data['지역']}",
+             f"조회 시각(한국): {wx_warn_time_label(weather['조회시각'])}",
+             '대상 작업: ' + ' / '.join(data['오늘 작업']), '']
+    observation = weather['실황']
+    observed = [f"{label} {value['수치']:g} {value['단위']}" if value['수치'] is not None else f'{label} 미제공'
+                for label, value in observation['값'].items()]
+    lines.append('기상 실황 · 기준 ' + wx_warn_time_label(observation['기준시각']))
+    lines.append(' · '.join(observed + ['강수형태 ' + observation['강수형태']]))
+    forecast = weather['예보']
+    lines.append('시간대별 예보 · 발표 ' + wx_warn_time_label(forecast['발표시각']))
+    for row in forecast['앞으로의 시간대별 예보']:
+        values = [f'{label} {value}' if value is not None else f'{label} 미제공'
+                  for label, value in row.items() if label not in ('예보 시각', '날씨')]
+        lines.append(f"- {row['예보 시각']} · {row['날씨']} · " + ' · '.join(values))
+    lines.extend(['', '기상특보 현황 · 기준 ' + wx_warn_time_label(warnings['현황 기준시각'])])
+    alerts = warnings['지역 관련 특보 현황'] + warnings['지역 관련 예비특보']
+    if not warnings['현황 제공'] or not warnings['원문 해석 완료']:
+        lines.append('공식 현황과 현장 해당 여부 확인 필요')
+    elif not alerts:
+        lines.append('조회한 현황에서 선택 지역에 해당하는 특보를 찾지 못했습니다.')
+    for alert in alerts:
+        lines.append(f"- {alert['heading']} · {alert['phase']} · {alert['area']}")
+        lines.append(f"  발효·예상시각: {alert['effect'] or '확인 필요'} · {alert['match_note']}")
+    lines.extend('※ ' + note for note in data['자료 확인사항'])
+    lines.extend(['', 'AI 안전점검사항', result['summary']])
+    for number, check in enumerate(result['checks'], 1):
+        lines.extend([f"{number}. [{check['work']}] {check['risk']}",
+                      "   기상·작업 근거: " + check['basis'],
+                      "   점검할 사항: " + check['inspection'],
+                      "   이상 시 조치: " + check['action']])
+    lines.extend(['', '자료 출처: 기상청 기상 실황·예보 및 기상특보 조회서비스',
+                  '조회 당시의 대표 위치 자료와 AI 점검 제안입니다. 작업 전 최신 기상자료와 현장 조건을 확인하세요.'])
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', '\n'.join(lines))
+
+
 def wx_render_warning_panel(key, location, site, scope, now, nx, ny):
     from html import escape
-    st.markdown(WX_WARN_CSS, unsafe_allow_html=True)
-    st.markdown('### 현장 기상특보 확인')
-    st.markdown('<div class="wx-warning-intro"><b>왜 확인하나요?</b> 건설현장은 옥외 작업이 많고 다양한 중장비와 가설물이 운영되기 때문에 기상특보(호우, 태풍, 강풍, 폭염, 대설 등)에 적절히 대비하지 않으면 대형 인명피해와 안전사고로 이어질 수 있기 때문입니다.</div>', unsafe_allow_html=True)
     context = wx_warn_context(location)
     suffix = scope[:12]
     st.caption('특보 확인 지역: ' + context['label'])
@@ -5230,7 +5237,7 @@ def wx_render_warning_panel(key, location, site, scope, now, nx, ny):
     ready = bool(works) and ('직접입력' not in selected or bool(direct)) and len(direct) <= 500
     if not selected:
         st.info('오늘 작업을 선택하거나 직접입력해 주세요.')
-    load = st.button('현장 기상특보 및 안전점검사항 조회', key='wx_warning_load',
+    load = st.button('안전점검사항 조회', key='wx_warning_load',
         type='primary', width='stretch', disabled=not ready)
     if load and ready:
         for name in ('wx_warnings', 'wx_result', 'wx_weather_ai'):
@@ -5275,9 +5282,10 @@ def wx_render_warning_panel(key, location, site, scope, now, nx, ny):
         st.session_state.wx_weather_ai = analysis
     st.markdown('**AI 안전점검사항**')
     analysis = st.session_state.get('wx_weather_ai')
+    matching = ready and analysis and analysis.get('identity') == identity
     if not ready:
         st.info('오늘 작업 내용을 입력한 뒤 조회 버튼을 눌러 안전점검사항을 확인해 주세요.')
-    elif not analysis or analysis.get('identity') != identity:
+    elif not matching:
         st.info('지역·오늘 작업 또는 날씨 자료가 변경되었습니다. 조회 버튼을 눌러 안전점검사항을 다시 확인해 주세요.')
     elif not wx_warn_time(analysis.get('generated')) or now - wx_warn_time(analysis['generated']) > datetime.timedelta(minutes=15):
         st.info('분석 후 15분 이상 경과했습니다. 조회 버튼을 눌러 최신 자료로 안전점검사항을 다시 확인해 주세요.')
@@ -5302,10 +5310,13 @@ def wx_render_warning_panel(key, location, site, scope, now, nx, ny):
         st.markdown('<div class="wx-ai-grid">' + ''.join(cards) + '</div>', unsafe_allow_html=True)
         st.caption('AI 점검 제안은 현장 실측·장비 사용기준·작업계획과 함께 검토해 주세요.')
     st.markdown('[자료 출처: 기상청 기상특보 조회서비스](' + WX_WARN_SOURCE + ')')
+    return wx_weather_report_note(analysis) if matching and analysis.get('result') else ''
 
 
 def render_weather_panel(dept, site):
-    with st.expander('날씨 확인하기 (선택)', expanded=False):
+    with st.expander('날씨 확인하기(선택)', expanded=False):
+        st.html(WX_WARN_CSS)
+        st.html('<div class="wx-warning-intro"><strong>현장 기상특보 확인</strong><b>왜 확인하나요?</b> 건설현장은 옥외 작업이 많고 다양한 중장비와 가설물이 운영되기 때문에 기상특보(호우, 태풍, 강풍, 폭염, 대설 등)에 적절히 대비하지 않으면 대형 인명피해와 안전사고로 이어질 수 있기 때문입니다.</div>')
         st.caption('출처: 기상청 · 시·군·구 대표 위치 기준입니다. 현장 실측이나 작업중지 판정을 대신하지 않습니다.')
         key = str(st.secrets.get('public_api', {}).get('weather_service_key','')).strip()
         site_key = hashlib.sha256((str(dept)+'|'+str(site)).encode()).hexdigest()[:12]
@@ -5344,7 +5355,7 @@ def render_weather_panel(dept, site):
             st.session_state.pop('wx_weather_ai',None)
         # 같은 버튼으로 조회한 새 날씨를 특보 영역 위에도 즉시 표시합니다.
         weather_display=st.container()
-        wx_render_warning_panel(key,location,site,scope,now,nx,ny)
+        weather_note = wx_render_warning_panel(key,location,site,scope,now,nx,ny)
         with weather_display:
             bundle=st.session_state.get('wx_result')
             if bundle:
@@ -5376,6 +5387,7 @@ def render_weather_panel(dept, site):
                         st.dataframe(pd.DataFrame(table),hide_index=True,width='stretch')
                     else:
                         st.warning('현재 시각 이후의 예보가 없습니다. 새로고침해주세요.')
+        return weather_note
 
 
 
@@ -5802,22 +5814,6 @@ def safety_cal_actor(actor):
     return actor
 
 
-def safety_cal_normalize_rows(rows):
-    """헤더 공백·BOM·여분의 빈 열을 허용하되 다른 자료는 변경하지 않습니다."""
-    def clean(value):
-        return str(value).replace('\ufeff','').replace('\u200b','').strip()
-    if not rows or not any(clean(v) for row in rows for v in row):
-        return 'empty', []
-    header=[clean(v) for v in rows[0]]
-    while header and not header[-1]:
-        header.pop()
-    if header != CAL_HEADERS:
-        return 'different', rows
-    if any(clean(v) for row in rows for v in row[len(CAL_HEADERS):]):
-        return 'different', rows
-    return 'compatible', [CAL_HEADERS]+[list(row[:7]) for row in rows[1:]]
-
-
 def safety_cal_admin(actor):
     admins = st.secrets.get('calendar_admins', ['admin'])
     if isinstance(admins, str):
@@ -5927,72 +5923,6 @@ def safety_cal_save(actor, action, eid, data, base=''):
                 VALUES (?,?,?,?,?,?,?)''', row)
     finally:
         db.close()
-
-
-def safety_cal_import_csv(actor, raw, include_all=False):
-    actor = safety_cal_actor(actor)
-    if include_all and not safety_cal_admin(actor):
-        raise ValueError('다른 작성자의 일정은 캘린더 관리자만 가져올 수 있습니다.')
-    if nhn_storage_backend() is None:
-        raise ValueError('NHN 저장소를 연결한 뒤 가져와 주세요.')
-    state, rows = safety_cal_normalize_rows(storage_csv_rows(raw))
-    if state != 'compatible':
-        raise ValueError('앱에서 사용한 안전캘린더 CSV가 아닙니다. 기록ID·일정ID·작업·작성자·기록시각·기준버전·내용JSON 열을 확인해 주세요.')
-    imported = duplicates = skipped = invalid = 0
-    db = safety_cal_db()
-    try:
-        with db:
-            db.execute('BEGIN IMMEDIATE')
-            existing = safety_cal_rows(db)
-            events,seen,rejected = safety_cal_fold(existing)
-            saved = {row[0]:row for row in existing[1:]}
-            for raw_row in rows[1:]:
-                if len(raw_row) != 7:
-                    invalid += 1
-                    continue
-                rid,eid,action,writer,stamp,base,body = row = list(raw_row)
-                if not include_all and writer != actor:
-                    skipped += 1
-                    continue
-                if any(len(value) > 200 for value in (rid,eid,writer,stamp,base)):
-                    invalid += 1
-                    continue
-                if rid in saved:
-                    if saved[rid] == row:
-                        duplicates += 1
-                    else:
-                        invalid += 1
-                    continue
-                if action == 'edit' and eid in events and writer != events[eid]['owner'] and not safety_cal_admin(writer):
-                    invalid += 1
-                    continue
-                if not safety_cal_apply_row(events,seen,rejected,row):
-                    invalid += 1
-                    continue
-                db.execute('''INSERT INTO calendar_events(record_id,event_id,action,actor,stamp,base,payload)
-                    VALUES (?,?,?,?,?,?,?)''', row)
-                saved[rid] = row
-                imported += 1
-        return {'imported':imported,'duplicates':duplicates,'skipped':skipped,'invalid':invalid}
-    finally:
-        db.close()
-
-
-def render_safety_calendar_import(actor):
-    with st.expander('예전 안전캘린더 가져오기', expanded=False):
-        st.caption('기존 ‘안전캘린더’ 또는 ‘안전캘린더_앱전용’ 시트를 CSV로 내려받아 가져옵니다. 기본적으로 본인이 작성한 이력만 추가하며 이미 저장한 일정은 유지합니다.')
-        uploaded = st.file_uploader('안전캘린더 CSV (10MB 이하)', type=['csv'], key='calendar_legacy_csv:'+actor)
-        include_all = False
-        if safety_cal_admin(actor):
-            include_all = st.checkbox('다른 작성자의 일정 이력도 함께 가져오기', key='calendar_import_all:'+actor)
-        if st.button('과거 안전캘린더 가져오기', disabled=uploaded is None, key='calendar_legacy_import:'+actor):
-            try:
-                result = safety_cal_import_csv(actor,uploaded.getvalue(),include_all)
-                st.success(f"추가 이력 {result['imported']}건 · 기존 이력 유지 {result['duplicates']}건 · 다른 작성자 제외 {result['skipped']}건 · 충돌·형식 확인 필요 {result['invalid']}건")
-            except (ValueError,StorageError) as exc:
-                st.error(str(exc))
-
-
 
 
 def safety_cal_validate(data):
@@ -6372,13 +6302,12 @@ def render_safety_calendar(actor):
                     with st.expander('일정 변경 이력'):
                         for stamp, writer, action in e['history']:
                             st.text(stamp + ' · ' + writer + ' · ' + action)
-    with st.expander('일정 관리·과거 자료 가져오기'):
+    with st.expander('일정 관리'):
         st.caption('공유 일정 저장 위치: ' + ('NHN Cloud' if nhn_storage_backend() is not None else '로컬 폴더 · NHN 연결 확인 필요'))
         st.caption('작성자·관리자는 수정할 수 있고, 내부 사용자는 열람과 특이사항 기록을 할 수 있습니다.')
         st.caption('조회 시각: ' + datetime.datetime.now(ZoneInfo('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S') + ' · 다른 사용자의 변경은 ↻ 버튼을 누르면 반영됩니다. 자동 알림은 제공하지 않습니다.')
         if rejected:
             st.caption(f'충돌 또는 형식 오류로 반영하지 않은 기록 {len(rejected)}건이 있습니다. 변경 이력은 저장소에 남아 있습니다.')
-        render_safety_calendar_import(actor)
     if st.session_state.get('cal_form_open'):
         render_safety_calendar_create(actor)
 
@@ -6419,70 +6348,56 @@ st.html("""<style>
 .st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:nth-of-type(6)::before {background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%226%22%20width%3D%2226%22%20height%3D%2223%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M9%202v8M23%202v8M3%2014h26M9%2020h3M19%2020h3M9%2025h3%22%2F%3E%3C%2Fsvg%3E")!important;}
 
 .st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) [role="tab"]:nth-of-type(2)::before {content:"✓"!important;background:none!important;font-size:28px!important;line-height:32px!important;}
+.st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]:nth-of-type(4) {
+    padding-block:5px!important;padding-inline:4px!important;
+}
+.st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]:nth-of-type(4) :is(p,span) {
+    font-size:clamp(10px,1.4vw,15px)!important;line-height:1.2!important;white-space:nowrap!important;text-align:center!important;
+}
+@media(max-width:640px){
+    .st-key-keco_main_menu [role="tablist"][data-baseweb="tab-list"]:has(>[role="tab"]:nth-of-type(6)) {
+        display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    }
+    .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]:nth-of-type(4) :is(p,span) {
+        font-size:clamp(11px,3.6vw,15px)!important;
+    }
+}
 </style>""")
 
 from html import escape as workstation_escape
+
+AI_GUIDE_MENU_LABEL = "AI에게 물어보기  \n(관계법령기반)"
 
 # 사진 원본: 한국환경공단 공식 수상작 갤러리 및 사보의 2019·2021·2022·2023·2025 사진 대상작.
 # 원본 이미지 유지. 저작권과 이용범위는 원저작자 및 제공기관 기준에 따릅니다.
 
 
 
-def workstation_summarize(rows, site_map, today):
-    """등록된 조치 후 자료만 집계하며 안전조치 승인 여부로 해석하지 않습니다."""
-    result = dict(sites=len({str(site).strip() for sites in site_map.values() for site in sites if str(site).strip()}),
-                  total=len(rows), month=0, complete=0, pending=0, invalid=0, undated=0, tasks=[])
-    for record_id, owner, dept, site, created, encoded in rows:
+def workstation_monthly_counts(created_dates, today):
+    counts = [0] * today.month
+    undated = 0
+    for created in created_dates:
         try:
             stamp = datetime.datetime.fromisoformat(str(created).replace('Z', '+00:00'))
             if stamp.tzinfo is not None:
                 stamp = stamp.astimezone(ZoneInfo('Asia/Seoul'))
             day = stamp.date()
         except (ValueError, TypeError):
-            day = None
-            result['undated'] += 1
-        if day is not None and day.year == today.year and day.month == today.month and day <= today:
-            result['month'] += 1
-        detail, valid, complete = '', True, False
-        try:
-            payload = json.loads(encoded)
-            if not isinstance(payload, dict) or not payload or any(not isinstance(item, dict) for item in payload.values()):
-                raise ValueError('자료 형식 확인 필요')
-            ready = []
-            for item in payload.values():
-                photos = item.get('after_files', [])
-                if not isinstance(photos, list):
-                    raise ValueError('사진 목록 확인 필요')
-                description = str(item.get('desc_after', '') or '').strip()
-                done = bool(photos) and bool(description)
-                ready.append(done)
-                if not done and not detail:
-                    detail = str(item.get('desc_before', '') or '조치 후 사진·설명 등록 필요').strip()
-            complete = all(ready)
-        except (ValueError, TypeError):
-            valid = False
-            result['invalid'] += 1
-            detail = '저장된 점검자료의 형식 확인 필요'
-        if complete:
-            result['complete'] += 1
-        elif valid:
-            result['pending'] += 1
-        if not complete:
-            result['tasks'].append(dict(id=str(record_id), site=str(site or '현장 미기재'),
-                dept=str(dept or '부서 미기재'), day=day.isoformat() if day else '날짜 확인 필요',
-                detail=detail[:100], status='자료 보완' if valid else '확인 필요'))
-    result['rate'] = round(result['complete'] / result['total'] * 100) if result['total'] and not result['invalid'] else None
-    return result
+            undated += 1
+            continue
+        if day.year == today.year and day <= today:
+            counts[day.month - 1] += 1
+    return counts, undated
 
 
-def workstation_snapshot(actor):
+def workstation_snapshot(actor, today):
     inspection_history_actor(actor)
     db = inspection_store()
     try:
-        rows = report_history_inspection_rows(db)
+        dates = report_history_inspection_rows(db, created_only=True)
     finally:
         db.close()
-    return workstation_summarize(rows, department_sites_map, datetime.datetime.now(ZoneInfo('Asia/Seoul')).date())
+    return workstation_monthly_counts(dates, today)
 
 
 MAIN_TAB_HOME_SCRIPT = '<script>(()=>{\n  let host;try{host=window.parent;void host.document.body;}catch(e){return;}\n  const install=function(){\n  const w=window;\n  const owner=__OWNER__,version=\'home-click-v6-transition\';\n  const prior=w.__kecoHomeHover;\n  if(prior&&prior.owner===owner&&prior.version===version){prior.refresh();return;}\n  if(prior){\n    if(prior.cleanup)prior.cleanup();\n    else {\n      if(prior.observer)prior.observer.disconnect();\n      w.clearTimeout(prior.homeTimer);w.clearTimeout(prior.hoverTimer);\n      if(prior.onClick)w.document.removeEventListener(\'click\',prior.onClick,true);\n      if(prior.onHover)w.document.removeEventListener(\'pointerover\',prior.onHover,true);\n    }\n  }\n  const state={owner,version,homeTimer:null,guardTimer:null,pending:null,lastToken:prior&&prior.owner===owner?prior.lastToken:null};\n  const mainTabs=()=>{const menu=w.document.querySelector(\'.st-key-keco_main_menu\');\n    const list=menu&&menu.querySelector(\'[role="tablist"]\');return list?Array.from(list.querySelectorAll(\'[role="tab"]\')):[];};\n  const scrollHome=()=>{const main=w.document.querySelector(\'[data-testid="stMain"]\');\n    if(main)main.scrollTo({top:0,behavior:\'auto\'});};\n  const running=()=>!!w.document.querySelector(\'[data-testid="stStatusWidgetRunningIcon"]\');\n  const stale=()=>{const main=w.document.querySelector(\'[data-testid="stMain"]\')||w.document.body;\n    return !!main.querySelector(\'[data-testid="stElementContainer"][data-stale="true"]:not(:has(.keco-run-loading))\');};\n  const finish=()=>{state.pending=null;w.clearTimeout(state.guardTimer);state.guardTimer=null;\n    w.document.body.removeAttribute(\'data-keco-view-pending\');};\n  const fallback=()=>{if(!state.pending)return;\n    if(!running()&&!stale()){finish();return;}\n    state.guardTimer=w.setTimeout(fallback,1000);\n  };\n  const begin=index=>{const marker=w.document.getElementById(\'keco-tab-home-state\');\n    state.pending={index,beforeToken:marker&&marker.dataset.token||\'\',sawBusy:false};\n    w.document.body.setAttribute(\'data-keco-view-pending\',\'true\');\n    w.clearTimeout(state.guardTimer);state.guardTimer=w.setTimeout(fallback,15000);\n  };\n  const clickHome=(index,attempt=0)=>{const button=w.document.querySelector(\'.st-key-keco_tab_home_\'+index+\' button\');\n    if(button&&!button.disabled){button.click();return;}\n    if(attempt<50)state.homeTimer=w.setTimeout(()=>clickHome(index,attempt+1),100);\n  };\n  const onClick=event=>{\n    if(!event.isTrusted)return;\n    const brand=event.target.closest&&event.target.closest(\'.ws-brand-home\');\n    if(brand){event.preventDefault();w.clearTimeout(state.homeTimer);begin(0);clickHome(0);return;}\n    const tab=event.target.closest&&event.target.closest(\'[role="tab"]\');\n    if(!tab)return;\n    const tabs=mainTabs(),index=tabs.indexOf(tab);if(index<0||tab.disabled||tab.getAttribute&&tab.getAttribute(\'aria-disabled\')===\'true\')return;\n    w.clearTimeout(state.homeTimer);begin(index);state.homeTimer=w.setTimeout(()=>clickHome(index),80);\n  };\n  const refresh=()=>{\n    const marker=w.document.getElementById(\'keco-tab-home-state\');\n    const pending=state.pending;\n    const busy=running()||stale();\n    if(pending&&busy)pending.sawBusy=true;\n    if(pending&&!busy){\n      const acknowledged=marker&&marker.dataset.token&&marker.dataset.token!==pending.beforeToken&&Number(marker.dataset.index)===pending.index;\n      const failed=pending.sawBusy&&(w.document.querySelector(\'[data-testid="stException"]\')||w.document.querySelector(\'[data-testid="stAlert"]\'));\n      const loggedOut=w.document.querySelector(\'.login-brand-bar\')&&!w.document.querySelector(\'.st-key-keco_main_menu\');\n      if(acknowledged||failed||loggedOut)finish();\n    }\n    if(marker&&marker.dataset.token&&state.lastToken!==marker.dataset.token){\n      state.lastToken=marker.dataset.token;w.requestAnimationFrame(scrollHome);\n    }\n  };\n  const observer=new w.MutationObserver(refresh);\n  observer.observe(w.document.body,{childList:true,subtree:true,attributes:true,attributeFilter:[\'data-token\',\'data-index\',\'data-stale\',\'aria-selected\']});\n  w.document.addEventListener(\'click\',onClick,true);\n  state.observer=observer;state.onClick=onClick;state.refresh=refresh;\n  state.cleanup=()=>{observer.disconnect();w.clearTimeout(state.homeTimer);finish();\n    w.document.removeEventListener(\'click\',onClick,true);};\n  w.__kecoHomeHover=state;refresh();\n  };\n  const script=host.document.createElement(\'script\');\n  script.textContent=\'(\'+install.toString()+\')();\';host.document.head.appendChild(script);script.remove();\n})();</script>\n'
@@ -6580,13 +6495,23 @@ def ra_hub_cell_label(value):
     return re.sub(r'([\\`*_{}\[\]<>()#+.!|~-])',r'\\\1',str(value))
 
 
-def workstation_navigate(index, history_mode=None):
+def workstation_navigate(index):
     import uuid
     if index in (-1, 0):
         st.session_state.ws_registration_open = index == 0
-    if history_mode is not None:
-        st.session_state.inspection_history_menu = history_mode
     st.session_state.ws_navigation = dict(index=max(0, index), token=uuid.uuid4().hex)
+
+
+def workstation_open_permit(actor):
+    if not _perf_actor_allowed(actor):
+        return
+    workstation_navigate(2)
+    try:
+        _, scope = ptw_track_identity(actor)
+    except PermissionError:
+        return
+    if scope != () and st.session_state.get('ptw_track_view') not in ('new', 'revision'):
+        ptw_track_route('new')
 
 
 def render_workstation_shell(actor):
@@ -6604,7 +6529,7 @@ def render_workstation_shell(actor):
     day = datetime.datetime.now(ZoneInfo('Asia/Seoul')).strftime('%Y.%m.%d')
     st.markdown(f'''<div class="ws-brand"><button type="button" class="ws-brand-main ws-brand-home" aria-label="한국환경공단 메인페이지로 이동" title="메인페이지로 이동">{image}<span class="ws-brand-copy"><strong>한국환경공단</strong>
         <small>수도권서부환경본부 환경시설관리처</small></span>{mascots}</button>
-        <div class="ws-profile">스마트 건설현장 안전관리 시스템<br>{day} · 감독관 {workstation_escape(str(actor))}</div></div>''', unsafe_allow_html=True)
+        <div class="ws-profile"><span class="keco-system-title">스마트 건설현장 안전관리 시스템</span><br>{day} · 감독관 {workstation_escape(str(actor))}</div></div>''', unsafe_allow_html=True)
 
 
 SAFETY_SLOGAN_AWARDS_2025 = (
@@ -6663,59 +6588,74 @@ def render_workstation_home(actor):
     if not _perf_actor_allowed(actor):
         return
     now = datetime.datetime.now(ZoneInfo('Asia/Seoul'))
-    error = False
-    try:
-        data = workstation_snapshot(actor)
-    except (PermissionError, StorageError, ValueError, OSError, sqlite3.Error):
-        error = True
-        data = workstation_summarize([], department_sites_map, now.date())
     st.markdown(f'<div class="ws-context"><span>환경시설 설치사업 · 업무 대시보드</span><span>{now:%Y.%m.%d %H:%M} 기준</span></div>', unsafe_allow_html=True)
-    if error:
-        st.warning('점검 기록을 불러오지 못했습니다. 저장소 연결 확인 필요')
-    welcome, metrics = st.columns([1.08, 1.8])
+    welcome, actions = st.columns([1.08, 1.8])
     with welcome:
         with st.container(key='workstation_welcome'):
             st.markdown('''<div class="ws-eyebrow">K-ECO · 안전동행</div><h2>오늘의 안전업무,<br>여기서 시작하세요.</h2><p>사진 등록부터 조치 후 자료 확인과 보고서 작성까지.</p>''', unsafe_allow_html=True)
             st.button('점검 등록하기', key='ws_start_registration', on_click=workstation_navigate, args=(0,))
-    with metrics:
-        entries = [('관리현장', str(data['sites']), '개', '앱에 등록된 현장'),
-                   ('이번 달 점검', '—' if error else str(data['month']), '건', '저장된 점검 보고서'),
-                   ('조치 후 자료 등록률', '—' if error or data['rate'] is None else str(data['rate']), '%' if not error and data['rate'] is not None else '', '모든 항목의 사진·설명 등록 기준'),
-                   ('후속 자료 확인', '—' if error else str(data['pending'] + data['invalid']), '건', '사진·설명 보완 또는 원본 확인')]
-        cards = ''.join(f'<div class="ws-metric"><div class="ws-label">{label}</div><div class="ws-number">{value}<small>{unit}</small></div><div class="ws-note">{note}</div></div>' for label, value, unit, note in entries)
-        st.markdown('<div class="ws-metrics">'+cards+'</div>', unsafe_allow_html=True)
-    for number, (column, title, description, button, index, mode) in enumerate(zip(
-            st.columns(3), ['현장 점검 등록', '점검 기록 확인', 'AI 안전 가이드'],
-            ['조치 전·후 사진과 점검내용을 기록합니다.', '저장한 보고서와 현장별 점검현황을 살펴봅니다.', '현장 상황과 참고자료를 바탕으로 질문합니다.'],
-            ['점검 등록', '점검 기록 보기', 'AI에게 물어보기'], [0, 6, 3], [None, '점검 현황', None])):
+    with actions:
+        sites = {str(site).strip() for names in department_sites_map.values() for site in names if str(site).strip()}
+        st.markdown(f'<div class="ws-site-metric"><div><strong>관리현장</strong><div class="ws-note">앱에 등록된 현장</div></div>'
+                    f'<div class="ws-number">{len(sites):,}<small>개</small></div></div>', unsafe_allow_html=True)
+        risk, permit = st.columns(2)
+        with risk, st.container(key='workstation_quick_risk'):
+            st.markdown('<div class="ws-quick"><h3>위험성평가</h3><p>새 평가를 작성하거나 기존 보고서를 등록합니다.</p></div>', unsafe_allow_html=True)
+            st.button('위험성평가 자료 등록', key='ws_risk_register', on_click=main_tab_home, args=(actor, 1))
+        with permit, st.container(key='workstation_quick_permit'):
+            st.markdown('<div class="ws-quick"><h3>작업허가제</h3><p>시공사가 제출한 작업허가서를 접수합니다.</p></div>', unsafe_allow_html=True)
+            st.button('작업허가서 접수', key='ws_permit_intake', on_click=workstation_open_permit, args=(actor,))
+    for number, (column, title, description, button, index) in enumerate(zip(
+            st.columns(3), ['현장 점검 등록', '안전캘린더', 'AI 안전 가이드'],
+            ['조치 전·후 사진과 점검내용을 기록합니다.', '점검·교육·보고 일정과 현장 특이사항을 확인합니다.', '현장 상황과 참고자료를 바탕으로 질문합니다.'],
+            ['점검 등록', '안전캘린더 열기', AI_GUIDE_MENU_LABEL], [0, 5, 3])):
         with column:
             with st.container(key=f'workstation_quick_{number}'):
                 st.markdown(f'<div class="ws-quick"><h3>{title}</h3><p>{description}</p></div>', unsafe_allow_html=True)
-                st.button(button, key=f'ws_quick_{number}', on_click=workstation_navigate, args=(index, mode))
-    pending, completion = st.columns([1.1, 1])
-    with pending:
-        tasks = ''.join(f'<div class="ws-task"><div><strong>{workstation_escape(row["detail"])}</strong><small>{workstation_escape(row["site"])} · {workstation_escape(row["day"])}</small></div><span class="ws-badge">{row["status"]}</span></div>' for row in data['tasks'][:3])
-        empty = '점검 기록을 불러오지 못했습니다.' if error else ('아직 저장된 점검 기록이 없습니다.' if not data['total'] else '등록된 모든 점검에 조치 후 사진·설명이 있습니다.')
-        st.markdown('<section class="ws-panel"><h3>후속 자료 확인</h3>'+(tasks or f'<div class="ws-empty">{empty}</div>')+'</section>', unsafe_allow_html=True)
-        st.button('저장한 보고서 확인', key='ws_open_reports', on_click=workstation_navigate, args=(6, '내 리포트'))
-    with completion:
-        rate = '—' if error or data['rate'] is None else str(data['rate'])+'%'
-        progress = 0 if error or data['rate'] is None else data['rate']
-        registered = '—' if error else f'{data["complete"]:,}건'
-        waiting = '—' if error else f'{data["pending"] + data["invalid"]:,}건'
-        note = '등록된 점검이 없어 비율을 산정하지 않았습니다.' if not data['total'] else '자료 등록 기준이며 안전조치 완료 승인율과 다릅니다.'
-        if error:
-            note = '점검 기록 조회 상태 확인 필요'
-        elif data['invalid']:
-            note = f'원본 확인 필요 {data["invalid"]}건이 있어 등록률 확인이 필요합니다.'
-        st.markdown(f'''<section class="ws-panel"><h3>조치 후 자료 등록현황</h3><div class="ws-completion">
-            <div class="ws-donut" style="--ws-progress:{progress}%" role="img" aria-label="조치 후 사진과 설명 등록률 {rate}"><strong>{rate}<small>자료 등록률</small></strong></div>
-            <div class="ws-legend">사진·설명 등록<strong>{registered}</strong>후속 자료 확인<strong>{waiting}</strong></div></div><div class="ws-note">{note}</div></section>''', unsafe_allow_html=True)
+                st.button(button, key=f'ws_quick_{number}', on_click=workstation_navigate, args=(index,))
+    files, trend = st.columns([1, 1.2])
+    with files, st.container(key='workstation_files'):
+        st.markdown('### 안전자료실 저장 파일')
+        try:
+            documents = safety_doc_list(actor)
+        except (PermissionError, StorageError, ValueError, OSError, sqlite3.Error):
+            st.info('저장 파일을 불러오지 못했습니다. 저장소 연결 확인 필요')
+        else:
+            st.caption(f'열람 가능한 자료 {len(documents):,}개' + (' · 최근 등록 3개 표시' if len(documents) > 3 else ''))
+            if documents:
+                rows = []
+                for doc in documents[:3]:
+                    title = workstation_escape(doc['title'])
+                    filename = workstation_escape(doc['filename'])
+                    date = workstation_escape(doc['created'][:10])
+                    category = workstation_escape(doc['category'])
+                    rows.append(f'<div class="ws-doc"><strong>{title}</strong><small>{filename} · {date} · {category}</small></div>')
+                st.markdown('<div>' + ''.join(rows) + '</div>', unsafe_allow_html=True)
+            else:
+                st.info('열람할 수 있는 저장 파일이 없습니다.')
+        st.button('안전자료실 열기', key='ws_open_documents', on_click=main_tab_home, args=(actor, 4))
+    with trend, st.container(key='workstation_monthly'):
+        st.markdown('### 월별 점검')
+        try:
+            counts, undated = workstation_snapshot(actor, now.date())
+        except (PermissionError, StorageError, ValueError, OSError, sqlite3.Error):
+            st.info('점검 기록을 불러오지 못했습니다. 저장소 연결 확인 필요')
+        else:
+            st.caption(f'{now.year}년 · 총 {sum(counts):,}건 · 앱에서 생성한 보관 중 보고서 기준')
+            months = [f'{month}월' for month in range(1, len(counts) + 1)]
+            peak = max(1, max(counts))
+            fig = go.Figure(go.Bar(x=months, y=counts, text=[f'{count:,}' for count in counts],
+                                   marker_color=['#8BCBB1'] * (len(counts) - 1) + ['#087F57'],
+                                   textposition='outside', cliponaxis=False, hovertemplate='%{x} · %{y:,}건<extra></extra>'))
+            fig.update_layout(template='plotly_white', height=230, margin=dict(l=30, r=8, t=10, b=24),
+                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                              xaxis=dict(tickmode='array', tickvals=months, tickangle=0, tickfont=dict(size=11), fixedrange=True),
+                              yaxis=dict(range=[0, peak * 1.25], tickformat=',d', gridcolor='#e9f0eb',
+                                         fixedrange=True, dtick=1 if peak <= 4 else None))
+            st.plotly_chart(fig, key='ws_monthly_chart', width='stretch', config={'displayModeBar': False})
+            if undated:
+                st.caption(f'작성일 확인 필요 {undated:,}건은 월별 집계에서 제외했습니다.')
     render_safety_slogan_awards()
-    note = f'저장된 점검 {data["total"]:,}건 기준 · 휴지통 제외' if not error else '점검 기록 조회 상태 확인 필요'
-    if data['undated']:
-        note += f' · 날짜 확인 필요 {data["undated"]}건은 이번 달 집계 제외'
-    st.markdown(f'<div class="ws-footer"><span>{note}</span><span>사진·설명 등록현황</span></div>', unsafe_allow_html=True)
     st.button('현황 새로고침', key='ws_refresh_home')
 
 
@@ -6743,7 +6683,7 @@ render_workstation_shell(logged_user_id)
 
 with st.container(key="keco_main_menu"):
     main_tab1, risk_tab, permit_tab, main_tab3, documents_tab, calendar_tab, main_tab2 = st.tabs([
-        "안전 점검 등록", "위험성평가", "작업허가제", "AI에게 물어보기", "안전자료실", "안전캘린더", "점검 기록 보기"
+        "안전 점검 등록", "위험성평가", "작업허가제", AI_GUIDE_MENU_LABEL, "안전자료실", "안전캘린더", "점검 기록 보기"
     ])
 
 @st.fragment
@@ -6775,7 +6715,7 @@ def render_inspection_registration(logged_user_id):
         </div>
     """, unsafe_allow_html=True)
 
-    render_weather_panel(selected_dept, selected_site)
+    weather_note = render_weather_panel(selected_dept, selected_site) or ""
 
     st.subheader("2. 사진과 내용을 입력하세요")
     st.caption("위험요소 한 곳을 점검 항목 하나로 작성하세요. 사진은 여러 장을 선택할 수 있습니다.")
@@ -6944,22 +6884,23 @@ def render_inspection_registration(logged_user_id):
     st.subheader("3. 보고서를 만들고 확인하세요")
     st.caption("사진·입력 내용·AI 분석을 한글 파일과 출력용 PDF로 정리합니다. 아래 버튼을 누르세요.")
     st.write(f"현재 작성한 점검 항목: **{len(form_data)}개**")
-    current_report_key = inspection_report_key(selected_dept, selected_site, logged_user_id, form_data)
+    current_report_key = inspection_report_key(selected_dept, selected_site, logged_user_id, form_data, weather_note=weather_note)
     if st.session_state.get("inspection_report_key") != current_report_key:
         st.session_state.pop("inspection_report_bytes", None)
         st.session_state.pop("inspection_report_name", None)
         st.session_state.pop("inspection_pdf_bytes", None)
-    if st.button("보고서 만들기 · 내용 수정 후 다시 만들기", type="primary", disabled=not form_data, width="stretch"):
+    if st.button("보고서 만들기", type="primary", disabled=not form_data, width="stretch"):
         started = time.perf_counter()
         try:
             with keco_loading('점검 보고서를 만들고 있습니다', kind='steps', steps=('한글 작성', 'PDF 작성', '사진·보고서 보관')) as status:
                 ready = (st.session_state.get('inspection_report_key') == current_report_key and
                          st.session_state.get('inspection_report_bytes') and st.session_state.get('inspection_pdf_bytes'))
                 if not ready:
+                    weather_notes = (weather_note,) if weather_note else ()
                     status.stage(0)
-                    report_data = generate_inspection_hwpx(selected_dept, selected_site, logged_user_id, form_data)
+                    report_data = generate_inspection_hwpx(selected_dept, selected_site, logged_user_id, form_data, weather_notes=weather_notes)
                     status.stage(1)
-                    pdf_data = generate_inspection_pdf(selected_dept, selected_site, logged_user_id, form_data)
+                    pdf_data = generate_inspection_pdf(selected_dept, selected_site, logged_user_id, form_data, weather_notes=weather_notes)
                     safe_site = re.sub(r'[\\/:*?"<>|\r\n]', "_", str(selected_site))[:60]
                     report_name = f"안전점검_{safe_site}_{datetime.datetime.now(ZoneInfo('Asia/Seoul')):%Y%m%d_%H%M%S}.hwpx"
                     st.session_state.inspection_report_bytes = report_data
@@ -6973,7 +6914,8 @@ def render_inspection_registration(logged_user_id):
                     status.stage(2)
                     try:
                         archive_inspection(selected_dept, selected_site, logged_user_id, form_data,
-                                           st.session_state.inspection_report_bytes, st.session_state.inspection_pdf_bytes)
+                                           st.session_state.inspection_report_bytes, st.session_state.inspection_pdf_bytes,
+                                           weather_note=weather_note)
                     except ValueError as exc:
                         status.update(label='보고서 작성 완료 · 휴지통 확인 필요', state='error', expanded=True)
                         st.warning(str(exc))
@@ -6992,16 +6934,24 @@ def render_inspection_registration(logged_user_id):
     report_name = st.session_state.get("inspection_report_name")
     pdf_bytes = st.session_state.get("inspection_pdf_bytes")
     if report_bytes:
-        st.download_button("한글 파일 받기 · 수정할 때", report_bytes,
-                           file_name=report_name, mime="application/vnd.hancom.hwpx", width="stretch", on_click="ignore")
-        if pdf_bytes:
-            st.download_button("PDF 파일 받기 · 출력할 때", pdf_bytes, file_name=report_name.replace(".hwpx", ".pdf"), mime="application/pdf", width="stretch", on_click="ignore")
-        st.caption("파일을 내려받아 열어보세요. 내용이 맞으면 아래에서 이메일을 보내세요.")
+        st.html('''<style>
+        .st-key-inspection_report_downloads [data-testid="stHorizontalBlock"] {
+            display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important;
+        }
+        .st-key-inspection_report_downloads [data-testid="stColumn"] {width:100%!important;min-width:0!important;}
+        </style>''')
+        with st.container(key="inspection_report_downloads"):
+            korean, pdf = st.columns(2)
+            korean.download_button("📄 한글파일받기", report_bytes, file_name=report_name,
+                                   mime="application/vnd.hancom.hwpx", width="stretch", on_click="ignore")
+            if pdf_bytes:
+                pdf.download_button("🖨️ PDF파일받기", pdf_bytes, file_name=report_name.replace(".hwpx", ".pdf"),
+                                    mime="application/pdf", width="stretch", on_click="ignore")
     else:
         st.info("사진 또는 내용을 입력한 뒤 ‘보고서 만들기’를 누르세요. 입력 내용을 바꾸면 보고서를 다시 만들어야 합니다.")
 
     st.subheader("4. 보고서를 이메일로 보내세요")
-    st.caption("한글 파일과 PDF가 함께 첨부됩니다. 파일을 내려받는 것만으로는 이메일이 전송되지 않습니다.")
+    st.caption("한글 파일과 PDF가 함께 첨부됩니다.")
     delivery_key = datetime.datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d") + ":" + current_report_key
     delivery_state = None
     if report_bytes and pdf_bytes:
@@ -7120,11 +7070,13 @@ def render_inspection_dashboard():
     except (PermissionError,StorageError,ValueError) as exc:
         st.error(str(exc));return
     st.caption('조회 저장소: '+('NHN Cloud' if nhn_storage_backend() is not None else '로컬 폴더 · NHN 연결 확인 필요'))
+    notice = st.session_state.pop('inspection_import_notice:'+actor, None)
+    if notice:
+        st.success(notice)
     if not records:
-        st.info('아직 저장한 점검 기록이 없습니다. 안전 점검 등록에서 보고서를 만들면 이력에 반영됩니다. 기존 위험성평가 자료는 별도로 등록하여 위험성평가 현황에서 분석할 수 있습니다.')
-        if st.button('기존 위험성평가 자료 등록', key='dash_empty_import_risk', type='primary'):
-            ra_history_open_registration(actor)
-            st.rerun()
+        st.info('아직 저장한 점검 기록이 없습니다. 안전 점검 등록에서 보고서를 만들거나 기존 안전 점검 자료를 등록하면 이력에 반영됩니다.')
+    render_report_history_import(actor, inspection=True)
+    if not records:
         return
     df = dashboard_frame(records)
     if df.empty:
@@ -7259,10 +7211,9 @@ def render_inspection_history_panel(logged_user_id):
     owner = str(logged_user_id)
     resume_key = 'report_history_resume:'+owner
     if st.session_state.pop('report_history_reload:'+owner, False):
-        # Keep the trash view and its filters when refreshing other fragments.
-        if st.session_state.get('report_history_view:'+owner) == '휴지통':
-            keys = ('inspection_history_menu',)+tuple('report_history_'+field+':'+owner for field in ('view','search','period','site'))
-            st.session_state[resume_key] = {key:st.session_state[key] for key in keys if key in st.session_state}
+        # Keep the current list and filters when refreshing other fragments.
+        keys = ('inspection_history_menu',)+tuple('report_history_'+field+':'+owner for field in ('view','search','period','site'))
+        st.session_state[resume_key] = {key:st.session_state[key] for key in keys if key in st.session_state}
         st.rerun()
     for key, value in st.session_state.pop(resume_key, {}).items():
         st.session_state[key] = value
@@ -7275,8 +7226,9 @@ def render_inspection_history_panel(logged_user_id):
         render_risk_assessment_dashboard(logged_user_id)
     else:
         with st.expander("여러 점검을 보고서 하나로 모으기", expanded=False):
-            st.caption("저장한 본인 점검 보고서를 선택하여 사진·설명·AI 분석을 취합합니다.")
-            st.caption("저장한 점검의 사진과 내용을 다시 불러와 보고서를 만듭니다." if nhn_storage_backend() is not None else "재배포 후에도 보관하려면 영구 저장소를 연결해야 합니다. 기본 로컬 저장소는 서버 교체 시 사라질 수 있습니다.")
+            st.caption("저장한 보안 점검 보고서를 하나로 취합해 보세요")
+            if nhn_storage_backend() is None:
+                st.caption("재배포 후에도 보관하려면 영구 저장소를 연결해야 합니다. 기본 로컬 저장소는 서버 교체 시 사라질 수 있습니다.")
             archived = report_history_active_inspections(logged_user_id)
             records = {r[0]: (r[0],r[2],r[3],r[4],r[5]) for r in archived}
             if "inspection_batch_selection" in st.session_state:
@@ -7288,15 +7240,19 @@ def render_inspection_history_panel(logged_user_id):
             if st.button("선택한 점검 건 취합", disabled=not selected_reports):
                 try:
                     combined = {}
+                    weather_notes = []
                     for report_id in sorted(selected_reports):
                         _, dept, site, day, payload = records[report_id]
-                        for idx, item in json.loads(payload).items():
+                        items, weather_note = inspection_payload_parts(payload)
+                        if weather_note:
+                            weather_notes.append(weather_note)
+                        for idx, item in items.items():
                             for field in ("before_files", "after_files"):
                                 item[field] = [inspection_photo_stream(value) for value in item[field]]
                             label = f"{len(combined)+1} ({day} / {dept} / {site} / 원항목 {idx})"
                             combined[label] = item
-                    hwpx = generate_inspection_hwpx("선택 점검 건 취합", f"{len(selected_reports)}건", logged_user_id, combined)
-                    pdf = generate_inspection_pdf("선택 점검 건 취합", f"{len(selected_reports)}건", logged_user_id, combined)
+                    hwpx = generate_inspection_hwpx("선택 점검 건 취합", f"{len(selected_reports)}건", logged_user_id, combined, weather_notes=weather_notes)
+                    pdf = generate_inspection_pdf("선택 점검 건 취합", f"{len(selected_reports)}건", logged_user_id, combined, weather_notes=weather_notes)
                     archive_generated_reports(logged_user_id, "batch:" + str(logged_user_id) + ":" + batch_key, hwpx, pdf, title=f"안전점검 취합 보고서 · {len(selected_reports)}건", site=f"{len(selected_reports)}건 취합", kind="점검 취합")
                     st.session_state.batch_output = (hwpx, pdf, combined)
                     st.session_state.batch_key = batch_key
@@ -11159,13 +11115,7 @@ def ra_analysis_snapshot(owner):
     return reports
 
 
-def ra_history_open_registration(actor, page='import'):
-    inspection_history_actor(actor)
-    ra_initialize(actor)
-    ra_hub_navigate(page)
-    workstation_navigate(1)
-
-
+RA_ORIGINAL_UPLOAD_LABEL = '기존 위해성평가 보고서 등록'
 RA_ORIGINAL_MAX_BYTES = 20 * 1024 * 1024
 RA_ORIGINAL_FIELDS = {
     'assessment_year': '평가연도', 'site': '사업장명', 'kind': '평가구분',
@@ -11181,7 +11131,8 @@ RA_ORIGINAL_CSS = '''<style>
 .st-key-risk_assessment .st-key-ra_hub_table [data-testid="stDownloadButton"] button p {
     color:inherit!important;white-space:normal!important;line-height:1.5!important;font-size:12px!important;
 }
-.st-key-risk_assessment .st-key-ra_hub_original_new button p {white-space:normal!important;}
+.st-key-risk_assessment .st-key-ra_hub_actions .st-key-ra_hub_original_new button {height:auto!important;}
+.st-key-risk_assessment .st-key-ra_hub_actions .st-key-ra_hub_original_new button p {white-space:normal!important;word-break:keep-all!important;}
 .st-key-risk_assessment .st-key-ra_original_form textarea {min-height:110px!important;}
 </style>'''
 
@@ -11554,15 +11505,6 @@ def ra_render_existing_item_review(actor, record, original):
 def render_risk_assessment_dashboard(actor):
     st.subheader('위험성평가 현황')
     st.caption('앱에서 저장한 평가와 기존 보고서에서 확인·등록한 항목을 함께 집계합니다. 원본만 보관한 자료는 항목 분석에서 제외됩니다.')
-    register, listing = st.columns(2)
-    with register:
-        if st.button('기존 위험성평가 자료 등록', key='ra_dash_import', type='primary', width='stretch'):
-            ra_history_open_registration(actor)
-            st.rerun()
-    with listing:
-        if st.button('위험성평가 목록 열기', key='ra_dash_open_list', width='stretch'):
-            ra_history_open_registration(actor, 'list')
-            st.rerun()
     try:
         reports = ra_analysis_snapshot(actor)
     except (PermissionError, ValueError, StorageError) as exc:
@@ -11570,7 +11512,7 @@ def render_risk_assessment_dashboard(actor):
     except Exception:
         st.error('위험성평가 현황을 불러오지 못했습니다. 저장소 연결을 확인해 주세요.'); return
     if not reports:
-        st.info('등록된 위험성평가가 없습니다. 위의 ‘기존 위험성평가 자료 등록’에서 원본과 평가 항목을 등록해 주세요.')
+        st.info('등록된 위험성평가가 없습니다. ‘위험성평가’ 탭에서 평가를 작성하거나 기존 보고서를 등록해 주세요.')
         return
     year_col, site_col = st.columns(2)
     years = ['전체 연도']+sorted({report['year'] for report in reports}, reverse=True)
@@ -11610,16 +11552,30 @@ def render_risk_assessment_dashboard(actor):
         st.info('아직 분석할 평가 항목이 없습니다. 원본의 평가 항목을 확인·등록하면 아래에 공종·유해위험요인 현황이 표시됩니다.')
         return
     frame = pd.DataFrame(flat).fillna('')
-    for column, label, color in zip(st.columns(2), ['공종·세부작업', '유해위험요인 분류'], ['#0a815b', '#6c8e4b']):
-        with column:
-            st.markdown('#### '+label+'별 항목')
-            counts = frame[label].replace('', '원문 미기재').value_counts().head(10).rename_axis(label).rename('항목 수').reset_index()
-            fig = px.bar(counts, x='항목 수', y=label, orientation='h', text='항목 수', color_discrete_sequence=[color])
-            fig.update_layout(height=max(240, min(460, len(counts)*36+90)), margin=dict(l=5,r=20,t=10,b=20),
-                              paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                              yaxis=dict(categoryorder='total ascending'), xaxis=dict(dtick=1), showlegend=False)
-            st.plotly_chart(fig, width='stretch', key='ra_analysis_chart_'+label, config={'displayModeBar': False})
-    st.caption('원문에 기재되거나 작성자가 입력한 분류만 집계합니다. 공종·분류는 항목 수 상위 10개를 표시합니다.')
+    work_column, hazard_column = st.columns(2)
+    with work_column:
+        label = '공종·세부작업'
+        st.markdown('#### '+label+'별 항목')
+        counts = frame[label].replace('', '원문 미기재').value_counts().head(10).rename_axis(label).rename('항목 수').reset_index()
+        fig = px.bar(counts, x='항목 수', y=label, orientation='h', text='항목 수', color_discrete_sequence=['#0a815b'])
+        fig.update_layout(height=max(240, min(460, len(counts)*36+90)), margin=dict(l=5,r=20,t=10,b=20),
+                          paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                          yaxis=dict(categoryorder='total ascending'), xaxis=dict(dtick=1), showlegend=False)
+        st.plotly_chart(fig, width='stretch', key='ra_analysis_chart_'+label, config={'displayModeBar': False})
+    with hazard_column:
+        label = '유해위험요인 분류'
+        st.markdown('#### '+label+'별 항목')
+        totals = frame[label].replace('', '원문 미기재').value_counts()
+        counts = totals.head(10).rename_axis(label).rename('항목 수').reset_index()
+        if len(totals) > 10:
+            counts.loc[len(counts)] = ['상위 10개 외 분류', int(totals.iloc[10:].sum())]
+        fig = px.pie(counts, names=label, values='항목 수', hole=.45, color_discrete_sequence=px.colors.qualitative.Safe)
+        fig.update_traces(textinfo='percent', textposition='inside',
+                          hovertemplate='%{label}<br>%{value}개 (%{percent})<extra></extra>')
+        fig.update_layout(height=360, margin=dict(l=10,r=10,t=10,b=20), paper_bgcolor='rgba(0,0,0,0)',
+                          legend=dict(orientation='h', yanchor='top', y=-.02))
+        st.plotly_chart(fig, width='stretch', key='ra_analysis_chart_'+label, config={'displayModeBar': False})
+    st.caption('공종은 항목 수 상위 10개를 표시합니다. 유해위험요인 비율은 전체 등록 항목을 기준으로 계산합니다.')
     st.markdown('#### 유해위험요인·감소대책 목록')
     visible = ['사업장명', '평가연도', '공종·세부작업', '유해위험요인 분류', '위험발생상황(유해위험요인)',
                '재해유형', '현재 안전보건조치', '감소대책', '현재 위험성', '개선 후 위험성', '평가방법', '자료 구분']
@@ -11635,7 +11591,7 @@ def render_risk_assessment_dashboard(actor):
                 st.text(str(value))
 
 def ra_render_original_import(actor):
-    st.subheader('기존 위험성평가 보고서 등록')
+    st.subheader(RA_ORIGINAL_UPLOAD_LABEL)
     st.button('← 목록', key='ra_original_back', on_click=ra_hub_navigate, args=('list',))
     st.caption('원본과 등록정보·평가 항목을 함께 보관합니다. PDF·HWPX·DOCX는 AI로 읽을 수 있으며 HWP는 직접 입력합니다. 최대 20MB.')
     uploaded = st.file_uploader('기존 보고서 파일', type=['pdf', 'hwpx', 'docx', 'hwp'], key='ra_original_upload')
@@ -11966,7 +11922,7 @@ def ra_render_history(actor):
     selected = set(st.session_state.get('ra_hub_selection', [])) & {r['id'] for r in visible}
     st.session_state.ra_hub_selection = sorted(selected)
     with st.container(key='ra_hub_actions'):
-        count, open_box, register, original, edit, delete = st.columns([2.5, 1.7, 1, 1.7, 1, 1], gap='small')
+        count, open_box, register, original, edit, delete = st.columns([2.5, 1.7, 1, 2.2, 1, 1], gap='small')
         with count:
             label = '휴지통' if trashed else '목록'
             st.markdown(f'<p class="ra-register-count">{label} (총 {len(visible)}건)<small>체크 {len(selected)}건{(" · 열기 대상 1건" if focused and not selected else "")}</small></p>', unsafe_allow_html=True)
@@ -11980,7 +11936,7 @@ def ra_render_history(actor):
         with register:
             st.button('＋ 등록', key='ra_hub_new', disabled=trashed, type='primary' if not selected else 'secondary', on_click=ra_hub_navigate, args=('registration',), width='stretch')
         with original:
-            st.button('기존 보고서 등록', key='ra_hub_original_new', disabled=trashed, on_click=ra_hub_navigate, args=('import',), width='stretch')
+            st.button(RA_ORIGINAL_UPLOAD_LABEL, key='ra_hub_original_new', disabled=trashed, on_click=ra_hub_navigate, args=('import',), width='stretch')
         with edit:
             st.button('수정', key='ra_hub_edit_selected', disabled=trashed or len(selected)!=1,
                       on_click=ra_hub_edit_selected, args=(actor,), width='stretch')
