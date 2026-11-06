@@ -3076,19 +3076,44 @@ def render_report_history_import(owner):
                 st.error(str(exc))
 
 
-REPORT_HISTORY_CSS = '<style>\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stHorizontalBlock"] {display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:12px!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stColumn"]:first-child {flex:1 1 auto!important;width:auto!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stColumn"]:last-child {flex:0 0 auto!important;width:118px!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar button {min-height:34px!important;height:auto!important;padding:6px 10px!important;border:1px solid #cfdbd2!important;border-radius:8px!important;background:#f6f8f3!important;color:#456151!important;box-shadow:none!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar button p {font-size:13px!important;white-space:nowrap!important;}\n.st-key-report_history_panel .st-key-report_history_table_header {padding:8px 12px!important;border-bottom:1px solid #cbdccf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] {padding:10px 12px!important;border:1px solid #d7e0d6!important;border-left:4px solid transparent!important;border-radius:10px!important;margin:6px 0!important;background:#fffdf8!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_active_"] {background:#e3f3e9!important;border-color:#65a487!important;border-left-color:#087744!important;box-shadow:0 0 0 1px #b4d6bf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button {background:transparent!important;border:0!important;border-radius:6px!important;box-shadow:none!important;min-height:40px!important;height:auto!important;padding:5px 4px!important;justify-content:flex-start!important;text-align:left!important;transform:none!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button:hover {background:#d9ebdf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button p {color:#1d4430!important;white-space:normal!important;word-break:keep-all!important;overflow-wrap:anywhere!important;text-align:left!important;line-height:1.55!important;font-size:14px!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stCheckbox"] label {padding:4px!important;min-height:36px!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"] {min-width:0!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stCaptionContainer"] p {font-size:12px!important;line-height:1.5!important;word-break:keep-all!important;overflow-wrap:anywhere!important;}\n@media(max-width:800px){\n .st-key-report_history_panel .st-key-report_history_table_header {display:none!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] > [data-testid="stHorizontalBlock"],\n .st-key-report_history_panel [class*="st-key-report_history_row_"] > [data-testid="stLayoutWrapper"] > [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:32px minmax(0,1fr)!important;gap:3px 10px!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"] {width:100%!important;flex:none!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:first-child {grid-column:1!important;grid-row:1 / span 4!important;align-self:start!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:not(:first-child) {grid-column:2!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(2) {grid-row:2!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(3) {grid-row:1!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(4),\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(5) {display:none!important;}\n}\n\n</style>'
+REPORT_HISTORY_CSS = '<style>\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stHorizontalBlock"] {display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:12px!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stColumn"]:first-child {flex:1 1 auto!important;width:auto!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar [data-testid="stColumn"]:last-child {flex:0 0 auto!important;width:118px!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar button {min-height:34px!important;height:auto!important;padding:6px 10px!important;border:1px solid #cfdbd2!important;border-radius:8px!important;background:#f6f8f3!important;color:#456151!important;box-shadow:none!important;}\n.st-key-report_history_panel .st-key-report_history_toolbar button p {font-size:13px!important;white-space:nowrap!important;}\n.st-key-report_history_panel .st-key-report_history_table_header {padding:8px 12px!important;border-bottom:1px solid #cbdccf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] {padding:10px 12px!important;border:1px solid #d7e0d6!important;border-left:4px solid transparent!important;border-radius:10px!important;margin:6px 0!important;background:#fffdf8!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_active_"] {background:#e3f3e9!important;border-color:#65a487!important;border-left-color:#087744!important;box-shadow:0 0 0 1px #b4d6bf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button {background:transparent!important;border:0!important;border-radius:6px!important;box-shadow:none!important;min-height:40px!important;height:auto!important;padding:5px 4px!important;justify-content:flex-start!important;text-align:left!important;transform:none!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button:hover {background:#d9ebdf!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stButton"] button p {color:#1d4430!important;white-space:normal!important;word-break:keep-all!important;overflow-wrap:anywhere!important;text-align:left!important;line-height:1.55!important;font-size:14px!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stCheckbox"] label {padding:4px!important;min-height:36px!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"] {min-width:0!important;}\n.st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stCaptionContainer"] p {font-size:12px!important;line-height:1.5!important;word-break:keep-all!important;overflow-wrap:anywhere!important;}\n@media(max-width:800px){\n .st-key-report_history_panel .st-key-report_history_table_header {display:none!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] > [data-testid="stHorizontalBlock"],\n .st-key-report_history_panel [class*="st-key-report_history_row_"] > [data-testid="stLayoutWrapper"] > [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:32px minmax(0,1fr)!important;gap:3px 10px!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"] {width:100%!important;flex:none!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:first-child {grid-column:1!important;grid-row:1 / span 4!important;align-self:start!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:not(:first-child) {grid-column:2!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(2) {grid-row:2!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(3) {grid-row:1!important;}\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(4),\n .st-key-report_history_panel [class*="st-key-report_history_row_"] [data-testid="stColumn"]:nth-child(5) {display:none!important;}\n}\n\n.st-key-report_history_panel .st-key-report_history_trash_header {padding:8px 12px!important;border-bottom:1px solid #cbdccf!important;}\n.st-key-report_history_panel .st-key-report_history_trash_actions [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}\n.st-key-report_history_panel .st-key-report_history_trash_actions [data-testid="stColumn"] {width:100%!important;min-width:0!important;}\n.st-key-report_history_panel .st-key-report_history_trash_actions button {min-height:44px!important;}\n.st-key-report_history_panel .st-key-report_history_trash_actions button p {white-space:normal!important;word-break:keep-all!important;line-height:1.4!important;}\n@media(max-width:800px){\n .st-key-report_history_panel .st-key-report_history_trash_header [data-testid="stColumn"]:not(:first-child) {display:none!important;}\n .st-key-report_history_panel .st-key-report_history_trash_header [data-testid="stColumn"]:first-child {width:100%!important;flex:1 1 auto!important;}\n}\n</style>'
 
 def report_history_reset_detail(owner):
+    st.session_state.pop('report_history_purge_request:'+owner, None)
     for key in list(st.session_state):
         if key in ('report_history_open:'+owner, 'report_history_preview:'+owner) or str(key).startswith('report_history_confirm:'+owner+':'):
             st.session_state.pop(key, None)
 
 
-def report_history_select(owner, selection, checked_key=None):
+def report_history_reset_selection(owner):
+    st.session_state.pop('report_history_selected:'+owner, None)
+    st.session_state.pop('report_history_trash_selected:'+owner, None)
+    report_history_reset_detail(owner)
+
+
+def report_history_select(owner, selection, checked_key=None, trashed=False):
     owner = report_history_identity(owner)
-    if checked_key is not None and not st.session_state.get(checked_key):
-        selection = None
-    st.session_state['report_history_selected:'+owner] = selection
+    if trashed:
+        key = 'report_history_trash_selected:'+owner
+        selected = list(st.session_state.get(key, []))
+        checked = st.session_state.get(checked_key, False) if checked_key is not None else selection not in selected
+        if checked and selection not in selected:
+            selected.append(selection)
+        elif not checked and selection in selected:
+            selected.remove(selection)
+        st.session_state[key] = selected
+    else:
+        if checked_key is not None and not st.session_state.get(checked_key):
+            selection = None
+        st.session_state['report_history_selected:'+owner] = selection
+    report_history_reset_detail(owner)
+
+
+def report_history_select_all(owner, tokens, checked_key):
+    owner = report_history_identity(owner)
+    if st.session_state.get('report_history_view:'+owner) != '휴지통':
+        return
+    st.session_state['report_history_trash_selected:'+owner] = list(tokens) if st.session_state.get(checked_key) else []
     report_history_reset_detail(owner)
 
 
@@ -3114,118 +3139,158 @@ def report_history_confirmation_key(owner, selection, *, permanent=False):
     return 'report_history_confirm:'+str(owner)+':'+purpose+hashlib.sha256(str(selection).encode()).hexdigest()
 
 
-def report_history_clear_exports(owner, source, report_id):
-    report_history_reset_detail(owner)
-    st.session_state.pop('report_history_selected:'+owner, None)
-    if source == 'inspection':
+def report_history_clear_exports(owner, targets):
+    report_history_reset_selection(owner)
+    inspection = any(source == 'inspection' for source, _ in targets)
+    if inspection:
         for key in ('inspection_report_key', 'inspection_report_archived_key', 'inspection_report_bytes',
                     'inspection_report_name', 'inspection_pdf_bytes'):
             st.session_state.pop(key, None)
-    if source == 'inspection' or (source == 'generated' and str(report_id).startswith('batch:')):
+    if inspection or any(source == 'generated' and str(report_id).startswith('batch:') for source, report_id in targets):
         for key in ('batch_key', 'batch_output', 'inspection_batch_selection'):
             st.session_state.pop(key, None)
-    if source == 'generated' and str(report_id).startswith('risk:'):
+    if any(source == 'generated' and str(report_id).startswith('risk:') for source, report_id in targets):
         st.session_state.pop('ra_output', None)
         st.session_state.pop('ra_last_saved_sig', None)
 
 
-def report_history_purge(owner, source, report_id):
-    """Permanently remove one owned, already-trashed report and queue its files."""
+def report_history_remove_trashed(db, tables, owner, source, report_id, table):
+    keys = set()
+    refs = None
+    if source == 'inspection':
+        if 'report_files' in tables:
+            refs = db.execute('SELECT hex(hwpx),hex(pdf) FROM report_files WHERE id=?', (report_id,)).fetchone()
+        encoded = db.execute('SELECT payload FROM reports WHERE id=? AND owner=?', (report_id, owner)).fetchone()[0]
+        try:
+            payload = json.loads(encoded)
+            items = payload.values() if isinstance(payload, dict) else []
+            for item in items:
+                if not isinstance(item, dict): continue
+                for field in ('before_files', 'after_files'):
+                    values = item.get(field, [])
+                    if not isinstance(values, list): continue
+                    for value in values:
+                        if isinstance(value, str) and value.startswith(PHOTO_REF):
+                            key = value[len(PHOTO_REF):]
+                            if re.fullmatch(r'images/[0-9a-f]{64}\.[a-z0-9]+', key): keys.add(key)
+        except (ValueError, TypeError):
+            pass
+    else:
+        refs = db.execute('SELECT hex(hwpx),hex(pdf) FROM '+table+' WHERE id=? AND owner=?', (report_id, owner)).fetchone()
+    for encoded in refs or ():
+        try:
+            raw = bytes.fromhex(encoded or '')
+            if not raw.startswith(b'KECO-NHN-BLOB-V1:'): continue
+            key = raw[len(b'KECO-NHN-BLOB-V1:'):].decode('ascii')
+        except (ValueError, UnicodeError):
+            continue
+        if re.fullmatch(r'files/[0-9a-f]{64}\.[a-z0-9]+', key): keys.add(key)
+    for key in keys:
+        db.execute('INSERT OR IGNORE INTO risk_file_cleanup VALUES (?)', (key,))
+    if source == 'inspection' and 'report_files' in tables:
+        db.execute('DELETE FROM report_files WHERE id=?', (report_id,))
+    if source == 'generated':
+        if 'generated_report_info' in tables:
+            db.execute('DELETE FROM generated_report_info WHERE id=? AND owner=?', (report_id, owner))
+        if 'risk_assessment_artifacts' in tables:
+            db.execute('DELETE FROM risk_assessment_artifacts WHERE generated_id=? AND owner=?', (report_id, owner))
+    db.execute('DELETE FROM '+table+' WHERE id=? AND owner=?', (report_id, owner))
+
+
+def report_history_trash_batch(owner, targets, *, permanent=False):
+    """Validate all selected reports and apply one transaction to the trash."""
     owner = report_history_identity(owner)
-    table = {'inspection':'reports', 'generated':'generated_reports', 'uploaded':'personal_report_imports'}.get(source)
-    if table is None:
-        raise PermissionError('본인의 휴지통에 있는 리포트만 완전삭제할 수 있습니다.')
-    report_id = str(report_id)
+    items = tuple(dict.fromkeys((source, str(report_id)) for source, report_id in targets))
+    if not items:
+        raise ValueError('휴지통에서 처리할 리포트를 선택해 주세요.')
+    table_by_source = {'inspection':'reports', 'generated':'generated_reports', 'uploaded':'personal_report_imports'}
+    denied = '본인의 휴지통에 있는 리포트만 '+('완전삭제' if permanent else '복원')+'할 수 있습니다.'
     db = inspection_store()
     compacted = True
     try:
         with db:
             db.execute('BEGIN IMMEDIATE')
             tables = report_history_tables(db)
-            if table not in tables or 'report_trash' not in tables:
-                raise PermissionError('본인의 휴지통에 있는 리포트만 완전삭제할 수 있습니다.')
-            owned = db.execute('SELECT 1 FROM '+table+' WHERE id=? AND owner=?', (report_id, owner)).fetchone()
-            marker = db.execute('SELECT 1 FROM report_trash WHERE source=? AND report_id=? AND owner=?',
-                                (source, report_id, owner)).fetchone()
-            if not owned or not marker:
-                raise PermissionError('본인의 휴지통에 있는 리포트만 완전삭제할 수 있습니다.')
-            keys = set()
-            refs = None
-            if source == 'inspection':
-                if 'report_files' in tables:
-                    refs = db.execute('SELECT hex(hwpx),hex(pdf) FROM report_files WHERE id=?', (report_id,)).fetchone()
-                encoded = db.execute('SELECT payload FROM reports WHERE id=? AND owner=?', (report_id, owner)).fetchone()[0]
-                try:
-                    payload = json.loads(encoded)
-                    items = payload.values() if isinstance(payload, dict) else []
-                    for item in items:
-                        if not isinstance(item, dict): continue
-                        for field in ('before_files', 'after_files'):
-                            values = item.get(field, [])
-                            if not isinstance(values, list): continue
-                            for value in values:
-                                if isinstance(value, str) and value.startswith(PHOTO_REF):
-                                    key = value[len(PHOTO_REF):]
-                                    if re.fullmatch(r'images/[0-9a-f]{64}\.[a-z0-9]+', key): keys.add(key)
-                except (ValueError, TypeError):
-                    pass
-            else:
-                refs = db.execute('SELECT hex(hwpx),hex(pdf) FROM '+table+' WHERE id=? AND owner=?', (report_id, owner)).fetchone()
-            for encoded in refs or ():
-                try:
-                    raw = bytes.fromhex(encoded or '')
-                    if not raw.startswith(b'KECO-NHN-BLOB-V1:'): continue
-                    key = raw[len(b'KECO-NHN-BLOB-V1:'):].decode('ascii')
-                except (ValueError, UnicodeError):
-                    continue
-                if re.fullmatch(r'files/[0-9a-f]{64}\.[a-z0-9]+', key): keys.add(key)
-            db.execute('CREATE TABLE IF NOT EXISTS risk_file_cleanup (object_key TEXT PRIMARY KEY)')
-            for key in keys:
-                db.execute('INSERT OR IGNORE INTO risk_file_cleanup VALUES (?)', (key,))
-            if source == 'inspection' and 'report_files' in tables:
-                db.execute('DELETE FROM report_files WHERE id=?', (report_id,))
-            if source == 'generated':
-                if 'generated_report_info' in tables:
-                    db.execute('DELETE FROM generated_report_info WHERE id=? AND owner=?', (report_id, owner))
-                if 'risk_assessment_artifacts' in tables:
-                    db.execute('DELETE FROM risk_assessment_artifacts WHERE generated_id=? AND owner=?', (report_id, owner))
-            db.execute('DELETE FROM '+table+' WHERE id=? AND owner=?', (report_id, owner))
-            db.execute('DELETE FROM report_trash WHERE source=? AND report_id=? AND owner=?', (source, report_id, owner))
-        try:
-            db.execute('VACUUM')
-        except Exception:
-            compacted = False
+            if 'report_trash' not in tables:
+                raise PermissionError(denied)
+            verified = []
+            for source, report_id in items:
+                table = table_by_source.get(source)
+                if table not in tables or not db.execute('SELECT 1 FROM '+table+' WHERE id=? AND owner=?',
+                                                         (report_id, owner)).fetchone():
+                    raise PermissionError(denied)
+                marker = db.execute('SELECT 1 FROM report_trash WHERE source=? AND report_id=? AND owner=?',
+                                    (source, report_id, owner)).fetchone()
+                if not marker:
+                    raise PermissionError(denied)
+                verified.append((source, report_id, table))
+            if permanent:
+                db.execute('CREATE TABLE IF NOT EXISTS risk_file_cleanup (object_key TEXT PRIMARY KEY)')
+            for source, report_id, table in verified:
+                if permanent:
+                    report_history_remove_trashed(db, tables, owner, source, report_id, table)
+                db.execute('DELETE FROM report_trash WHERE source=? AND report_id=? AND owner=?',
+                           (source, report_id, owner))
+        if permanent:
+            try:
+                db.execute('VACUUM')
+            except Exception:
+                compacted = False
     finally:
         db.close()
-    try:
-        pending = ra_cleanup_files()
-    except Exception:
-        pending = -1
-    return dict(count=1, compacted=compacted, cleanup_pending=pending)
+    pending = 0
+    if permanent:
+        try:
+            pending = ra_cleanup_files()
+        except Exception:
+            pending = -1
+    return dict(count=len(items), compacted=compacted, cleanup_pending=pending)
 
 
-def report_history_purge_action(owner, selection):
+def report_history_purge(owner, source, report_id):
+    return report_history_trash_batch(owner, [(source, report_id)], permanent=True)
+
+
+def report_history_request_purge(owner, selection):
+    owner = report_history_identity(owner)
+    if (st.session_state.get('report_history_view:'+owner) == '휴지통' and selection
+            and tuple(st.session_state.get('report_history_trash_selected:'+owner, ())) == selection):
+        report_history_reset_detail(owner)
+        st.session_state['report_history_purge_request:'+owner] = selection
+
+
+def report_history_apply_trash_selection(owner, selection, permanent=False):
     owner = str(owner)
-    if (st.session_state.get('report_history_view:'+owner) != '휴지통'
-            or st.session_state.get('report_history_selected:'+owner) != selection
+    error_key = 'report_history_error:'+owner
+    if (st.session_state.get('report_history_view:'+owner) != '휴지통' or not selection
+            or tuple(st.session_state.get('report_history_trash_selected:'+owner, ())) != selection):
+        st.session_state[error_key] = '휴지통에서 처리할 리포트를 다시 선택해 주세요.'
+        return
+    if permanent and (st.session_state.get('report_history_purge_request:'+owner) != selection
             or not st.session_state.get(report_history_confirmation_key(owner, selection, permanent=True))):
-        st.session_state['report_history_error:'+owner] = '삭제할 리포트를 선택하고 완전삭제 확인란을 체크해 주세요.'
+        st.session_state[error_key] = '선택한 리포트의 완전삭제 확인란을 체크해 주세요.'
         return
     try:
-        source, report_id = json.loads(selection)
-        result = report_history_purge(owner, source, report_id)
+        targets = [json.loads(token) for token in selection]
+        result = report_history_trash_batch(owner, targets, permanent=permanent)
     except (StorageError, PermissionError, ValueError, TypeError) as exc:
-        st.session_state['report_history_error:'+owner] = str(exc)
+        st.session_state[error_key] = str(exc)
         return
     except Exception:
-        st.session_state['report_history_error:'+owner] = '완전삭제 결과를 확인하지 못했습니다. 새로고침하여 기록을 확인해 주세요.'
+        action = '완전삭제' if permanent else '복원'
+        st.session_state[error_key] = action+' 결과를 확인하지 못했습니다. 목록을 새로고침해 주세요.'
         return
-    report_history_clear_exports(owner, source, report_id)
-    st.session_state['report_history_cleanup_pending:'+owner] = result['cleanup_pending']
-    st.session_state['report_history_notice:'+owner] = '선택한 리포트를 완전삭제했습니다.'
-    if not result['compacted']:
-        st.session_state['report_history_notice:'+owner] += ' 기록은 삭제했으며 저장 공간 압축은 확인이 필요합니다.'
-    st.session_state.pop('report_history_error:'+owner, None)
+    report_history_clear_exports(owner, targets)
+    action = '완전삭제' if permanent else '복원'
+    message = f'리포트 {result["count"]}건을 {action}했습니다.'
+    if permanent:
+        st.session_state['report_history_cleanup_pending:'+owner] = result['cleanup_pending']
+        if not result['compacted']:
+            message += ' 기록은 삭제했으며 저장 공간 압축은 확인이 필요합니다.'
+    elif any(source == 'inspection' for source, _ in targets):
+        message += ' 점검 현황 집계와 취합 대상에 다시 반영됩니다.'
+    st.session_state['report_history_notice:'+owner] = message
+    st.session_state.pop(error_key, None)
     st.session_state['report_history_reload:'+owner] = True
 
 
@@ -3240,31 +3305,41 @@ def report_history_retry_cleanup(owner):
 
 
 def render_report_history_rows(owner, shown, selection, *, trashed=False):
+    widths = [.85 if trashed else .4, 1.5, 3.3, 1, 1]
+    selected_tokens = set(selection) if trashed else {selection}
     with st.container(key='report_history_rows'):
-        with st.container(key='report_history_table_header'):
-            columns = st.columns([.4, 1.5, 3.3, 1, 1])
-            for column, label in zip(columns, ['선택', '작성일', '현장 / 리포트', '종류', '저장 파일']):
+        with st.container(key='report_history_trash_header' if trashed else 'report_history_table_header'):
+            columns = st.columns(widths, vertical_alignment='center')
+            if trashed:
+                tokens = tuple(json.dumps([row['source'], row['id']]) for row in shown)
+                all_key = 'report_history_trash_all:'+owner
+                st.session_state[all_key] = bool(tokens) and set(tokens).issubset(selected_tokens)
+                columns[0].checkbox('선택', key=all_key, help='현재 목록의 리포트를 모두 선택하거나 해제합니다.',
+                                    on_change=report_history_select_all, args=(owner, tokens, all_key))
+            else:
+                columns[0].markdown('**선택**')
+            for column, label in zip(columns[1:], ['작성일', '현장 / 리포트', '종류', '저장 파일']):
                 column.markdown('**'+label+'**')
         for row in shown:
             token = json.dumps([row['source'], row['id']])
             digest = hashlib.sha256((owner+token).encode()).hexdigest()[:20]
-            selected = token == selection
+            selected = token in selected_tokens
             row_key = 'report_history_row_'+('active_' if selected else '')+digest
             check_key = 'report_history_rowchecked:'+owner+':'+digest
             st.session_state[check_key] = selected
             with st.container(key=row_key):
-                check, date, title, kind, files = st.columns([.4, 1.5, 3.3, 1, 1], vertical_alignment='center')
+                check, date, title, kind, files = st.columns(widths, vertical_alignment='center')
                 with check:
                     st.checkbox('리포트 선택 · '+(row['site'] or row['title'])+' · '+row['id'][-6:], key=check_key,
-                                label_visibility='collapsed', on_change=report_history_select, args=(owner, token, check_key))
+                                label_visibility='collapsed', on_change=report_history_select, args=(owner, token, check_key, trashed))
                 with date:
                     st.button(row['created'].replace('T', ' ')[:19] or '날짜 미확인', key='report_history_rowdate:'+digest,
-                              on_click=report_history_select, args=(owner, token), width='stretch')
+                              on_click=report_history_select, args=(owner, token, None, trashed), width='stretch')
                     if trashed:
                         st.caption('삭제 '+row.get('deleted_at', '').replace('T', ' ')[:16])
                 with title:
                     st.button(row['site'] or row['title'], key='report_history_rowtitle:'+digest,
-                              on_click=report_history_select, args=(owner, token), width='stretch')
+                              on_click=report_history_select, args=(owner, token, None, trashed), width='stretch')
                     st.caption(row['title'])
                 kind.write(row['kind'])
                 files.caption(' · '.join(label for flag, label in ((row['has_hwpx'], '한글'), (row['has_pdf'], 'PDF')) if flag) or '점검 내용·사진')
@@ -3272,32 +3347,40 @@ def render_report_history_rows(owner, shown, selection, *, trashed=False):
 
 def render_report_history_management(owner, choices, selection, *, trashed=False):
     st.divider()
-    if not trashed:
-        render_report_history_import(owner)
-    select_key = 'report_history_selected:'+owner
-    st.selectbox('복원·완전삭제할 리포트' if trashed else '조회·삭제할 리포트', list(choices), index=None,
-                 placeholder='위 목록에서 선택하거나 여기에서 리포트를 선택하세요', disabled=not choices,
-                 format_func=lambda token: f"{choices[token]['created'].replace('T',' ')[:19] or '날짜 미확인'} | {choices[token]['site'] or choices[token]['title']} | {choices[token]['kind']} | {choices[token]['id'][-6:]}",
-                 key=select_key, on_change=report_history_selection_changed, args=(owner,))
     if trashed:
-        st.button('선택한 리포트 복원', key='report_history_untrash:'+owner, disabled=not selection,
-                  on_click=report_history_trash_action, args=(owner, selection, True))
-        with st.expander('선택한 리포트 완전삭제'):
-            st.warning('완전삭제하면 해당 리포트와 저장 파일을 복원할 수 없습니다.')
-            if selection:
-                row = choices[selection]
+        with st.container(key='report_history_trash_actions'):
+            restore, purge = st.columns(2, gap='small')
+            restore.button('선택한 리포트 복원', key='report_history_untrash:'+owner, type='secondary',
+                           disabled=not selection, width='stretch',
+                           on_click=report_history_apply_trash_selection, args=(owner, selection))
+            purge.button('선택한 리포트 완전삭제', key='report_history_request_purge:'+owner, type='secondary',
+                         disabled=not selection, width='stretch',
+                         on_click=report_history_request_purge, args=(owner, selection))
+        if selection and st.session_state.get('report_history_purge_request:'+owner) == selection:
+            st.warning(f'선택한 리포트 {len(selection)}건과 저장 파일을 완전삭제합니다. 삭제한 리포트는 복원할 수 없습니다.')
+            if len(selection) == 1:
+                row = choices[selection[0]]
                 st.write('삭제 대상: '+(row['site'] or row['title'])+' · '+row['created'].replace('T', ' ')[:19]+' · '+row['id'][-6:])
             confirmed = st.checkbox('선택한 리포트와 저장 파일을 복원할 수 없음을 확인했습니다.',
-                                    key=report_history_confirmation_key(owner, selection, permanent=True), disabled=not selection)
-            st.button('선택한 리포트 완전삭제', key='report_history_purge:'+owner, type='primary', disabled=not (selection and confirmed),
-                      on_click=report_history_purge_action, args=(owner, selection))
-    else:
-        with st.expander('선택한 리포트 삭제'):
-            st.caption('선택한 리포트를 휴지통으로 옮깁니다. 잘못 삭제했다면 휴지통에서 복원할 수 있습니다.')
-            confirmed = st.checkbox('선택한 리포트를 휴지통으로 옮기는 데 동의합니다.',
-                                    key=report_history_confirmation_key(owner, selection), disabled=not selection)
-            st.button('휴지통으로 이동', key='report_history_trash:'+owner, disabled=not (selection and confirmed),
-                      on_click=report_history_trash_action, args=(owner, selection, False))
+                                    key=report_history_confirmation_key(owner, selection, permanent=True))
+            execute, cancel = st.columns(2, gap='small')
+            execute.button('완전삭제 실행', key='report_history_purge:'+owner, type='primary',
+                           disabled=not confirmed, width='stretch',
+                           on_click=report_history_apply_trash_selection, args=(owner, selection, True))
+            cancel.button('취소', key='report_history_cancel_purge:'+owner, width='stretch',
+                          on_click=report_history_reset_detail, args=(owner,))
+        return
+    render_report_history_import(owner)
+    st.selectbox('조회·삭제할 리포트', list(choices), index=None,
+                 placeholder='위 목록에서 선택하거나 여기에서 리포트를 선택하세요', disabled=not choices,
+                 format_func=lambda token: f"{choices[token]['created'].replace('T',' ')[:19] or '날짜 미확인'} | {choices[token]['site'] or choices[token]['title']} | {choices[token]['kind']} | {choices[token]['id'][-6:]}",
+                 key='report_history_selected:'+owner, on_change=report_history_selection_changed, args=(owner,))
+    with st.expander('선택한 리포트 삭제'):
+        st.caption('선택한 리포트를 휴지통으로 옮깁니다. 잘못 삭제했다면 휴지통에서 복원할 수 있습니다.')
+        confirmed = st.checkbox('선택한 리포트를 휴지통으로 옮기는 데 동의합니다.',
+                                key=report_history_confirmation_key(owner, selection), disabled=not selection)
+        st.button('휴지통으로 이동', key='report_history_trash:'+owner, disabled=not (selection and confirmed),
+                  on_click=report_history_trash_action, args=(owner, selection, False))
 
 
 def render_report_history_detail(owner, row, selection):
@@ -3369,7 +3452,8 @@ def render_report_history(owner):
             st.warning('리포트 기록은 삭제했으며 일부 저장 파일 정리가 남아 있습니다.')
             st.button('남은 파일 정리 다시 시도', key='report_history_cleanup_retry:'+owner,
                       on_click=report_history_retry_cleanup, args=(owner,))
-        view = st.radio('리포트 보관함', ['보관 중', '휴지통'], horizontal=True, key='report_history_view:'+owner)
+        view = st.radio('리포트 보관함', ['보관 중', '휴지통'], horizontal=True, key='report_history_view:'+owner,
+                        on_change=report_history_reset_selection, args=(owner,))
         trashed = view == '휴지통'
         if trashed:
             st.caption('휴지통의 안전점검 보고서는 점검 현황 집계와 취합 대상에서 제외됩니다. 복원하면 다시 반영됩니다.')
@@ -3393,17 +3477,24 @@ def render_report_history(owner):
                      and (not search or search in (row['title']+' '+row['site']+' '+row['dept']).casefold())
                      and (period == '전체 기간' or threshold <= row['created'][:10] <= today.isoformat())]
         choices = {json.dumps([row['source'], row['id']]):row for row in shown}
-        select_key = 'report_history_selected:'+owner
-        selection = st.session_state.get(select_key)
-        if selection not in choices:
-            selection = None
-            st.session_state[select_key] = None
-        scope = json.dumps([trashed, selection])
+        if trashed:
+            select_key = 'report_history_trash_selected:'+owner
+            selected = set(st.session_state.get(select_key, ()))
+            selection = tuple(token for token in choices if token in selected)
+            st.session_state[select_key] = list(selection)
+        else:
+            select_key = 'report_history_selected:'+owner
+            selection = st.session_state.get(select_key)
+            if selection not in choices:
+                selection = None
+                st.session_state[select_key] = None
+        scope = (trashed, selection, tuple(choices) if trashed else ())
         if st.session_state.get('report_history_selection_scope:'+owner) != scope:
             report_history_reset_detail(owner)
             st.session_state['report_history_selection_scope:'+owner] = scope
         if shown:
-            st.caption(f'리포트 {len(shown)}건 · 선택 {1 if selection else 0}건')
+            count = len(selection) if trashed else int(selection is not None)
+            st.caption(f'리포트 {len(shown)}건 · 선택 {count}건')
             render_report_history_rows(owner, shown, selection, trashed=trashed)
         else:
             st.info('조건에 맞는 리포트가 없습니다. 기간이나 검색어를 변경해 주세요.' if records else
@@ -6428,7 +6519,7 @@ def main_tab_home(actor, index):
             return
         st.session_state.ptw_step=PTW_STEPS[0]
         st.session_state.pop('ptw_delete_work',None)
-        st.session_state.ptw_back_revision=st.session_state.get('ptw_back_revision',0)+1
+        ptw_track_route()
     elif index==4:
         st.session_state.safety_doc_search=''
         st.session_state.safety_doc_filter='전체'
@@ -6445,7 +6536,8 @@ def main_tab_home(actor, index):
         st.session_state['report_history_period:'+owner]='전체 기간'
         st.session_state['report_history_site:'+owner]='전체 현장'
         for key in list(st.session_state):
-            if key in ('report_history_open:'+owner,'report_history_preview:'+owner,'report_history_selected:'+owner) or str(key).startswith('report_history_confirm:'+owner+':'):
+            if key in ('report_history_open:'+owner,'report_history_preview:'+owner,'report_history_selected:'+owner, 'report_history_trash_selected:'+owner,
+                       'report_history_purge_request:'+owner) or str(key).startswith('report_history_confirm:'+owner+':'):
                 st.session_state.pop(key,None)
     st.session_state.ws_navigation=dict(index=index,token=token,home=True)
 
@@ -7164,9 +7256,16 @@ def render_inspection_dashboard():
 @st.fragment
 def render_inspection_history_panel(logged_user_id):
     if not _perf_actor_allowed(logged_user_id): return
-    if st.session_state.pop("report_history_reload:"+str(logged_user_id), False):
-        # A trash action affects other fragments' exports and dashboard counts.
+    owner = str(logged_user_id)
+    resume_key = 'report_history_resume:'+owner
+    if st.session_state.pop('report_history_reload:'+owner, False):
+        # Keep the trash view and its filters when refreshing other fragments.
+        if st.session_state.get('report_history_view:'+owner) == '휴지통':
+            keys = ('inspection_history_menu',)+tuple('report_history_'+field+':'+owner for field in ('view','search','period','site'))
+            st.session_state[resume_key] = {key:st.session_state[key] for key in keys if key in st.session_state}
         st.rerun()
+    for key, value in st.session_state.pop(resume_key, {}).items():
+        st.session_state[key] = value
     history_mode = st.radio("점검 기록 메뉴", ["내 리포트", "점검 현황", "위험성평가 현황", "여러 점검 취합"], horizontal=True, key="inspection_history_menu")
     if history_mode == "내 리포트":
         render_report_history(str(logged_user_id))
@@ -12815,73 +12914,1504 @@ def ptw_render_report(actor):
 
 
 def ptw_hardware_back(actor):
-    ptw_try_save(actor)
-    if st.session_state.pop('ptw_delete_work',None) is not None: pass
-    else:
-        step = st.session_state.get('ptw_step',PTW_STEPS[0])
-        ptw_go(actor,max(0,PTW_STEPS.index(step)-1))
-    st.session_state.ptw_back_revision = st.session_state.get('ptw_back_revision',0)+1
+    if _perf_actor_allowed(actor):ptw_track_back()
 
 
 def ptw_render_back_bridge(actor):
-    can_back = st.session_state.ptw_step!=PTW_STEPS[0] or bool(st.session_state.get('ptw_delete_work'))
+    can_back = st.session_state.get('ptw_track_view','list')!='list'
     with st.container(key='ptw_back_frame'):
         st.markdown('<span id="keco-permit-navigation" data-back="'+('yes' if can_back else 'no')+'" data-revision="'+str(st.session_state.get('ptw_back_revision',0))+'"></span>',unsafe_allow_html=True)
         st.button('작업허가제 휴대폰 뒤로가기 처리',key='ptw_hardware_back',on_click=ptw_hardware_back,args=(actor,))
 
 
+
+
+# 작업허가서 첨부 양식: 공종별 공통·안전조치 원문 항목
+PTW_TRACK_TEMPLATES = {'2m 이상 고소작업': [{'group': '공통 사항',
+                 'items': ['작업에 적합한 보호구 지급·착용',
+                           '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                           '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                           '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                           '위험성평가 실시(사전위험성 확인 및 조치)',
+                           '작업지휘자 배치',
+                           '안전한 이동통로 확보']},
+                {'group': '중장비 사용 및 중량물 인양작업 시',
+                 'items': ['(차량계 하역운반기계·건설기계, 중량물취급)작업계획서 작성·이행',
+                           '중장비, 작업자 이동통로 분리',
+                           '장비 유도자 배치 및 운전원과의 즉각적인 신호체계 구축',
+                           '안전한 인양방식 선정(줄걸이 방식, 하역운반기계 선정 등)']},
+                {'group': '2m 이상 고소작업',
+                 'items': ['‘보통(일자형) 사다리’는 작업발판으로 사용금지(이동통로용)',
+                           '‘A형 사다리’ 작업 시 안전수칙 준수(아웃트리거 사용, 2인1조 작업 등)\n※ 3.5m 초과 고소작업 시 ‘A형 사다리’ 작업발판으로 사용 금지',
+                           '적합한 고소작업대 사용 및 해당 고소작업대 안전수칙 준수\n'
+                           '고소작업대 종류\n'
+                           '기계장비\n'
+                           '차량탑재형, 시저형, 자주식 등\n'
+                           '비계\n'
+                           '시스템비계, 강관비계, 강관틀비계, 이동식비계\n'
+                           '기타(달비계, 말비계, 브라켓비계 등)\n'
+                           '기타\n'
+                           '작업발판 일체형 거푸집 등',
+                           '추랑방지 조치(안전대 부착설비 설치, 안전대 착용, 추락방호망 설치)',
+                           '추락방호 조치(안전난간, 개구부 덮개 등 설치)',
+                           '낙하물 방지조치(방호선반·낙하물방지망 설치, 출입금지 조치 등)']}],
+ '1.5m 이상 굴착·가설공사': [{'group': '공통 사항',
+                      'items': ['작업에 적합한 보호구 지급·착용',
+                                '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                                '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                                '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                                '위험성평가 실시(사전위험성 확인 및 조치)',
+                                '작업지휘자 배치',
+                                '안전한 이동통로 확보']},
+                     {'group': '중장비 사용 및 중량물 인양작업 시',
+                      'items': ['(차량계 하역운반기계·건설기계, 중량물취급)작업계획서 작성·이행',
+                                '중장비, 작업자 이동통로 분리',
+                                '장비 유도자 배치 및 운전원과의 즉각적인 신호체계 확보',
+                                '안전한 인양방식 선정(줄걸이 방식, 하역운반기계 선정 등)']},
+                     {'group': '1.5m 이상 굴착·가설 공사',
+                      'items': ['굴착면 높이 2m 이상일 경우 굴착작업계획서 작성(안전보건규칙 제38조)',
+                                '작업계획에 따른 흙막이지보공 사용',
+                                '굴착면 깊이가 1.5m 이상일 경우 승강설비(사다리, 가설계단) 설치',
+                                '중장비(덤프트럭, 굴착기 등) 전도 및 전락방지 조치 후 작업 실시',
+                                '(공사시방서 기준) 지반의 종류에 따른 굴착면 기울기 준수',
+                                '절취사면이 높은 경우 계단식 굴착\n※ 절취사면의 높이가 7m 이상인 경우, 7m마다 폭 2m 이상 소단 설치',
+                                '절취사면은 적절한 사면보호 조치(비닐덮기, 록볼트, 넷트 등)',
+                                '지하매설물 주위 굴착 시 유관기관 협의']}],
+ '철골구조물 공사': [{'group': '공통 사항',
+               'items': ['작업에 적합한 보호구 지급·착용',
+                         '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                         '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                         '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                         '위험성평가 실시(사전위험성 확인 및 조치)',
+                         '작업지휘자 배치',
+                         '안전한 이동통로 확보']},
+              {'group': '중장비 사용 및 중량물 인양작업 시',
+               'items': ['(차량계 하역운반기계·건설기계, 중량물취급)작업계획서 작성·이행',
+                         '중장비, 작업자 이동통로 분리',
+                         '장비 유도자 배치 및 운전원과의 즉각적인 신호체계 확보',
+                         '안전한 인양방식 선정(줄걸이 방식, 하역운반기계 선정 등)']},
+              {'group': '철골구조물 공사',
+               'items': ['승강 트랩 설치 시 안전대책\n※ 수직 구명줄, 답단간격 25~30cm, 폭 30cm 이상, D16철근 사용 등',
+                         '수평철골와 수직철골 연결작업시 작업발판 설치',
+                         '철골부재의 안전한 인양방식 선정(줄걸이 방식, 하역운반기계 등)',
+                         '철골 접합부 체결시 충분한 지지력 확보 후 걸이로프 분리',
+                         '용접·용단 작업장 주변에 가연물이나 인화성 물체 차단',
+                         '콘크리트 타설, 데크플레이트 운반·깔기 작업 등 작업 중 안전대가 간섭되지 않도록 적정위치에 ‘안전대 부착설비’ 설치',
+                         '데크플레이트 중심부에 철근다발 등 과적재 금지',
+                         '데크플레이트 판개 후 가용접 즉시 실시',
+                         '데크플레이트 단부 및 개구부에는 안전난간 조기에 설치']}],
+ '2m 이상 외부 도장공사': [{'group': '공통 사항',
+                    'items': ['작업에 적합한 보호구 지급·착용',
+                              '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                              '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                              '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                              '위험성평가 실시(사전위험성 확인 및 조치)',
+                              '작업지휘자 배치',
+                              '안전한 이동통로 확보']},
+                   {'group': '2m 이상 외부 도장공사(달비계를 사용하는 도장공사 등)',
+                    'items': ['달비계로프, 구명줄, 작업대, 각종 철물 등의 손상 여부 확인',
+                              '달비계로프, 구명줄에 꼬리표(상호, 길이/크기, 생산일, 작업투입일) 부착',
+                              '안전한 고정점 확보\n※ 각 고정점은 22.9kN(2,340kgf) 이상 지지',
+                              '‘달비계로프’와 ‘구명줄’은 서로 다른 고정점에 결속\n※ ‘달비계로프’와 ‘구명줄’의 엉킴 방지를 위해 약 1m 정도 이격하여 설치',
+                              '각 로프는 2개 이상의 고정점에 안전하게 결속',
+                              '단부(모서리) 등에 의한 로프·구명줄 파손 방지 조치']}],
+ '승강기 설치공사': [{'group': '공통 사항',
+               'items': ['작업에 적합한 보호구 지급·착용',
+                         '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                         '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                         '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                         '위험성평가 실시(사전위험성 확인 및 조치)',
+                         '작업지휘자 배치',
+                         '안전한 이동통로 확보']},
+              {'group': '중장비 사용 및 중량물 인양작업 시',
+               'items': ['(차량계 하역운반기계·건설기계, 중량물취급)작업계획서 작성·이행',
+                         '중장비, 작업자 이동통로 분리',
+                         '장비 유도자 배치 및 운전원과의 즉각적인 신호체계 확보',
+                         '안전한 인양방식 선정(줄걸이 방식, 하역운반기계 선정 등)']},
+              {'group': '승강기(공사용 리프트 등) 설치·해체 공사',
+               'items': ['안전대 부착시설 설치 및 근로자 안전대 착용',
+                         '방호선반 설치(낙하물 방지)',
+                         '각 층 승강로 주위 방호울 설치',
+                         '안전장치 설치\n※ 과부하방지장치, 권과방지장치(전기식·기계식), 비상정지장치, 출입문연동장치, 낙하방지장치, 완충장치, 안전고리(운반구 이탈방지)',
+                         '마스트 연결상태 및 풀림방지 조치 확인',
+                         '달기구용 와이어로프, 체인의 파손여부 확인',
+                         '운반구 상부 안전난간 설치(마스트 설치·해체 작업 및 비상시 대비)',
+                         '수평지지대 설치 간격 준수(제조사 매뉴얼 제시 기준)',
+                         '해체작업시 마스트 수평지지대 선해체 금지(순차적 해체)']}],
+ '밀폐공간작업': [{'group': '공통 사항',
+             'items': ['작업에 적합한 보호구 지급·착용(방진마스크, 호흡용마스크 등)',
+                       '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                       '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                       '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                       '위험성평가 실시(사전위험성 확인 및 조치)',
+                       '작업지휘자 배치',
+                       '안전한 이동통로 확보']},
+            {'group': '밀폐공간 작업',
+             'items': ['밀폐공간작업프로그램 운영',
+                       '밀폐공간작업 관련 특별안전보건교육 실시',
+                       '작업장 조도 확보',
+                       '혼합가스농도 측정기 구비·사용',
+                       '밀폐공간 출입 전·중 산소 및 유해가스 농도 측정·기록',
+                       '급기구와 배기구의 적정 설치',
+                       '적정공기 상태가 유지되도록 작업 전, 작업 중 지속적인 환기 실시',
+                       '유해가스, 불활성 기체 발생 장소에 대한 안전조치',
+                       '감시인 1인 이상 배치',
+                       '소화기 비치 등 화재예방 조치 여부',
+                       '구조작업 대비 공기호흡기 등 보호장비 비치여부',
+                       '비상연락체계 구축 여부',
+                       '응급상황 발생 시 외부에서 구조하기 위한 구조용 삼각대 등 구비']}],
+ '전기작업(정전·활선 등)': [{'group': '공통 사항',
+                    'items': ['작업에 적합한 보호구 지급·착용(방진마스크, 호흡용마스크 등)',
+                              '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                              '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                              '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                              '위험성평가 실시(사전위험성 확인 및 조치)',
+                              '작업지휘자 배치',
+                              '안전한 이동통로 확보']},
+                   {'group': '전기작업(정전·활선 등)',
+                    'items': ['전원 차단 및 무전압 확인',
+                              '차단기 OFF 및 LOTO(잠금·표지)',
+                              '검전 실시',
+                              '필요 시 접지 실시',
+                              '충전부 방호·접근한계 확보',
+                              '절연공구·보호구 사용',
+                              '누전차단기 및 접지 상태 확인',
+                              '임시배선·케이블 손상 여부 확인',
+                              '분전반 잠금 및 회로 식별',
+                              '전기작업 자격·교육 확인',
+                              '활선/인접활선 작업 시 별도 조치',
+                              '복전 전 인원·공구 철수 및 확인']}],
+ '화재위험 작업(용접·용단 등)': [{'group': '공통 사항',
+                       'items': ['작업에 적합한 보호구 지급·착용(방진마스크, 호흡용마스크 등)',
+                                 '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                                 '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                                 '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                                 '위험성평가 실시(사전위험성 확인 및 조치)',
+                                 '작업지휘자 배치',
+                                 '안전한 이동통로 확보']},
+                      {'group': '화재위험 작업(용접·용단 등)',
+                       'items': ['가연성·인화성 물질 제거/격리',
+                                 '불티 비산방지포·방화포 설치 등',
+                                 '소화기 등 소화설비 비치',
+                                 '인접층·하부층 및 틈새 불티 유입 확인',
+                                 '가스·증기·분진 위험 확인 및 필요 시 측정',
+                                 '화재감시자 지정·배치',
+                                 '작업구역 출입통제',
+                                 '용접기·케이블·가스용기 상태 확인',
+                                 '가스용기 전도방지 및 화염원과 이격',
+                                 '환기조치',
+                                 '작업 후 잔불·연기 확인',
+                                 '감시 종료 후 현장 재확인']}],
+ '중량물 취급작업(크레인, 지게차 운반 등)': [{'group': '공통 사항',
+                              'items': ['작업에 적합한 보호구 지급·착용(방진마스크, 호흡용마스크 등)',
+                                        '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                                        '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                                        '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                                        '위험성평가 실시(사전위험성 확인 및 조치)',
+                                        '작업지휘자 배치',
+                                        '안전한 이동통로 확보']},
+                             {'group': '중량물 취급작업(크레인, 지게차 운반 등)',
+                              'items': ['작업계획서/인양계획 확인',
+                                        '인양하중·작업반경·장비 제원 확인',
+                                        '지반 지지력 및 아웃트리거 확인',
+                                        '크레인/양중장비 안전장치 확인',
+                                        '와이어·체인·슬링벨트·샤클 상태 확인',
+                                        '훅해지장치 및 결속상태 확인',
+                                        '신호수 지정 및 신호방법 공유',
+                                        '작업반경 출입통제',
+                                        '인양경로 장애물·전선 간섭 확인',
+                                        '풍속 등 기상조건 확인',
+                                        '인양물 하부 출입금지',
+                                        '작업 종료 후 장비·자재 안전상태 확인']}],
+ '비계 설치 및 해체작업': [{'group': '공통 사항',
+                   'items': ['작업에 적합한 보호구 지급·착용(방진마스크, 호흡용마스크 등)',
+                             '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                             '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                             '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                             '위험성평가 실시(사전위험성 확인 및 조치)',
+                             '작업지휘자 배치',
+                             '안전한 이동통로 확보']},
+                  {'group': '비계 설치 및 해체작업',
+                   'items': ['비계 설치·해체 작업계획서 작성 및 이행(산업안전보건기준에 관한 규칙 제186조)',
+                             '조립도에 따른 조립·해체 실시(강관비계, 시스템비계 등 구조 준수)',
+                             '벽이음재·버팀대 설치 간격 준수(수직·수평 규격 기준 준수)',
+                             '작업발판 폭 40cm 이상 확보 및 발판 틈새 3cm 이하 유지',
+                             '안전난간 설치(상부난간대 90~120cm, 중간난간대 45~60cm)',
+                             '승강설비(안전한 사다리 등) 설치 및 이용',
+                             '비계기둥 밑동잡이 설치 및 침하방지 조치(깔판, 받침목 등)',
+                             '최대적재하중 표지 부착 및 준수, 과적재 금지',
+                             '해체작업 순서 준수(상부에서 하부로 순차 해체, 역순 금지)',
+                             '비계 위 자재 적치 시 낙하방지 조치(자재 결속, 낙하물방지망 설치)',
+                             '작업 전 비계 이상 유무 점검(변형, 부식, 이음부·연결부 풀림 등)',
+                             '자재 인양 시 신호수 배치 및 신호체계 확립',
+                             '조립·해체 작업구간 하부 출입금지 조치 및 표지판 설치']}],
+ '해체공사 및 철거작업': [{'group': '공통 사항',
+                  'items': ['작업에 적합한 보호구 지급·착용(방진마스크, 호흡용마스크 등)',
+                            '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                            '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                            '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                            '위험성평가 실시(사전위험성 확인 및 조치)',
+                            '작업지휘자 배치',
+                            '안전한 이동통로 확보']},
+                 {'group': '해체공사 및 철거작업',
+                  'items': ['해체계획·작업순서 확인',
+                            '구조검토 및 위험부위 확인',
+                            '해체구간 출입통제',
+                            '상부·하부 동시작업 금지',
+                            '가설구조물·비계 상태 확인',
+                            '낙하(떨어짐)·비래(흩날림) 방지',
+                            '중장비 작업반경 통제',
+                            '전기·가스·수도 등 차단',
+                            '분진·소음 저감조치',
+                            '폐기물 처리계획',
+                            '작업자 보호구 및 신호체계',
+                            '비상대피로 확보']}],
+ '콘크리트 타설공사(동바리)': [{'group': '공통 사항',
+                     'items': ['작업에 적합한 보호구 지급·착용(방진마스크, 호흡용마스크 등)',
+                               '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                               '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                               '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                               '위험성평가 실시(사전위험성 확인 및 조치)',
+                               '작업지휘자 배치',
+                               '안전한 이동통로 확보']},
+                    {'group': '동바리(지보공) 설치상태 점검',
+                     'items': ['동바리 설치간격 및 수직도 확인',
+                               '동바리 하부 받침목·받침판 설치(지반 침하 방지)',
+                               '수평연결재(수평재) 및 가새(좌굴방지) 설치 확인',
+                               '동바리 이음부 고정상태(클램프 등) 확인']},
+                    {'group': '거푸집(형틀) 점검', 'items': ['거푸집 변형·처짐·파손 여부 확인', '측압 대비 거푸집 보강(타설속도·높이 고려) 확인']},
+                    {'group': '타설 작업 중 안전조치',
+                     'items': ['타설 순서 및 타설속도 준수(측압 관리)',
+                               '콘크리트 타설장비 작업반경 내 출입통제',
+                               '타설 중 신호체계(콘크리트 타설장비 운전원-작업자) 확립',
+                               '타설 중 이상 발견 시 즉시 대피·작업중지 절차 확인']}],
+ '도로·교통 작업허가서': [{'group': '공통 사항',
+                  'items': ['작업에 적합한 보호구 지급·착용(방진마스크, 호흡용마스크 등)',
+                            '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                            '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                            '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                            '위험성평가 실시(사전위험성 확인 및 조치)',
+                            '작업지휘자 배치',
+                            '안전한 이동통로 확보']},
+                 {'group': '도로·교통 작업허가서',
+                  'items': ['교통처리계획 확인',
+                            '차량·보행자 동선 분리',
+                            '안전표지·차단시설 설치',
+                            '신호수 배치',
+                            '야간 조명·점멸등 확보',
+                            '작업차량 후방 안전조치',
+                            '작업구간 속도·통행관리',
+                            '비상차량 통행로 확보',
+                            '감시인 1인 이상 배치',
+                            '보행자 우회동선 확보',
+                            '악천후 시 안전조치',
+                            '작업 종료 후 시설물 원상복구']}],
+ '위험물·유해물질 작업허가서': [{'group': '공통 사항',
+                     'items': ['작업에 적합한 보호구 지급·착용(방진마스크, 호흡용마스크 등)',
+                               '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                               '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                               '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                               '위험성평가 실시(사전위험성 확인 및 조치)',
+                               '작업지휘자 배치',
+                               '안전한 이동통로 확보']},
+                    {'group': '위험물·유해물질 작업허가서',
+                     'items': ['물질명·MSDS 확인',
+                               '보관·취급량 확인',
+                               '누출·비산 방지',
+                               '환기상태 확인',
+                               '점화원 제거',
+                               '적정 보호구 착용',
+                               '소화설비 비치',
+                               '혼합·반응 위험 확인',
+                               '용기 라벨·밀폐상태 확인',
+                               '폐기물 처리방법 확인',
+                               '비상세척·응급조치 수단 확보',
+                               '비상연락체계 구축 여부']}],
+ '기타 관리대상 작업': [{'group': '공통 사항',
+                 'items': ['작업에 적합한 보호구 지급·착용(방진마스크, 호흡용마스크 등)',
+                           '작업관련 안전보건교육 실시(위험요인, 안전작업, 안전수칙 등)',
+                           '작업 가능한 기상상태 확인(기상상태가 불안정할 경우 작업 중지)',
+                           '작업구역 설정 및 작업 범위 내 근로자 출입 통제',
+                           '위험성평가 실시(사전위험성 확인 및 조치)',
+                           '작업지휘자 배치',
+                           '안전한 이동통로 확보']},
+                {'group': '기타 관리대상 작업(00 작업)', 'items': []}]}
+
+# 작업허가서: 원본 사진을 보존하고, 접수 차수와 감독자의 확인 이력을 별도로 기록한다.
+PTW_TRACK_STATES = ('접수', '보완 요청', '검토 완료', '재승인 대기', '승인 기록', '이행 중', '작업 종료', '취소·중단 종결')
+PTW_TRACK_TERMINAL = ('작업 종료', '취소·중단 종결')
+PTW_TRACK_REVIEW_ITEMS = ('신청자·작업명과 작업범위 확인', '허가기간·작업위치 확인', '적용할 안전조치와 점검 항목 확인', '원본 비치 정보 확인')
+PTW_TRACK_CONTRACTOR = ('미기록', '이행', '미이행', '해당 없음')
+PTW_TRACK_SUPERVISOR = ('미확인', '확인', '미이행', '해당 없음')
+PTW_TRACK_PHOTO_TYPES = {'JPEG': 'image/jpeg', 'PNG': 'image/png', 'WEBP': 'image/webp'}
+PTW_TRACK_FIELDS = (('title','작업명'), ('categories','허가대상'), ('start','허가 시작일'), ('end','허가 종료일'),
+                    ('place','작업위치'), ('description','작업내용'), ('applied_on','신청일'),
+                    ('company','신청자 소속·시공사'), ('applicant_role','신청자 직책'), ('applicant','신청자 성명'),
+                    ('paper_approval_date','서류 기재 승인일'), ('paper_approver_company','서류 기재 승인자 소속'),
+                    ('paper_approver_role','서류 기재 승인자 직책'), ('paper_approver','서류 기재 승인자 성명'),
+                    ('document_ref','문서번호'), ('original_location','원본 비치 위치'))
+
+
+def ptw_track_identity(actor):
+    from collections.abc import Mapping
+    actor = report_history_identity(actor)
+    role = str(st.secrets.get('user_roles', {}).get(actor, '')).strip().casefold()
+    if role in {'contractor', 'external', 'vendor', '시공사', '외부'}:
+        raise PermissionError('공단 감독자 계정에서만 작업허가서를 관리할 수 있습니다.')
+    scope = st.secrets.get('work_permit_site_users', None)
+    if scope is None:
+        return actor, None  # 기존과 같이 본인 등록자료만 조회
+    if not isinstance(scope, Mapping):
+        raise PermissionError('작업허가서 담당 현장 설정을 확인해 주세요.')
+    known = set(ra_managed_sites())
+    sites = {canonical_site_label(site) for site, users in scope.items()
+             if isinstance(users, (list, tuple)) and actor in {str(user) for user in users}}
+    return actor, tuple(sorted(sites & known))
+
+
+def ptw_track_db():
+    db = nhn_record_connection('reports.sqlite3')
+    try:
+        if {'ptw_tracking_cases','ptw_tracking_photos'} <= report_history_tables(db):
+            return db
+        db.execute('''CREATE TABLE IF NOT EXISTS ptw_tracking_cases (
+            id TEXT PRIMARY KEY, owner TEXT NOT NULL, site TEXT NOT NULL,
+            number TEXT NOT NULL UNIQUE, created TEXT NOT NULL, updated TEXT NOT NULL,
+            title TEXT NOT NULL, start TEXT NOT NULL, end TEXT NOT NULL,
+            status TEXT NOT NULL, revision INTEGER NOT NULL, payload TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS ptw_tracking_photos (
+            id TEXT PRIMARY KEY, case_id TEXT NOT NULL, name TEXT NOT NULL,
+            mime TEXT NOT NULL, sha256 TEXT NOT NULL, size INTEGER NOT NULL, content BLOB NOT NULL)''')
+        db.execute('CREATE INDEX IF NOT EXISTS ptw_tracking_site_updated ON ptw_tracking_cases(site, updated)')
+        db.execute('CREATE INDEX IF NOT EXISTS ptw_tracking_photos_case ON ptw_tracking_photos(case_id)')
+        return db
+    except Exception:
+        db.close()
+        raise
+
+
+def ptw_track_access(owner, site, actor, scope):
+    return owner == actor if scope is None else site in scope
+
+
+def ptw_track_list(actor):
+    actor, scope = ptw_track_identity(actor)
+    if scope == ():
+        return []
+    keys = ('id','site','number','created','updated','title','start','end','status')
+    where, params = ('owner=?', (actor,)) if scope is None else (
+        'site IN ('+','.join('?' for _ in scope)+')', scope)
+    db = ptw_track_db()
+    try:
+        return [dict(zip(keys, row)) for row in db.execute(
+            'SELECT '+','.join(keys)+' FROM ptw_tracking_cases WHERE '+where+' ORDER BY updated DESC,id', params).fetchall()]
+    finally:
+        db.close()
+
+
+def ptw_track_load_row(db, actor, scope, case_id):
+    keys = ('id','owner','site','number','created','updated','title','start','end','status','revision','payload')
+    row = db.execute('SELECT '+','.join(keys)+' FROM ptw_tracking_cases WHERE id=?', (str(case_id),)).fetchone()
+    if row is None or not ptw_track_access(row[1], row[2], actor, scope):
+        raise PermissionError('접수 건을 찾을 수 없거나 담당 현장이 아닙니다.')
+    record = dict(zip(keys, row))
+    record['data'] = json.loads(record.pop('payload'))
+    return record
+
+
+def ptw_track_load(actor, case_id):
+    actor, scope = ptw_track_identity(actor)
+    db = ptw_track_db()
+    try:
+        record = ptw_track_load_row(db, actor, scope, case_id)
+        record['photos'] = {row[0]:dict(zip(('id','name','mime','sha256','size'), row)) for row in db.execute(
+            'SELECT id,name,mime,sha256,size FROM ptw_tracking_photos WHERE case_id=?', (case_id,)).fetchall()}
+        return record
+    finally:
+        db.close()
+
+
+def ptw_track_photo(actor, case_id, photo_id):
+    actor, scope = ptw_track_identity(actor)
+    db = ptw_track_db()
+    try:
+        ptw_track_load_row(db, actor, scope, case_id)
+        row = db.execute('SELECT content,mime,sha256 FROM ptw_tracking_photos WHERE case_id=? AND id=?',
+                         (case_id, photo_id)).fetchone()
+    finally:
+        db.close()
+    if row is None or row[1] not in PTW_TRACK_PHOTO_TYPES.values():
+        raise ValueError('접수 건에 연결된 사진을 확인해 주세요.')
+    raw = inspection_photo_bytes(row[0]) if isinstance(row[0], str) else bytes(row[0])
+    if hashlib.sha256(raw).hexdigest() != row[2]:
+        raise StorageError('보관한 사진의 원본 일치 여부를 확인할 수 없습니다.')
+    return raw, row[1]
+
+
+def ptw_track_prepare_photos(files, *, required=False):
+    files = list(files or ())
+    if required and not files:
+        raise ValueError('제출된 작업허가서 사진을 한 장 이상 올려 주세요.')
+    if len(files) > 12:
+        raise ValueError('한 번에 사진 12장까지 올릴 수 있습니다.')
+    result = []
+    total = 0
+    for index, file in enumerate(files, 1):
+        name, raw = file if isinstance(file, tuple) else (file.name, file.getvalue())
+        size = len(raw)
+        total += size
+        if not size or size > 16*1024**2 or total > 64*1024**2:
+            raise ValueError('사진은 장당 16MB, 한 번에 합계 64MB까지 등록할 수 있습니다.')
+        try:
+            with Image.open(io.BytesIO(raw)) as img:
+                mime = PTW_TRACK_PHOTO_TYPES.get(img.format)
+                if not mime or img.width*img.height > 40_000_000 or getattr(img,'n_frames',1) != 1:
+                    raise ValueError
+                img.verify()
+        except Exception:
+            raise ValueError(f'{index}번째 파일을 확인해 주세요. 정지 사진(JPG·PNG·WEBP)만 등록할 수 있습니다.') from None
+        name = re.sub(r'[\x00-\x1f\\/<>"|:*?]+', '_', str(name)).strip()[:160] or f'사진 {index}'
+        result.append(dict(name=name, raw=bytes(raw), mime=mime, size=size, sha256=hashlib.sha256(raw).hexdigest()))
+    return result
+
+
+def ptw_track_store_photos(db, case_id, photos):
+    import uuid
+    storage = nhn_storage_backend() if photos else None
+    ids = []
+    for photo in photos:
+        photo_id = uuid.uuid4().hex
+        content = storage.photo_pack(photo['raw']) if storage is not None else photo['raw']
+        db.execute('INSERT INTO ptw_tracking_photos VALUES(?,?,?,?,?,?,?)',
+                   (photo_id, case_id, photo['name'], photo['mime'], photo['sha256'], photo['size'], content))
+        ids.append(photo_id)
+    return ids
+
+
+def ptw_track_text(value, name, maximum, *, required=False):
+    text = str(value or '').strip()
+    if len(text) > maximum or (required and not text):
+        raise ValueError(f'{name}을(를) {"1~" if required else ""}{maximum}자 이내로 입력해 주세요.')
+    return text
+
+
+def ptw_track_date(value, label, *, required=False, past=False):
+    if not value and not required:
+        return ''
+    try:
+        day = datetime.date.fromisoformat(str(value))
+    except (ValueError, TypeError):
+        raise ValueError(label+'을(를) 올바른 날짜로 입력해 주세요.') from None
+    if past and day > datetime.date.fromisoformat(ptw_today()):
+        raise ValueError(label+'은(는) 오늘 이후 날짜로 기록할 수 없습니다.')
+    return day.isoformat()
+
+
+def ptw_track_checklist(categories, heavy, custom):
+    out, seen = [], set()
+    def add(group, item):
+        key = re.sub(r'\s+', '', item)
+        if key in seen:
+            return
+        seen.add(key)
+        out.append(dict(id=hashlib.sha256(key.encode()).hexdigest()[:16], group=group, item=item))
+    for category in categories:
+        for group in PTW_TRACK_TEMPLATES[category]:
+            if group['group'] == '중장비 사용 및 중량물 인양작업 시' and not heavy:
+                continue
+            for item in group['items']:
+                add(group['group'], item)
+    if heavy:
+        for group in PTW_TRACK_TEMPLATES['2m 이상 고소작업']:
+            if group['group'] == '중장비 사용 및 중량물 인양작업 시':
+                for item in group['items']:
+                    add(group['group'], item)
+    for item in custom:
+        add('현장 추가 항목', item)
+    return out
+
+
+def ptw_track_submission(values, number, photo_ids, actor, now):
+    fields = {key:ptw_track_text(values.get(key), label, 5000 if key=='description' else 500,
+                               required=key=='title') for key,label in PTW_TRACK_FIELDS if key!='categories'}
+    for key,label in PTW_TRACK_FIELDS:
+        if key in ('start','end','applied_on','paper_approval_date'):
+            fields[key] = ptw_track_date(fields[key], label)
+    if fields['start'] and fields['end'] and fields['start'] > fields['end']:
+        raise ValueError('허가 종료일은 시작일보다 빠를 수 없습니다. 원본과 대조해 주세요.')
+    categories = values.get('categories', [])
+    if not isinstance(categories, (list,tuple)) or any(x not in PTW_TRACK_TEMPLATES for x in categories):
+        raise ValueError('첨부 양식에 맞는 허가대상을 선택해 주세요.')
+    fields['categories'] = list(dict.fromkeys(categories))
+    custom = [line.strip() for line in ptw_track_text(values.get('custom'), '현장 추가 항목', 6000).splitlines() if line.strip()]
+    if len(custom)>30 or any(len(item)>350 for item in custom):
+        raise ValueError('현장 추가 항목은 30개, 항목별 350자까지 입력할 수 있습니다.')
+    heavy = bool(values.get('heavy'))
+    items = ptw_track_checklist(fields['categories'], heavy, custom)
+    return dict(number=number, fields=fields, checklist=items, heavy=heavy, custom=custom,
+                received_on=ptw_track_date(values.get('received_on'), '접수일', required=True, past=True),
+                note=ptw_track_text(values.get('note'), '접수·변경 메모', 3000),
+                photos=list(photo_ids), by=actor, at=now)
+
+
+def ptw_track_event(data, kind, version, actor, now, body, photos=()):
+    import uuid
+    event = dict(id=uuid.uuid4().hex, kind=kind, version=version, by=actor, at=now, body=body, photos=list(photos))
+    data['events'].append(event)
+    return event
+
+
+def ptw_track_findings(data):
+    findings = {}
+    for event in data['events']:
+        body = event['body']
+        if event['kind'] == 'check':
+            for row in body['rows']:
+                if '미이행' not in (row['contractor'], row['supervisor']):
+                    continue
+                key = f"{event['version']}:{body['phase']}:{body['day']}:{row['id']}"
+                previous = findings.get(key)
+                # 같은 날의 이미 조치된 기록을 그대로 다시 저장해도 기존 조치를 유지.
+                if previous and previous['row'] == row:
+                    continue
+                findings[key] = dict(id=key, version=event['version'], phase=body['phase'], day=body['day'],
+                                     row=row, status='미조치', action='', at=event['at'])
+        elif event['kind'] == 'action' and body['finding_id'] in findings:
+            findings[body['finding_id']].update(status=body['status'], action=body['note'], at=event['at'])
+    return list(findings.values())
+
+
+def ptw_track_current_items(data):
+    items = list(data['submissions'][-1]['checklist'])
+    if data.get('approval') and data['approval']['version'] == data['submissions'][-1]['number']:
+        items.extend(data['approval'].get('extra_items', []))
+    return items
+
+
+def ptw_track_latest_checks(data, version=None):
+    result = {}
+    for event in data['events']:
+        if event['kind']=='check' and (version is None or event['version']==version):
+            body = event['body']
+            result[(event['version'], body['phase'], body['day'])] = event
+    return result
+
+
+def ptw_track_last_review(data):
+    version = data['submissions'][-1]['number']
+    return next((event for event in reversed(data['events']) if event['kind']=='review' and event['version']==version),None)
+
+
+def ptw_track_approval_missing(submission):
+    fields = submission['fields']
+    missing = [label for key,label in PTW_TRACK_FIELDS if key in ('title','categories','start','end','place','description',
+               'applied_on','company','applicant','original_location') and not fields.get(key)]
+    if '기타 관리대상 작업' in fields['categories'] and not submission['custom']:
+        missing.append('기타 작업의 현장 추가 점검 항목')
+    if fields['start'] and fields['end'] and (datetime.date.fromisoformat(fields['end'])-datetime.date.fromisoformat(fields['start'])).days >= 7:
+        missing.append('허가기간 확인(첨부 양식: 최대 7일 단위)')
+    return missing
+
+
+def ptw_track_check_body(data, values):
+    submission = data['submissions'][-1]
+    fields, version = submission['fields'], submission['number']
+    phase = values.get('phase')
+    day = ptw_track_date(values.get('day'), '점검일', required=True, past=True)
+    no_work = bool(values.get('no_work'))
+    if phase not in ('작업 전','작업 중') or not fields['start'] or not fields['end']:
+        raise ValueError('유효한 허가기간과 점검 구분을 확인해 주세요.')
+    if data.get('change_waiting'):
+        raise ValueError('변경된 조건의 제출본을 재접수한 뒤 점검을 기록해 주세요.')
+    if phase=='작업 전':
+        if day > fields['start'] or no_work:
+            raise ValueError('작업 전 점검은 허가 시작일 이전 또는 시작일로 기록해 주세요.')
+    else:
+        if not fields['start'] <= day <= fields['end']:
+            raise ValueError('작업 중 점검일을 현재 허가기간 안에서 선택해 주세요.')
+        approval = data.get('approval')
+        if not approval or approval['version'] != version or day < approval['day']:
+            raise ValueError('현재 제출본의 승인 기록과 점검일을 확인해 주세요.')
+    memo = ptw_track_text(values.get('memo'), '점검 메모', 3000, required=no_work)
+    rows = []
+    if not no_work:
+        inputs = values.get('rows', {})
+        if not isinstance(inputs, dict):
+            raise ValueError('점검표 입력을 확인해 주세요.')
+        for item in ptw_track_current_items(data):
+            row = inputs.get(item['id'], {})
+            contractor = row.get('contractor', PTW_TRACK_CONTRACTOR[0])
+            supervisor = row.get('supervisor', PTW_TRACK_SUPERVISOR[0])
+            if contractor not in PTW_TRACK_CONTRACTOR or supervisor not in PTW_TRACK_SUPERVISOR:
+                raise ValueError('점검과 확인 상태를 다시 선택해 주세요.')
+            note = ptw_track_text(row.get('note'), '이행·조치 내용', 1200,
+                                  required='미이행' in (contractor,supervisor))
+            rows.append(dict(item, contractor=contractor, supervisor=supervisor, note=note))
+        if not rows or all(r['contractor']=='미기록' and r['supervisor']=='미확인' for r in rows):
+            raise ValueError('점검 또는 확인 결과를 한 항목 이상 기록해 주세요.')
+    return dict(phase=phase, day=day, no_work=no_work, memo=memo, rows=rows)
+
+
+def ptw_track_register(actor, site, values, files):
+    import uuid
+    actor, scope = ptw_track_identity(actor)
+    site = canonical_site_label(str(site or ''))
+    if site not in ra_managed_sites() or (scope is not None and site not in scope):
+        raise PermissionError('담당 관리현장을 선택해 주세요.')
+    if values.get('confirmed') is not True:
+        raise ValueError('원본 사진과 입력 내용을 대조한 후 확인해 주세요.')
+    now = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')
+    case_id = uuid.uuid4().hex
+    number = 'PTW-'+now[:10].replace('-','')+'-'+case_id[:8].upper()
+    submission = ptw_track_submission(values, 1, [], actor, now)
+    photos = ptw_track_prepare_photos(files, required=True)
+    db = ptw_track_db()
+    try:
+        with db:
+            db.execute('BEGIN IMMEDIATE')
+            submission['photos'] = ptw_track_store_photos(db, case_id, photos)
+            data = dict(schema_version=1,submissions=[submission],events=[],approval=None,change_waiting=False,reapproval=False)
+            ptw_track_event(data, 'receive', 1, actor, now, {'note':submission['note']}, submission['photos'])
+            f = submission['fields']
+            db.execute('INSERT INTO ptw_tracking_cases VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+                       (case_id,actor,site,number,now,now,f['title'],f['start'],f['end'],'접수',1,
+                        json.dumps(data,ensure_ascii=False,allow_nan=False)))
+    finally:
+        db.close()
+    return case_id
+
+
+def ptw_track_apply(actor, case_id, revision, action, values, files=()):
+    actor, scope = ptw_track_identity(actor)
+    if action not in {'resubmit','review','approve','check','action','change','close'}:
+        raise ValueError('처리할 기록 종류를 확인해 주세요.')
+    if files and action not in {'resubmit','approve','check','action','change'}:
+        raise ValueError('이 기록에는 사진을 첨부할 수 없습니다.')
+    photos = ptw_track_prepare_photos(files, required=action=='resubmit')
+    now = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')
+    db = ptw_track_db()
+    try:
+        with db:
+            db.execute('BEGIN IMMEDIATE')
+            record = ptw_track_load_row(db, actor, scope, case_id)
+            if record['revision'] != revision:
+                raise ValueError('다른 화면에서 먼저 저장했습니다. 접수 건을 다시 열어 최신 내용을 확인해 주세요.')
+            status, data = record['status'], record['data']
+            if status in PTW_TRACK_TERMINAL:
+                raise ValueError('종결된 작업은 조회만 가능합니다.')
+            current = data['submissions'][-1]
+            version = current['number']
+            if action=='resubmit':
+                if values.get('confirmed') is not True:
+                    raise ValueError('보완본 사진과 입력 내용을 대조한 후 확인해 주세요.')
+                new = ptw_track_submission(values, version+1, [], actor, now)
+                if not new['note']:
+                    raise ValueError('재접수 또는 정정 사유를 기록해 주세요.')
+                if new['received_on'] < current['received_on']:
+                    raise ValueError('재접수일이 이전 차수 접수일보다 빠릅니다.')
+                data['reapproval'] = data['reapproval'] or bool(data['approval'])
+                new['photos'] = ptw_track_store_photos(db, case_id, photos)
+                data['submissions'].append(new)
+                data.update(approval=None,change_waiting=False)
+                status = '재승인 대기' if data['reapproval'] else '접수'
+                version, current = new['number'], new
+                ptw_track_event(data, action, version, actor, now, {'note':new['note']}, new['photos'])
+            else:
+                body = {}
+                if action=='review':
+                    if data.get('change_waiting') or data.get('approval'):
+                        raise ValueError('변경·보완본을 재접수한 뒤 현재 제출본을 검토해 주세요.')
+                    outcome = values.get('outcome')
+                    checks = {label:values.get('checks',{}).get(label) is True for label in PTW_TRACK_REVIEW_ITEMS}
+                    if outcome not in ('검토 완료','보완 요청'):
+                        raise ValueError('검토 결과를 선택해 주세요.')
+                    note = ptw_track_text(values.get('note'), '검토·보완 의견', 4000, required=outcome=='보완 요청')
+                    if outcome=='검토 완료' and (not all(checks.values()) or ptw_track_approval_missing(current)):
+                        raise ValueError('검토 항목과 제출 정보의 미비사항을 먼저 확인해 주세요.')
+                    body = dict(outcome=outcome, checks=checks, note=note,
+                                due=ptw_track_date(values.get('due'), '보완 기한') if outcome=='보완 요청' else '')
+                    status = '재승인 대기' if outcome=='검토 완료' and data['reapproval'] else outcome
+                elif action=='approve':
+                    last_review=ptw_track_last_review(data)
+                    if not last_review or last_review['body']['outcome']!='검토 완료' or data.get('change_waiting') or data.get('approval'):
+                        raise ValueError('현재 제출본의 검토를 완료한 후 종이 승인 결과를 기록해 주세요.')
+                    if values.get('confirmed') is not True or ptw_track_approval_missing(current):
+                        raise ValueError('원본 승인 결과와 현재 제출 정보를 먼저 확인해 주세요.')
+                    day = ptw_track_date(values.get('day'), '승인일', required=True, past=True)
+                    if not current['received_on'] <= day <= current['fields']['end']:
+                        raise ValueError('승인일이 현재 접수일과 허가 종료일 사이인지 확인해 주세요.')
+                    approver = ptw_track_text(values.get('approver'), '승인자 성명', 200, required=True)
+                    note = ptw_track_text(values.get('note'), '승인자 의견·추가 안전대책', 4000)
+                    custom = [line.strip() for line in ptw_track_text(values.get('extra'), '승인 시 추가 점검항목', 5000).splitlines() if line.strip()]
+                    if len(custom)>20 or any(len(x)>350 for x in custom):
+                        raise ValueError('승인 추가 점검항목은 20개, 항목별 350자까지 입력할 수 있습니다.')
+                    items = [dict(item, group='승인 시 추가 항목') for item in ptw_track_checklist([],False,custom)
+                             if item['id'] not in {x['id'] for x in current['checklist']}]
+                    body = dict(day=day, approver=approver, note=note, extra_items=items,
+                                reference=ptw_track_text(values.get('reference'), '승인 원본 식별정보', 500))
+                    data['approval'] = dict(body, version=version)
+                    status = '승인 기록'
+                elif action=='check':
+                    body = ptw_track_check_body(data, values)
+                    if body['phase']=='작업 중' and not body['no_work']:
+                        status = '이행 중'
+                elif action=='action':
+                    finding_id = str(values.get('finding_id') or '')
+                    finding = next((x for x in ptw_track_findings(data) if x['id']==finding_id and x['status']!='조치 완료'), None)
+                    progress = values.get('status')
+                    if finding is None or progress not in ('조치 중','조치 완료'):
+                        raise ValueError('미이행 항목과 조치 상태를 다시 확인해 주세요.')
+                    if progress=='조치 완료' and values.get('confirmed') is not True:
+                        raise ValueError('조치 결과를 감독자가 확인한 뒤 완료로 기록해 주세요.')
+                    body = dict(finding_id=finding_id,status=progress,item=finding['row']['item'],
+                                note=ptw_track_text(values.get('note'), '조치·재확인 내용', 4000, required=True))
+                    version = finding['version']
+                elif action=='change':
+                    body = dict(note=ptw_track_text(values.get('note'), '변경 내용과 사유', 4000, required=True),
+                                day=ptw_track_date(values.get('day'), '변경 확인일', required=True, past=True))
+                    data['reapproval'] = data['reapproval'] or bool(data['approval'])
+                    data.update(approval=None,change_waiting=True)
+                    status = '재승인 대기' if data['reapproval'] else '보완 요청'
+                else:
+                    ending = values.get('ending')
+                    if ending not in PTW_TRACK_TERMINAL or values.get('confirmed') is not True:
+                        raise ValueError('종결 구분과 감독자 확인을 입력해 주세요.')
+                    day = ptw_track_date(values.get('day'), '종료·종결일', required=True, past=True)
+                    checks = list(ptw_track_latest_checks(data).values())
+                    if day < data['submissions'][0]['received_on'] or any(e['body']['day'] > day for e in checks):
+                        raise ValueError('종결일이 접수일 또는 기록된 점검일보다 빠릅니다.')
+                    if any(x['status']!='조치 완료' for x in ptw_track_findings(data)):
+                        raise ValueError('남은 미이행 항목의 조치·재확인 결과를 먼저 기록해 주세요.')
+                    if ending=='작업 종료':
+                        if not data.get('approval') or data['approval']['version']!=version or data.get('change_waiting'):
+                            raise ValueError('현재 제출본 승인 또는 변경 재승인 기록을 확인해 주세요.')
+                        current_checks = [e['body'] for e in checks if e['version']==version and not e['body']['no_work']]
+                        required_ids = {item['id'] for item in ptw_track_current_items(data)}
+                        before = any(b['phase']=='작업 전' and required_ids <= {r['id'] for r in b['rows']} and all(
+                            r['contractor']!='미기록' and r['supervisor']!='미확인' for r in b['rows']) for b in current_checks)
+                        during = [b for b in current_checks if b['phase']=='작업 중']
+                        if not before or not during or any(any(r['contractor']=='미기록' or r['supervisor']=='미확인' for r in b['rows']) for b in during):
+                            raise ValueError('현재 차수의 작업 전·작업 중 점검과 감독자 확인을 마쳐 주세요.')
+                    body = dict(day=day, ending=ending,
+                                note=ptw_track_text(values.get('note'), '종료·종결 확인 내용', 4000, required=True))
+                    status = ending
+                photo_ids = ptw_track_store_photos(db, case_id, photos)
+                ptw_track_event(data, action, version, actor, now, body, photo_ids)
+            fields = current['fields']
+            changed = db.execute('''UPDATE ptw_tracking_cases SET updated=?,title=?,start=?,end=?,status=?,
+                revision=revision+1,payload=? WHERE id=? AND revision=?''',
+                (now, fields['title'], fields['start'], fields['end'], status,
+                 json.dumps(data,ensure_ascii=False,allow_nan=False), case_id, revision))
+            if changed.rowcount != 1:
+                raise ValueError('저장 중 접수 내용이 변경되었습니다. 목록에서 다시 열어 주세요.')
+    finally:
+        db.close()
+    return status
+
+
+PTW_TRACK_OCR_LABELS = {
+    'title':r'작\s*업\s*명', 'period':r'허\s*가\s*기\s*간',
+    'description':r'작\s*업\s*내\s*용', 'place':r'작\s*업\s*위\s*치',
+    'applied_on':r'신\s*청\s*일', 'paper_approval_date':r'승\s*인\s*일',
+    'company':r'소\s*속', 'applicant_role':r'직\s*책', 'applicant':r'성\s*명',
+}
+
+
+@st.cache_data(ttl=120, show_spinner=False)
+def ptw_track_ocr_engine():
+    import shutil, subprocess
+    engine = shutil.which('tesseract')
+    if not engine:
+        return '', ''
+    try:
+        result = subprocess.run([engine,'--list-langs'], capture_output=True, timeout=5, check=False)
+        langs = set(result.stdout.decode('utf-8',errors='replace').splitlines())
+        return (engine,'kor+eng' if 'eng' in langs else 'kor') if result.returncode==0 and 'kor' in langs else ('','')
+    except (OSError, subprocess.TimeoutExpired):
+        return '', ''
+
+
+def ptw_track_tsv_lines(tsv):
+    import csv
+    groups = {}
+    for row in csv.DictReader(io.StringIO(tsv), delimiter='\t', quoting=csv.QUOTE_NONE):
+        try:
+            text = (row.get('text') or '').strip()
+            if row['level']!='5' or not text or float(row['conf'])<0:
+                continue
+            key = tuple(int(row[k]) for k in ('page_num','block_num','par_num','line_num'))
+            x,y,w,h = (int(row[k]) for k in ('left','top','width','height'))
+        except (KeyError, ValueError, TypeError):
+            continue
+        groups.setdefault(key, []).append((x,y,x+w,y+h,text))
+    lines = []
+    for words in groups.values():
+        words.sort(key=lambda w:w[0]);text = '';spans = []
+        for x,y,x2,y2,word in words:
+            if text: text += ' '
+            spans.append((len(text),len(text)+len(word),x,x2));text += word
+        lines.append(dict(text=text,x=min(w[0] for w in words),y=min(w[1] for w in words),
+                          x2=max(w[2] for w in words),y2=max(w[3] for w in words),spans=spans))
+    return sorted(lines,key=lambda l:(l['y'],l['x']))
+
+
+def ptw_track_ocr_dates(text):
+    matches = re.findall(r'(?<!\d)((?:19|20)\d{2})\s*[./년-]\s*(\d{1,2})\s*[./월-]\s*(\d{1,2})(?!\d)', text)
+    dates = []
+    for y,m,d in matches:
+        try: dates.append(datetime.date(int(y),int(m),int(d)).isoformat())
+        except ValueError: dates.append('')
+    return dates
+
+
+def ptw_track_parse_ocr(lines, width, height):
+    """Read printed form fields using their positions; never interpret signatures or check results."""
+    norm = lambda text: re.sub(r'[^0-9가-힣a-zA-Z]', '', str(text)).casefold()
+    checklist_y = next((l['y'] for l in lines if '안전조치이행항목' in norm(l['text'])), height*.75)
+    header = [l for l in lines if l['y'] < checklist_y]
+    field_rx = re.compile('|'.join(f'(?P<{key}>{pat})' for key,pat in PTW_TRACK_OCR_LABELS.items()))
+    anchors = {}
+    def xpos(line, index):
+        for start,end,left,right in line.get('spans', []):
+            if start <= index <= end:
+                return left+(right-left)*(index-start)/max(1,end-start)
+        return line['x']+(line['x2']-line['x'])*index/max(1,len(line['text']))
+    for line in header:
+        matches = list(field_rx.finditer(line['text']))
+        for i,m in enumerate(matches):
+            if m.start() and line['text'][m.start()-1].isalnum():
+                continue
+            # A leading label or a second label across the same table row.
+            if i==0 and norm(line['text'][:m.start()]):
+                continue
+            suffix = line['text'][m.end():matches[i+1].start() if i+1<len(matches) else len(line['text'])]
+            anchors.setdefault(m.lastgroup,[]).append(dict(line=line,x=xpos(line,m.start()),x2=xpos(line,m.end()),
+                                                          inline=suffix.strip(' :：|│\t'),y=line['y'],y2=line['y2']))
+    def anchor(key):
+        return anchors.get(key,[None])[0]
+    def clean(value):
+        return re.sub(r'\s*\(?\s*인\s*\)?\s*$', '', value).strip(' :：|│\t') if value.endswith('(인)') else value.strip(' :：|│\t')
+    applicant_line = anchor('applied_on') or anchor('company') or anchor('paper_approval_date')
+    app_bottom = applicant_line['y'] if applicant_line else checklist_y
+    title_bottom = max([a['y2'] for a in (anchor('title'),anchor('period')) if a] or [0])
+    def cell(a, right, multi=False):
+        if not a:
+            return ''
+        inline = clean(a['inline'])
+        result = [inline] if inline and norm(inline) not in ('인','작업책임자') else []
+        size = max(1,a['y2']-a['y'])
+        for l in header:
+            if l is a['line'] or l['x'] < a['x2']-max(5,width*.006) or l['x']>=right:
+                continue
+            if field_rx.match(l['text'].strip()) or norm(l['text']) in ('인','신청자','승인자','작업책임자'):
+                continue
+            if multi:
+                if l['y'] < max(title_bottom-2,a['y']-size*3.1) or l['y2'] > app_bottom+size*.35: continue
+            elif abs((l['y']+l['y2'])-(a['y']+a['y2'])) > max(size*1.35,height*.010):
+                continue
+            value = clean(l['text'])
+            if value and value not in result:
+                result.append(value)
+        return ('\n' if multi else ' ').join(result)
+    fields = {}
+    # In the attached form, the left cells hold name/details and the right cells period/location.
+    for key,right,multi in [('title',(anchor('period') or {}).get('x',width*.59),False),
+                            ('period',width,False),
+                            ('description',(anchor('place') or {}).get('x',width*.59),True),
+                            ('place',width,True),
+                            ('applied_on',(anchor('paper_approval_date') or {}).get('x',width*.59),False),
+                            ('paper_approval_date',width,False)]:
+        value = cell(anchor(key),right,multi)
+        if value: fields[key]=value
+    split = (anchor('paper_approval_date') or {}).get('x', width*.58)
+    for key,approval_key in [('company','paper_approver_company'),('applicant_role','paper_approver_role'),('applicant','paper_approver')]:
+        matches = sorted(anchors.get(key,[]), key=lambda a:a['x'])
+        left = next((a for a in matches if a['x'] < split-width*.025),None)
+        right = next((a for a in reversed(matches) if a['x'] >= split-width*.025),None)
+        for name,a,end in [(key,left,split),(approval_key,right,width)]:
+            value = cell(a,end)
+            if value:fields[name]=value
+    warnings = []
+    period = fields.pop('period','')
+    if period:
+        dates = ptw_track_ocr_dates(period)
+        if dates and dates[0]: fields['start']=dates[0]
+        if len(dates)>=2 and dates[1]: fields['end']=dates[1]
+        if len(dates)!=2 or not all(dates): warnings.append('허가기간 중 읽지 못했거나 달력에 없는 날짜가 있습니다. 원본에서 확인해 주세요.')
+        if fields.get('start','') and fields.get('end','') and fields['start']>fields['end']:
+            fields.pop('end');warnings.append('종료일이 시작일보다 빠르게 읽혔습니다. 원본에서 확인해 주세요.')
+    for key,label in [('applied_on','신청일'),('paper_approval_date','서류 기재 승인일')]:
+        if key in fields:
+            dates = ptw_track_ocr_dates(fields.pop(key))
+            if dates and dates[0]:fields[key]=dates[0]
+            else:warnings.append(label+'을(를) 원본에서 확인해 주세요.')
+    categories = []
+    for line in header:
+        for marked in re.finditer(r'(?:☑|☒|✓|✔|■|\[[xXvV]\])\s*([^□☐☑☒✓✔■\[\]]+)',line['text']):
+            checked = norm(marked.group(1))
+            category = next((item for item in PTW_TRACK_TEMPLATES if checked.startswith(norm(item))),None)
+            if category:categories.append(category)
+    if not categories:
+        lower_titles = {norm(l['text']) for l in lines if l['y'] >= checklist_y}
+        for category,groups in PTW_TRACK_TEMPLATES.items():
+            if any(norm(g['group']) in lower_titles for g in groups if g['items'] and g['group'] not in ('공통 사항','중장비 사용 및 중량물 인양작업 시')):
+                categories.append(category)
+    if categories:fields['categories']=list(dict.fromkeys(categories))
+    raw = '\n'.join(l['text'] for l in lines)[:24000]
+    return fields, warnings, raw
+
+
+def ptw_track_ocr(raw, rotation, engine, language):
+    import subprocess
+    from PIL import ImageOps
+    with Image.open(io.BytesIO(raw)) as source:
+        img = ImageOps.exif_transpose(source).convert('L')
+    if rotation:img = img.rotate(-int(rotation),expand=True,fillcolor=255)
+    scale = min(3.0, 2600/max(img.size))
+    if scale != 1:
+        img = img.resize((max(1,round(img.width*scale)),max(1,round(img.height*scale))),Image.Resampling.LANCZOS)
+    img = ImageOps.autocontrast(img,cutoff=1)
+    buffer = io.BytesIO();img.save(buffer,format='PNG')
+    env = {'PATH':os.defpath,'LANG':'C.UTF-8','OMP_THREAD_LIMIT':'2'}
+    if os.environ.get('TESSDATA_PREFIX'): env['TESSDATA_PREFIX']=os.environ['TESSDATA_PREFIX']
+    try:
+        result = subprocess.run([engine,'stdin','stdout','-l',language,'--psm','11','tsv'],
+                                input=buffer.getvalue(),capture_output=True,timeout=35,check=False,env=env)
+    except subprocess.TimeoutExpired:
+        raise ValueError('사진을 읽는 시간이 길어졌습니다. 첫 장을 다시 촬영하거나 항목을 직접 입력해 주세요.') from None
+    except OSError:
+        raise ValueError('서버의 사진 인식 프로그램을 실행할 수 없습니다. 직접 입력하거나 설치 상태를 확인해 주세요.') from None
+    if result.returncode!=0:
+        raise ValueError('서버의 한글 사진 인식 환경을 확인해 주세요. 항목을 직접 입력해 접수할 수 있습니다.')
+    lines = ptw_track_tsv_lines(result.stdout.decode('utf-8',errors='replace'))
+    return ptw_track_parse_ocr(lines,img.width,img.height)
+
+
+def ptw_track_route(view='list', case_id=None):
+    import uuid
+    st.session_state.ptw_track_view = view
+    st.session_state.ptw_track_case = case_id
+    st.session_state.ptw_back_revision = st.session_state.get('ptw_back_revision',0)+1
+    st.session_state.pop('ptw_track_extracted',None)
+    st.session_state.pop('ptw_track_base_revision',None)
+    if view in ('new','revision'):
+        st.session_state.ptw_track_intake_token = uuid.uuid4().hex
+
+
+def ptw_track_back():
+    if st.session_state.get('ptw_track_view')=='revision':
+        ptw_track_route('detail',st.session_state.get('ptw_track_case'))
+    else:
+        ptw_track_route()
+
+
+def ptw_track_ui_date(value):
+    try:return datetime.date.fromisoformat(str(value))
+    except (ValueError,TypeError):return None
+
+
+def ptw_track_ui_save(actor, record, action, values, files=(), *, message):
+    try:
+        ptw_track_apply(actor,record['id'],record['revision'],action,values,files)
+    except (PermissionError,ValueError,StorageError) as exc:
+        st.error(str(exc));return
+    except Exception:
+        st.error('기록을 저장하지 못했습니다. 저장소 연결을 확인한 후 다시 시도해 주세요.');return
+    st.session_state.ptw_track_notice = message
+    ptw_track_route('detail',record['id'])
+    st.rerun()
+
+
+def ptw_track_uploader(label, key, *, multiple=True):
+    return st.file_uploader(label,type=['jpg','jpeg','png','webp'],accept_multiple_files=multiple,key=key)
+
+
+def ptw_track_image(raw, mime, name):
+    # Deliver the selected image only in the authorized session; no public object URL.
+    alt = _loading_escape(name,quote=True)
+    encoded = base64.b64encode(raw).decode('ascii')
+    st.markdown(f'<img src="data:{mime};base64,{encoded}" alt="{alt}" style="display:block;max-width:100%;height:auto;margin:8px auto;">',unsafe_allow_html=True)
+
+
+def ptw_track_render_photos(actor, record, ids, key):
+    photos = {pid:record['photos'][pid] for pid in ids if pid in record['photos']}
+    if not photos:return
+    if not st.checkbox(f'보관 사진 보기 ({len(photos)}장)',key=key+':show'):
+        return
+    options = list(photos)
+    selected = st.selectbox('열람할 사진',options,format_func=lambda pid:f'{options.index(pid)+1}. {photos[pid]["name"]}',key=key+':photo')
+    try:
+        raw,mime=ptw_track_photo(actor,record['id'],selected)
+        ptw_track_image(raw,mime,photos[selected]['name'])
+    except (ValueError,PermissionError,StorageError) as exc:
+        st.error(str(exc))
+    except Exception:
+        st.error('보관 사진을 불러오지 못했습니다. 저장소 연결을 확인해 주세요.')
+
+
+def ptw_track_render_legacy(actor):
+    with st.expander('기존 작업계획서 조회'):
+        st.caption('이전 작성 기능에 저장한 자료입니다. 현재 접수 건과 구분해 보관합니다.')
+        try: records = ptw_record_list(actor)
+        except Exception:
+            st.info('이전 작업계획서 목록을 불러오지 못했습니다.');return
+        if not records:
+            st.caption('보관된 이전 작업계획서가 없습니다.');return
+        choices={r['id']:r for r in records}
+        key='ptw_track_legacy_choice'
+        if st.session_state.get(key) not in choices:st.session_state[key]=None
+        selected=st.selectbox('이전 작성자료 선택',list(choices),index=None,key=key,
+                              format_func=lambda v:(choices[v]['project'] or '공사명 미입력')+' · '+choices[v]['date']+' · '+v[:6])
+        if selected:
+            try:
+                data,_,updated=ptw_record_load(actor,selected)
+                basics,_,_=ptw_report_rows(data)
+                st.caption('최근 저장 '+updated[:16].replace('T',' '))
+                st.dataframe(pd.DataFrame(basics,columns=['항목','이전 작성내용']),hide_index=True,width='stretch')
+                st.download_button('이전 작성자료 내려받기 (.json)',json.dumps(data,ensure_ascii=False,indent=2),
+                                   '기존_작업계획서.json','application/json',key='ptw_track_legacy_download',on_click='ignore')
+            except (StorageError,PermissionError,ValueError) as exc:st.error(str(exc))
+            except Exception:st.error('이전 작업계획서를 열지 못했습니다.')
+
+
+def ptw_track_render_list(actor, scope):
+    records=ptw_track_list(actor)
+    st.button('＋ 작업허가서 접수',type='primary',key='ptw_track_new',width='stretch',
+              disabled=scope==(),on_click=ptw_track_route,args=('new',))
+    if scope==():st.info('이 계정에 배정된 작업허가 담당 현장이 없습니다.')
+    a,b,c=st.columns(3)
+    a.metric('진행 중',sum(r['status'] not in PTW_TRACK_TERMINAL for r in records))
+    b.metric('보완·재승인',sum(r['status'] in ('보완 요청','재승인 대기') for r in records))
+    c.metric('종결',sum(r['status'] in PTW_TRACK_TERMINAL for r in records))
+    if records:
+        a,b,c=st.columns([1.2,1,1.5])
+        sites=['전체 현장']+sorted({r['site'] for r in records})
+        if st.session_state.get('ptw_track_filter_site') not in sites:st.session_state.ptw_track_filter_site='전체 현장'
+        site=a.selectbox('관리현장',sites,key='ptw_track_filter_site')
+        status=b.selectbox('처리 상태',['전체 상태']+list(PTW_TRACK_STATES),key='ptw_track_filter_status')
+        search=c.text_input('접수번호·작업명 검색',key='ptw_track_search').strip().casefold()
+        choices={r['id']:r for r in records if (site=='전체 현장' or r['site']==site) and
+                 (status=='전체 상태' or r['status']==status) and search in (r['number']+' '+r['title']).casefold()}
+        if choices:
+            st.caption(f'검색 결과 {len(choices)}건'+(' · 최근 100건 표시' if len(choices)>100 else ''))
+            st.dataframe(pd.DataFrame([{'접수번호':r['number'],'현장':r['site'],'작업명':r['title'],
+                       '허가기간':(r['start'] or '미확인')+' ~ '+(r['end'] or '미확인'),'상태':r['status'],
+                       '최근 기록':r['updated'][:16].replace('T',' ')} for r in list(choices.values())[:100]]),
+                       hide_index=True,width='stretch')
+            key='ptw_track_list_choice'
+            if st.session_state.get(key) not in choices:st.session_state[key]=None
+            selected=st.selectbox('접수 건 선택',list(choices),index=None,key=key,
+                       format_func=lambda v:choices[v]['number']+' · '+choices[v]['title']+' · '+choices[v]['site'])
+            st.button('선택한 접수 건 열기',key='ptw_track_open',disabled=not selected,width='stretch',
+                      on_click=ptw_track_route,args=('detail',selected))
+        else:st.info('조건에 맞는 접수 건이 없습니다.')
+    else:st.info('등록된 작업허가서가 없습니다. 시공사 제출자료를 접수해 주세요.')
+    ptw_track_render_legacy(actor)
+
+
+def ptw_track_render_intake(actor, scope, record=None):
+    st.subheader('보완·변경본 재접수' if record else '제출 작업허가서 접수')
+    st.button('← 이전 화면',key='ptw_track_intake_back',on_click=ptw_track_back)
+    token=st.session_state.get('ptw_track_intake_token','new')
+    base = 'ptw_track_intake:'+token
+    if record:
+        if record['status'] in PTW_TRACK_TERMINAL:
+            st.info('종결된 건은 재접수할 수 없습니다.');return
+        initial=record['data']['submissions'][-1]
+        st.caption(record['number']+f' · {initial["number"]+1}차 접수 · 이전 제출본은 계속 열람할 수 있습니다.')
+        base_revision=st.session_state.setdefault('ptw_track_base_revision',record['revision'])
+        if base_revision != record['revision']:
+            st.warning('다른 화면에서 이 접수 건을 먼저 수정했습니다. 이전 화면으로 돌아가 최신 내용을 확인해 주세요.');return
+    else:
+        initial={'fields':{},'custom':[],'heavy':False}
+    st.caption('종이 원본은 현장에 비치하고, 글자가 보이도록 촬영한 사진을 순서대로 등록합니다.')
+    files=ptw_track_uploader('제출 작업허가서 사진',base+':files')
+    extraction=st.session_state.get('ptw_track_extracted',{})
+    signature='none'
+    if files:
+        cols=st.columns([2,1])
+        pick=cols[0].selectbox('글자를 읽을 사진',list(range(len(files))),
+                                format_func=lambda i:f'{i+1}. {files[i].name}',key=base+':pick')
+        rotation=cols[1].selectbox('읽을 방향',[0,90,180,270],format_func=lambda x:f'{x}°',key=base+':rotation')
+        signature=hashlib.sha256(files[pick].getvalue()).hexdigest()+':'+str(rotation)
+        if st.checkbox('선택 사진 보기',key=base+':preview'):
+            try:
+                photo=ptw_track_prepare_photos([files[pick]])[0]
+                ptw_track_image(photo['raw'],photo['mime'],photo['name'])
+            except ValueError as exc:st.error(str(exc))
+        engine,language=ptw_track_ocr_engine()
+        if not engine:st.caption('서버 사진 인식 설치가 필요합니다. 사진과 직접 확인한 항목은 지금도 등록할 수 있습니다.')
+        read_clicked=st.button('사진에서 내용 읽기',key=base+':read',disabled=not engine,width='stretch')
+        first_read=bool(engine and st.session_state.get('ptw_track_first_read')!=token)
+        if read_clicked or first_read:
+            st.session_state.ptw_track_first_read=token
+            try:
+                photo=ptw_track_prepare_photos([files[pick]])[0]
+                with keco_loading('작업허가서 사진에서 글자를 읽고 있습니다…'):
+                    values,warnings,raw=ptw_track_ocr(photo['raw'],rotation,engine,language)
+                extraction=dict(signature=signature,fields=values,warnings=warnings,text=raw,
+                                revision=extraction.get('revision',0)+1)
+                st.session_state.ptw_track_extracted=extraction
+                if values:st.success(f'{len(values)}개 항목을 읽었습니다. 아래 입력 내용을 원본과 대조해 주세요.')
+                else:st.info('항목을 구분하지 못했습니다. 촬영 방향을 바꾸거나 아래에 직접 입력해 주세요.')
+            except (ValueError,StorageError) as exc:st.error(str(exc))
+            except Exception:st.error('사진을 읽지 못했습니다. 촬영 상태를 확인하거나 직접 입력해 주세요.')
+    if extraction.get('signature') != signature:extraction={}
+    for message in extraction.get('warnings',[]):st.warning(message)
+    if extraction.get('text'):
+        with st.expander('사진에서 읽힌 글자'):st.text(extraction['text'])
+    meta={key:initial['fields'].get(key,'') for key in ('document_ref','original_location')}
+    meta.update(extraction.get('fields',{}))
+    prefix=base+':'+signature[:12]+':'+str(extraction.get('revision',0))
+    with st.form(prefix+':form'):
+        if record:
+            site=record['site'];st.write('관리현장 · '+site)
+        else:
+            sites=list(scope) if scope is not None else ra_managed_sites()
+            default=st.session_state.get('selected_site_box')
+            site=st.selectbox('관리현장',sites,index=sites.index(default) if default in sites else None,placeholder='관리현장을 선택하세요')
+        a,b=st.columns(2)
+        received=a.date_input('접수일',value=ptw_track_ui_date(ptw_today()),max_value=ptw_track_ui_date(ptw_today()))
+        document_ref=b.text_input('문서번호 (선택)',value=meta.get('document_ref',''),max_chars=500)
+        title=st.text_input('작업명 *',value=meta.get('title','')[:500],max_chars=500)
+        categories=st.multiselect('허가대상',list(PTW_TRACK_TEMPLATES),default=meta.get('categories',[]))
+        a,b=st.columns(2)
+        start=a.date_input('허가 시작일',value=ptw_track_ui_date(meta.get('start')))
+        end=b.date_input('허가 종료일',value=ptw_track_ui_date(meta.get('end')))
+        place=st.text_input('작업위치',value=meta.get('place','')[:500],max_chars=500)
+        description=st.text_area('작업내용',value=meta.get('description','')[:5000],max_chars=5000)
+        a,b=st.columns(2)
+        company=a.text_input('신청자 소속·시공사',value=meta.get('company','')[:500],max_chars=500)
+        applicant=b.text_input('신청자 성명',value=meta.get('applicant','')[:500],max_chars=500)
+        a,b=st.columns(2)
+        applicant_role=a.text_input('신청자 직책',value=meta.get('applicant_role','')[:500],max_chars=500)
+        applied=b.date_input('신청일',value=ptw_track_ui_date(meta.get('applied_on')))
+        original=st.text_input('원본 비치 위치',value=meta.get('original_location','')[:500],max_chars=500,
+                               placeholder='예: 공사감독자 현장사무실 · 작업허가서철')
+        with st.expander('제출 서류에 기재된 승인자 (선택)'):
+            st.caption('사진에 적힌 내용을 참고로 기록합니다. 실제 승인 결과는 검토 후 별도로 기록합니다.')
+            a,b=st.columns(2)
+            paper_approver=a.text_input('서류 기재 승인자 성명',value=meta.get('paper_approver','')[:500],max_chars=500)
+            paper_day=b.date_input('서류 기재 승인일',value=ptw_track_ui_date(meta.get('paper_approval_date')))
+            a,b=st.columns(2)
+            paper_company=a.text_input('서류 기재 승인자 소속',value=meta.get('paper_approver_company','')[:500],max_chars=500)
+            paper_role=b.text_input('서류 기재 승인자 직책',value=meta.get('paper_approver_role','')[:500],max_chars=500)
+        st.caption('선택한 허가대상의 공통·공종별 점검 항목을 접수 건에 연결합니다.')
+        heavy=st.checkbox('중장비 사용·중량물 인양 항목 추가',value=initial['heavy'])
+        custom=st.text_area('현장 추가 점검 항목 (한 줄에 한 항목)',value='\n'.join(initial['custom']),max_chars=6000)
+        note=st.text_area('보완·변경본 접수 사유 *' if record else '접수 메모 (선택)',max_chars=3000)
+        confirmed=st.checkbox('사진 원본과 위 입력 내용을 대조했습니다.')
+        submitted=st.form_submit_button('재접수 저장' if record else '접수 저장',type='primary',width='stretch')
+    if not submitted:return
+    values=dict(title=title,categories=categories,start=start,end=end,place=place,description=description,
+                applied_on=applied,company=company,applicant_role=applicant_role,applicant=applicant,
+                paper_approval_date=paper_day,paper_approver_company=paper_company,paper_approver_role=paper_role,
+                paper_approver=paper_approver,document_ref=document_ref,original_location=original,
+                received_on=received,note=note,confirmed=confirmed,heavy=heavy,custom=custom)
+    if record:
+        ptw_track_ui_save(actor,record,'resubmit',values,files,message='보완·변경본을 같은 접수 건에 저장했습니다.')
+    else:
+        try:
+            case_id=ptw_track_register(actor,site,values,files)
+            st.session_state.ptw_track_notice='작업허가서를 접수했습니다. 사진 원본과 접수정보를 저장했습니다.'
+            ptw_track_route('detail',case_id);st.rerun()
+        except (ValueError,PermissionError,StorageError) as exc:st.error(str(exc))
+        except Exception:st.error('작업허가서를 저장하지 못했습니다. 저장소 연결을 확인해 주세요.')
+
+
+def ptw_track_event_label(event):
+    return {'receive':'최초 접수','resubmit':'보완·변경본 접수','review':'서류 검토','approve':'승인 결과 기록',
+            'check':'이행 점검','action':'미이행 조치','change':'작업조건 변경','close':'종결'}.get(event['kind'],event['kind'])
+
+
+def ptw_track_event_note(event):
+    b=event['body'];kind=event['kind']
+    if kind=='review':return b['outcome']+(' · '+b['note'] if b['note'] else '')+(' · 보완기한 '+b['due'] if b['due'] else '')
+    if kind=='approve':return b['day']+' · '+b['approver']+(' · '+b['note'] if b['note'] else '')
+    if kind=='check':return b['day']+' · '+b['phase']+(' · 작업 없음' if b['no_work'] else f' · {len(b["rows"])}항목')+(' · '+b['memo'] if b['memo'] else '')
+    if kind=='action':return b['status']+' · '+b['item']+' · '+b['note']
+    if kind=='change':return b['day']+' · '+b['note']
+    if kind=='close':return b['day']+' · '+b['ending']+' · '+b['note']
+    return b.get('note','')
+
+
+def ptw_track_render_review(actor, record, prefix):
+    data=record['data'];submission=data['submissions'][-1];fields=submission['fields'];closed=record['status'] in PTW_TRACK_TERMINAL
+    missing=ptw_track_approval_missing(submission)
+    if missing:st.warning('검토 전 보완 확인: '+', '.join(missing))
+    approval=data.get('approval')
+    if approval:
+        st.success(f'{approval["version"]}차 제출본 승인 기록 · {approval["day"]} · {approval["approver"]}')
+        if approval['note']:st.text('승인자 의견: '+approval['note'])
+        if approval.get('reference'):st.caption('승인 원본 식별정보: '+approval['reference'])
+        event=next((e for e in reversed(data['events']) if e['kind']=='approve' and e['version']==approval['version']),None)
+        if event:ptw_track_render_photos(actor,record,event['photos'],prefix+':approved')
+    last_review=ptw_track_last_review(data)
+    if last_review:st.text('최근 검토: '+ptw_track_event_note(last_review))
+    if closed or approval:return
+    if data.get('change_waiting'):
+        st.info('작업조건 변경이 기록되어 있습니다. 변경된 제출본을 재접수해 주세요.');return
+    with st.form(prefix+':review_form'):
+        st.markdown('**공단 감독자 검토**')
+        previous=last_review['body'] if last_review else {}
+        checks={label:st.checkbox(label,value=bool(previous.get('checks',{}).get(label)),key=prefix+':review:'+str(i))
+                for i,label in enumerate(PTW_TRACK_REVIEW_ITEMS)}
+        outcome=st.radio('검토 결과',['검토 완료','보완 요청'],horizontal=True)
+        opinion=st.text_area('검토·보완 의견',value=previous.get('note',''),max_chars=4000)
+        due=st.date_input('보완 기한 (선택)',value=ptw_track_ui_date(previous.get('due')))
+        save=st.form_submit_button('검토 결과 저장',width='stretch')
+    if save:
+        ptw_track_ui_save(actor,record,'review',dict(checks=checks,outcome=outcome,note=opinion,due=due),message='감독자 검토 결과를 저장했습니다.')
+    if last_review and last_review['body']['outcome']=='검토 완료':
+        with st.form(prefix+':approval_form'):
+            st.markdown('**종이 재승인 결과 기록**' if data['reapproval'] else '**종이 승인 결과 기록**')
+            st.caption('공사감독자가 실제 원본에 승인한 결과를 기록합니다.')
+            a,b=st.columns(2)
+            approver=a.text_input('승인자 성명',value=fields['paper_approver'][:200],max_chars=200)
+            today=ptw_track_ui_date(ptw_today())
+            paper_day=ptw_track_ui_date(fields['paper_approval_date'])
+            day=b.date_input('승인일',value=paper_day if paper_day and paper_day<=today else today,max_value=today)
+            ref=st.text_input('승인 원본 식별정보 (선택)',max_chars=500)
+            note=st.text_area('승인자 의견·추가 안전대책 (선택)',max_chars=4000)
+            extra=st.text_area('승인 시 추가 점검 항목 (한 줄에 한 항목)',max_chars=5000)
+            files=ptw_track_uploader('서명된 승인 원본 사진 (선택)',prefix+':signed')
+            confirmed=st.checkbox('종이 허가서의 실제 승인 내용과 승인자를 확인했습니다.')
+            save=st.form_submit_button('승인 결과 저장',type='primary',width='stretch')
+        if save:
+            ptw_track_ui_save(actor,record,'approve',dict(approver=approver,day=day,reference=ref,note=note,extra=extra,
+                               confirmed=confirmed),files,message='종이 승인 결과를 기록했습니다.')
+
+
+def ptw_track_render_actions(actor, record, prefix):
+    findings=ptw_track_findings(record['data'])
+    st.markdown('**미이행 조치·재확인**')
+    if not findings:st.caption('기록된 미이행 항목이 없습니다.');return
+    st.dataframe(pd.DataFrame([{'차수':x['version'],'점검일':x['day'],'이행 항목':x['row']['item'],'상태':x['status'],
+                               '점검 메모':x['row']['note'],'조치·재확인':x['action']} for x in findings]),hide_index=True,width='stretch')
+    open_items={x['id']:x for x in findings if x['status']!='조치 완료'}
+    if not open_items or record['status'] in PTW_TRACK_TERMINAL:return
+    selected=st.selectbox('조치할 미이행 항목',list(open_items),format_func=lambda v:f'{open_items[v]["version"]}차 · {open_items[v]["day"]} · {open_items[v]["row"]["item"].splitlines()[0]}',
+                          key=prefix+':action_item')
+    with st.form(prefix+':action_form:'+selected):
+        progress=st.radio('조치 상태',['조치 중','조치 완료'],horizontal=True)
+        note=st.text_area('조치·재확인 내용',value=open_items[selected]['action'],max_chars=4000)
+        files=ptw_track_uploader('조치 증빙 사진 (선택)',prefix+':action_photos:'+selected)
+        confirmed=st.checkbox('조치 결과를 감독자가 재확인했습니다.')
+        save=st.form_submit_button('이행 조치 저장',width='stretch')
+    if save:ptw_track_ui_save(actor,record,'action',dict(finding_id=selected,status=progress,note=note,confirmed=confirmed),files,
+                              message='미이행 항목의 조치·재확인 결과를 저장했습니다.')
+
+
+def ptw_track_render_checks(actor, record, prefix):
+    data=record['data'];submission=data['submissions'][-1];version=submission['number'];fields=submission['fields']
+    st.caption('시공사 점검은 시공사 기록을 확인해 옮기고, 감독자 확인은 실제 확인 결과를 기록합니다.')
+    checks=ptw_track_latest_checks(data)
+    if checks:
+        st.dataframe(pd.DataFrame([{'차수':v,'구분':phase,'점검일':day,
+             '시공사 점검':sum(r['contractor']!='미기록' for r in e['body']['rows']),
+             '감독자 확인':sum(r['supervisor']!='미확인' for r in e['body']['rows']),
+             '항목 수':len(e['body']['rows']),'메모':('작업 없음 · ' if e['body']['no_work'] else '')+e['body']['memo']}
+             for (v,phase,day),e in sorted(checks.items(),key=lambda x:(x[0][2],x[0][0]),reverse=True)]),hide_index=True,width='stretch')
+    closed=record['status'] in PTW_TRACK_TERMINAL
+    items=ptw_track_current_items(data)
+    start,end=ptw_track_ui_date(fields['start']),ptw_track_ui_date(fields['end'])
+    today=ptw_track_ui_date(ptw_today())
+    if not closed and items and start and end and not data.get('change_waiting'):
+        approval=data.get('approval')
+        during=bool(approval and start<=today and ptw_track_ui_date(approval['day'])<=min(end,today))
+        phase=st.radio('점검 구분',['작업 전']+(['작업 중'] if during else []),horizontal=True,key=prefix+':phase')
+        if phase=='작업 전':
+            latest=min(start,today);minimum=None;default=min(start-datetime.timedelta(days=1),today)
+        else:
+            latest=min(end,today);minimum=max(start,ptw_track_ui_date(approval['day']));default=latest
+        day=st.date_input('점검일',value=default,min_value=minimum,max_value=latest,key=prefix+':day:'+phase)
+        daily=checks.get((version,phase,day.isoformat()))
+        dkey=prefix+':check:'+phase+':'+day.isoformat()
+        no_work=st.checkbox('이 날짜는 작업 없음',value=bool(daily and daily['body']['no_work']),key=dkey+':no_work') if phase=='작업 중' else False
+        previous={r['id']:r for r in daily['body']['rows']} if daily else {}
+        if not no_work:
+            with st.expander('안전조치 항목 전문 보기'):
+                for i,item in enumerate(items,1):st.write(f'{i}. [{item["group"]}] {item["item"]}')
+        with st.form(dkey+':form:'+str(no_work)):
+            results={}
+            if not no_work:
+                rows=[{'id':item['id'],'번호':i,'구분':item['group'],'안전조치 이행 항목':item['item'],
+                      '시공사 점검':previous.get(item['id'],{}).get('contractor','미기록'),
+                      '감독자 확인':previous.get(item['id'],{}).get('supervisor','미확인'),
+                      '이행·조치 내용':previous.get(item['id'],{}).get('note','')} for i,item in enumerate(items,1)]
+                updated=st.data_editor(pd.DataFrame(rows),hide_index=True,num_rows='fixed',width='stretch',
+                           disabled=['id','번호','구분','안전조치 이행 항목'],key=dkey+':grid',
+                           column_config={'id':None,'안전조치 이행 항목':st.column_config.TextColumn(width='large'),
+                            '시공사 점검':st.column_config.SelectboxColumn(options=list(PTW_TRACK_CONTRACTOR),required=True),
+                            '감독자 확인':st.column_config.SelectboxColumn(options=list(PTW_TRACK_SUPERVISOR),required=True),
+                            '이행·조치 내용':st.column_config.TextColumn(width='medium',max_chars=1200)})
+                results={r['id']:dict(contractor=r['시공사 점검'],supervisor=r['감독자 확인'],note=r['이행·조치 내용'] if isinstance(r['이행·조치 내용'],str) else '')
+                         for r in updated.to_dict('records')}
+            memo=st.text_area('작업이 없었던 사유' if no_work else '점검 메모 (선택)',
+                              value=daily['body']['memo'] if daily else '',max_chars=3000)
+            files=ptw_track_uploader('점검 증빙 사진 (선택)',dkey+':photos')
+            save=st.form_submit_button('날짜별 점검 저장',type='primary',width='stretch')
+        if save:ptw_track_ui_save(actor,record,'check',dict(phase=phase,day=day,no_work=no_work,rows=results,memo=memo),files,
+                                  message='날짜별 시공사 점검·감독자 확인을 저장했습니다.')
+    elif not closed:
+        st.info('허가기간과 적용 점검 항목을 확인해 주세요. 작업조건 변경 시에는 변경본을 먼저 재접수합니다.')
+    if not data.get('approval') and not closed:st.caption('작업 중 점검은 현재 제출본의 승인 결과를 기록한 뒤 입력할 수 있습니다.')
+    st.divider();ptw_track_render_actions(actor,record,prefix)
+
+
+def ptw_track_render_changes(actor, record, prefix):
+    data=record['data'];closed=record['status'] in PTW_TRACK_TERMINAL
+    changes=[e for e in data['events'] if e['kind'] in ('change','resubmit','close')]
+    for e in reversed(changes):st.text(f'{e["at"][:16].replace("T"," ")} · {e["version"]}차 · {ptw_track_event_label(e)} · {ptw_track_event_note(e)}')
+    if closed:return
+    if data.get('change_waiting'):st.warning('변경된 조건의 제출본을 재접수하고 다시 검토·승인 결과를 기록해 주세요.')
+    with st.expander('작업조건 변경 기록'):
+        with st.form(prefix+':change_form'):
+            day=st.date_input('변경 확인일',value=ptw_track_ui_date(ptw_today()),max_value=ptw_track_ui_date(ptw_today()))
+            note=st.text_area('변경 내용과 사유',placeholder='작업내용, 기간, 위치, 인원·장비 등의 변경사항',max_chars=4000)
+            files=ptw_track_uploader('변경 증빙 사진 (선택)',prefix+':change_photos')
+            st.caption('변경을 기록하면 현재 승인 상태가 해제되고 이전 승인·점검 이력은 보존됩니다.')
+            save=st.form_submit_button('변경사항 저장',width='stretch')
+        if save:ptw_track_ui_save(actor,record,'change',dict(day=day,note=note),files,message='변경사항을 기록했습니다. 변경된 작업허가서를 재접수해 주세요.')
+    with st.expander('작업 종료·종결 기록'):
+        with st.form(prefix+':close_form'):
+            ending=st.radio('종결 구분',list(PTW_TRACK_TERMINAL),horizontal=True)
+            day=st.date_input('종료·종결일',value=ptw_track_ui_date(ptw_today()),max_value=ptw_track_ui_date(ptw_today()))
+            note=st.text_area('종료·종결 확인 내용',placeholder='최종 확인 결과 또는 취소·중단 사유',max_chars=4000)
+            confirmed=st.checkbox('실제 종료·종결 결과와 남은 조치사항을 확인했습니다.')
+            save=st.form_submit_button('종결 기록 저장',width='stretch')
+        if save:ptw_track_ui_save(actor,record,'close',dict(ending=ending,day=day,note=note,confirmed=confirmed),message='작업허가서 종결을 기록했습니다.')
+
+
+def ptw_track_export(record):
+    doc=HwpxDocument.new()
+    def paragraph(text, size=10, bold=False):
+        for line in str(text).splitlines() or ['']:
+            doc.add_paragraph('').add_run(line,font='맑은 고딕',size=size,bold=bold)
+    paragraph('작업허가서 검토·이행 기록',18,True)
+    paragraph(record['number']+' · '+record['site']+' · '+record['status'])
+    paragraph('공단 내부 관리 기록 · 승인·서명 원본은 현장 비치 문서 참조',9)
+    for sub in record['data']['submissions']:
+        paragraph(f'{sub["number"]}차 제출자료 · {sub["received_on"]}',13,True)
+        for key,label in PTW_TRACK_FIELDS:
+            value=sub['fields'].get(key)
+            if isinstance(value,list):value=' / '.join(value)
+            if value:paragraph(label+': '+value)
+        paragraph('원본 사진: '+', '.join(record['photos'][pid]['name'] for pid in sub['photos'] if pid in record['photos']))
+        if sub['note']:paragraph('접수·변경 사유: '+sub['note'])
+    paragraph('검토·승인·점검 및 변경 이력',13,True)
+    for event in record['data']['events']:
+        body=event['body']
+        paragraph(f'{event["at"][:16].replace("T"," ")} · {event["version"]}차 · {ptw_track_event_label(event)} · 기록자 {event["by"]}',10,True)
+        paragraph(ptw_track_event_note(event))
+        if event['kind']=='check':
+            for row in body['rows']:
+                paragraph('['+row['group']+'] '+row['item']+' / 시공사 점검 '+row['contractor']+' / 감독자 확인 '+row['supervisor']+(' / '+row['note'] if row['note'] else ''))
+        if event['kind']=='review':
+            for label,checked in body['checks'].items():paragraph(('확인 · ' if checked else '미확인 · ')+label)
+        if event['kind']=='approve':
+            if body['reference']:paragraph('승인 원본 식별정보: '+body['reference'])
+            for item in body['extra_items']:paragraph('승인 추가 항목: '+item['item'])
+        if event['photos'] and event['kind'] not in ('receive','resubmit'):
+            paragraph('증빙 사진: '+', '.join(record['photos'][pid]['name'] for pid in event['photos'] if pid in record['photos']))
+    output=io.BytesIO();doc.save_to_stream(output)
+    return output.getvalue()
+
+
+def ptw_track_render_history(actor, record, prefix):
+    events=record['data']['events']
+    options={e['id']:e for e in reversed(events)}
+    st.dataframe(pd.DataFrame([{'기록일시':e['at'][:19].replace('T',' '),'차수':e['version'],
+                               '구분':ptw_track_event_label(e),'기록자':e['by'],'내용':ptw_track_event_note(e)}
+                              for e in options.values()]),hide_index=True,width='stretch')
+    selected=st.selectbox('상세 이력 선택',list(options),format_func=lambda v:f'{options[v]["at"][:19].replace("T"," ")} · {options[v]["version"]}차 · {ptw_track_event_label(options[v])}',
+                          key=prefix+':history')
+    event=options[selected];body=event['body']
+    st.caption('기록자 '+event['by']);st.text(ptw_track_event_note(event) or '별도 메모 없음')
+    if event['kind']=='review':
+        for label,checked in body['checks'].items():st.text(('확인 · ' if checked else '미확인 · ')+label)
+    if event['kind']=='approve':
+        if body['reference']:st.text('승인 원본 식별정보: '+body['reference'])
+        for item in body['extra_items']:st.text('승인 추가 항목: '+item['item'])
+    if event['kind']=='check' and body['rows']:
+        st.dataframe(pd.DataFrame([{'안전조치 이행 항목':r['item'],'시공사 점검':r['contractor'],'감독자 확인':r['supervisor'],
+                                    '이행·조치 내용':r['note']} for r in body['rows']]),hide_index=True,width='stretch')
+    ptw_track_render_photos(actor,record,event['photos'],prefix+':history:'+event['id'])
+    if st.button('검토·이행 기록 한글파일 만들기',key=prefix+':export'):
+        try:st.session_state.ptw_track_export=(prefix,ptw_track_export(record))
+        except Exception:st.error('한글 기록 파일을 만들지 못했습니다.')
+    export=st.session_state.get('ptw_track_export')
+    if export and export[0]==prefix:
+        st.download_button('검토·이행 기록 내려받기 (.hwpx)',export[1],record['number']+'_검토이행기록.hwpx',
+                           'application/hwp+zip',key=prefix+':download',on_click='ignore',width='stretch')
+
+
+def ptw_track_render_detail(actor, record):
+    prefix='ptw_track:'+record['id']+':'+str(record['revision'])
+    left,right=st.columns(2)
+    left.button('← 검토대장',key=prefix+':list',on_click=ptw_track_route,width='stretch')
+    if record['status'] not in PTW_TRACK_TERMINAL:
+        right.button('보완·변경본 재접수',key=prefix+':revise',on_click=ptw_track_route,args=('revision',record['id']),width='stretch')
+    st.subheader('작업허가서 상세')
+    st.text(record['title'])
+    data=record['data'];submissions={s['number']:s for s in data['submissions']}
+    st.caption(record['number']+' · '+record['site']+' · '+record['status']+f' · {max(submissions)}차 제출본')
+    if record['end'] and record['end']<ptw_today() and record['status'] not in PTW_TRACK_TERMINAL:
+        st.info('허가기간이 지났습니다. 종료 기록 또는 변경본 재승인 여부를 확인해 주세요.')
+    opened=sum(x['status']!='조치 완료' for x in ptw_track_findings(data))
+    if opened:st.warning(f'조치·재확인이 남은 미이행 항목 {opened}건')
+    a,b,c,d,e=st.tabs(['접수·원본','검토·승인','이행 점검','변경·종료','관리 이력'])
+    with a:
+        version=st.selectbox('제출 차수',list(reversed(submissions)),format_func=lambda n:f'{n}차 제출본',key=prefix+':version')
+        sub=submissions[version]
+        st.caption('접수일 '+sub['received_on']+' · 등록자 '+sub['by'])
+        st.dataframe(pd.DataFrame([{'항목':label,'접수 정보':' / '.join(sub['fields'][key]) if isinstance(sub['fields'][key],list) else sub['fields'][key]}
+                                   for key,label in PTW_TRACK_FIELDS]),hide_index=True,width='stretch')
+        if sub['note']:st.text('접수 메모: '+sub['note'])
+        if version>1:
+            previous=submissions[version-1]['fields']
+            with st.expander('이전 제출본과 변경 비교'):
+                changes=[{'항목':label,'이전 차수':previous[key],'현재 차수':sub['fields'][key]}
+                         for key,label in PTW_TRACK_FIELDS if previous[key]!=sub['fields'][key]]
+                if changes:st.dataframe(pd.DataFrame(changes),hide_index=True,width='stretch')
+                else:st.caption('입력 항목이 같으며 사진·접수 이력은 차수별로 보관됩니다.')
+        ptw_track_render_photos(actor,record,sub['photos'],prefix+':submission:'+str(version))
+    with b:ptw_track_render_review(actor,record,prefix)
+    with c:ptw_track_render_checks(actor,record,prefix)
+    with d:ptw_track_render_changes(actor,record,prefix)
+    with e:ptw_track_render_history(actor,record,prefix)
+
+
 @st.fragment
 def render_work_permit(actor):
-    if not _perf_actor_allowed(actor): return
-    ptw_initialize(actor)
+    if not _perf_actor_allowed(actor):return
+    try:actor,scope=ptw_track_identity(actor)
+    except PermissionError as exc:st.info(str(exc));return
+    if st.session_state.get('ptw_track_actor')!=actor:
+        for key in list(st.session_state):
+            if str(key).startswith('ptw_track_') or str(key).startswith('ptw_track:'):
+                st.session_state.pop(key,None)
+        st.session_state.ptw_track_actor=actor
+        ptw_track_route()
     st.markdown(PTW_CSS,unsafe_allow_html=True)
-    st.markdown(puru_intro('작업허가제',
-                           '위험작업 전에 작업내용과 안전대책을 작성하고, 현장 확인을 거쳐 작업을 승인하는 절차입니다.\n공종 선택 → 작업계획 작성 → 현장 검토 → 한글 보고서',
-                           'traffic', 'ptw-intro'), unsafe_allow_html=True)
-    with st.expander('작업허가제란? · 작성방법 안내'):
-        st.write('작업계획서로 작업범위·시간·책임자·위험요인·안전대책을 정리한 뒤, 현장 절차에 따른 검토자와 허가권자가 확인합니다. 작업조건이나 인원·장비가 변경되면 계획과 안전조치를 다시 검토합니다.')
-        st.write('아래 공종은 작성 지원 항목입니다. 실제 허가 대상과 승인자는 해당 현장의 작업허가 절차에 따라 확인하세요.')
-        st.write('첨부 작업계획서의 공사명, 공종, 장소, 작성자·검토자, 작업시간, 책임자, 안전관리자, 근로자 수, 세부 작업내용, 안전대책, 지적사항·처리결과, 변경사항을 반영했습니다.')
-        st.markdown('[공공기관 안전작업 허가제 안내]('+PTW_GUIDANCE_URL+') · [고용노동부 기계·장비 작업계획서 참고자료]('+PTW_PLAN_GUIDANCE_URL+')')
-    with st.container(key='ptw_toolbar'):
-        a,b,c = st.columns(3)
-        with a: st.button('새 작업계획서',key='ptw_new',on_click=ptw_new,args=(actor,),width='stretch')
-        with b: st.button('작성내용 저장',key='ptw_save',on_click=ptw_try_save,args=(actor,True),width='stretch')
-        with c: st.download_button('작성내용 백업 (.json)',json.dumps(st.session_state.ptw_data,ensure_ascii=False,indent=2),file_name='작업계획서_백업.json',mime='application/json',key='ptw_backup',width='stretch')
-    # 목록 조회 실패를 빈 목록처럼 숨기지 않음. 편집·백업은 그대로 유지.
-    with st.expander('저장목록 · 이어서 작성'):
-        try: records = ptw_record_list(actor)
-        except Exception as exc:
-            records = []; st.error('저장목록을 불러오지 못했습니다: '+str(exc))
-        if records:
-            labels = {r['id']:(r['project'] or '공사명 미입력')+' / '+(r['trade'] or '공종 미선택')+' / '+r['date']+' / '+r['updated'][:16].replace('T',' ')+' / '+r['id'][:6] for r in records}
-            choices = [r['id'] for r in records]
-            if st.session_state.get('ptw_saved_choice') not in choices: st.session_state.ptw_saved_choice = choices[0]
-            st.selectbox('저장된 계획서',choices,format_func=lambda value:labels[value],key='ptw_saved_choice')
-            st.button('선택한 계획서 열기',key='ptw_open',on_click=ptw_open,args=(actor,))
-            if st.session_state.get('ptw_save_error'):
-                st.caption('백업을 내려받은 경우에만 아래 버튼을 사용하세요. 현재 화면 입력 대신 선택한 저장본을 불러옵니다.')
-                st.button('현재 입력 취소하고 저장본 다시 열기',key='ptw_reload_after_backup',on_click=ptw_open,args=(actor,True))
-            st.caption('최근 저장자료 100건 · 본인 작성자료')
-        else: st.caption('아직 저장된 작업계획서가 없습니다.')
-    notice = st.session_state.pop('ptw_notice',None)
-    if notice: st.success(notice)
-    error = st.session_state.pop('ptw_action_error',None)
-    if error: st.error(error)
-    if st.session_state.get('ptw_save_error'):
-        st.error(st.session_state.ptw_save_error)
-        st.caption('현재 입력은 화면에 유지됩니다. 작성내용 백업을 내려받은 뒤 저장을 다시 시도해 주세요.')
-    elif st.session_state.get('ptw_saved_at'):
-        st.caption('입력 변경 시 자동 저장 · 최근 저장 '+st.session_state.ptw_saved_at[:19].replace('T',' '))
-    else: st.caption('입력한 내용은 변경할 때 저장됩니다.')
-    st.selectbox('작성 단계',PTW_STEPS,key='ptw_step',on_change=ptw_step_changed,args=(actor,))
-    index = PTW_STEPS.index(st.session_state.ptw_step)
-    st.progress((index+1)/len(PTW_STEPS),text=f'{index+1} / 4 단계')
-    [ptw_render_basics,ptw_render_work,ptw_render_review,ptw_render_report][index](actor)
-    with st.container(key='ptw_nav'):
-        a,b = st.columns(2)
-        with a: st.button('← 이전 단계',key='ptw_previous',disabled=index==0,on_click=ptw_go,args=(actor,index-1),width='stretch')
-        with b: st.button('다음 단계 →' if index<3 else '기본정보로 돌아가기',key='ptw_next',type='primary',on_click=ptw_go,args=(actor,index+1 if index<3 else 0),width='stretch')
+    st.markdown(puru_intro('작업허가서 검토·이행 관리',
+                    '시공사 제출자료를 접수하고, 승인 결과와 날짜별 안전조치 이행을 작업 종료까지 기록합니다.',
+                    'traffic','ptw-intro'),unsafe_allow_html=True)
+    notice=st.session_state.pop('ptw_track_notice',None)
+    if notice:st.success(notice)
+    view=st.session_state.get('ptw_track_view','list')
+    try:
+        if view=='new':ptw_track_render_intake(actor,scope)
+        elif view in ('detail','revision'):
+            record=ptw_track_load(actor,st.session_state.get('ptw_track_case'))
+            if view=='detail':ptw_track_render_detail(actor,record)
+            else:ptw_track_render_intake(actor,scope,record)
+        else:ptw_track_render_list(actor,scope)
+    except (PermissionError,ValueError,StorageError) as exc:
+        st.error(str(exc));st.button('← 검토대장',key='ptw_track_error_back',on_click=ptw_track_route)
+    except Exception:
+        st.error('작업허가서 화면을 불러오지 못했습니다. 저장소 연결을 확인해 주세요.')
+        st.button('← 검토대장',key='ptw_track_error_back',on_click=ptw_track_route)
     ptw_render_back_bridge(actor)
 
 
