@@ -2596,7 +2596,7 @@ def inspection_file_bytes(file):
         file.seek(position)
 
 
-def inspection_report_key(dept, site, inspector, items, *, weather_note=""):
+def inspection_report_key(dept, site, inspector, items, *, weather_note="", include_ai=True):
     payload = [str(dept), str(site), str(inspector)]
     for idx, item in items.items():
         payload.append([idx, item.get("desc_before", ""), item.get("desc_after", ""),
@@ -2606,18 +2606,25 @@ def inspection_report_key(dept, site, inspector, items, *, weather_note=""):
                          for key in ("before_files", "after_files")]])
     if weather_note:
         payload.append({"weather_note": weather_note})
+    if not include_ai:
+        payload.append({"include_ai": False})
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False).encode()).hexdigest()
 
 
-def inspection_payload_parts(encoded):
+def inspection_payload_parts(encoded, *, include_excluded_ai=False):
     items = json.loads(encoded)
     if not isinstance(items, dict):
         raise ValueError("저장된 점검 내용의 형식을 확인해 주세요.")
     note = items.pop("_weather_note", "")
+    include_ai = items.pop("_report_include_ai", True)
+    if include_ai is False and not include_excluded_ai:
+        for item in items.values():
+            if isinstance(item, dict):
+                item.pop("ai_analysis", None)
     return items, note if isinstance(note, str) else ""
 
 
-def generate_inspection_hwpx(dept, site, inspector, items, report_title="현장 안전점검 및 조치 결과 보고서", *, weather_notes=()):
+def generate_inspection_hwpx(dept, site, inspector, items, report_title="현장 안전점검 및 조치 결과 보고서", *, weather_notes=(), include_ai=True):
     """A4 보고서: 가운데 제목, 기본정보, 조치 전후 비교표, AI 분석."""
     from PIL import ImageOps
     if not items:
@@ -2711,7 +2718,7 @@ def generate_inspection_hwpx(dept, site, inspector, items, report_title="현장 
                     raise ValueError(f"항목 {idx} {label} 사진 {number + 1} 삽입 실패: {exc}") from exc
             paragraph("")
         analysis = str(item.get("ai_analysis") or "").strip()
-        if analysis and analysis != "분석 미실행":
+        if include_ai and analysis and analysis != "분석 미실행":
             paragraph("조치 전 사진 AI 분석 결과", size=11, bold=True)
             paragraph(analysis)
             paragraph("※ AI 분석은 참고자료이며 최종 판단은 현장 확인 결과에 따릅니다.", size=9)
@@ -2731,10 +2738,10 @@ def inspection_store():
     return db
 
 
-def archive_inspection(dept, site, owner, items, hwpx=None, pdf=None, *, weather_note=""):
+def archive_inspection(dept, site, owner, items, hwpx=None, pdf=None, *, weather_note="", include_ai=True):
     now = datetime.datetime.now(ZoneInfo("Asia/Seoul"))
     day = now.strftime("%Y-%m-%d")
-    key = day + ":" + inspection_report_key(dept, site, owner, items, weather_note=weather_note)
+    key = day + ":" + inspection_report_key(dept, site, owner, items, weather_note=weather_note, include_ai=include_ai)
     payload = {}
     for idx, item in items.items():
         payload[str(idx)] = {k: str(item.get(k, "")) for k in ("desc_before", "desc_after", "ai_analysis")}
@@ -2742,6 +2749,8 @@ def archive_inspection(dept, site, owner, items, hwpx=None, pdf=None, *, weather
             payload[str(idx)][field] = [inspection_photo_pack(f) for f in item.get(field, [])]
     if weather_note:
         payload["_weather_note"] = weather_note
+    if not include_ai:
+        payload["_report_include_ai"] = False
     db = inspection_store()
     try:
         with db:
@@ -2757,7 +2766,7 @@ def archive_inspection(dept, site, owner, items, hwpx=None, pdf=None, *, weather
     return key
 
 
-def generate_inspection_pdf(dept, site, inspector, items, report_title="현장 안전점검 및 조치 결과 보고서", *, weather_notes=()):
+def generate_inspection_pdf(dept, site, inspector, items, report_title="현장 안전점검 및 조치 결과 보고서", *, weather_notes=(), include_ai=True):
     """HWPX와 동일한 입력으로 만드는 A4 출력용 PDF. 긴 설명은 표 밖에서 이어짐."""
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
@@ -2804,7 +2813,7 @@ def generate_inspection_pdf(dept, site, inspector, items, report_title="현장 �
         story.extend([p("조치 전 내용"), p(item.get("desc_before")), Spacer(1, 8),
                       p("조치 후 내용"), p(item.get("desc_after")), Spacer(1, 12)])
         analysis = item.get("ai_analysis", "")
-        if analysis and analysis != "분석 미실행":
+        if include_ai and analysis and analysis != "분석 미실행":
             story.extend([p("조치 전 사진 AI 분석 결과"), p(analysis), Spacer(1, 8),
                           p("※ AI 분석은 참고자료이며 최종 판단은 현장 확인 결과에 따릅니다.")])
     if weather_notes:
@@ -3799,7 +3808,7 @@ def _send_inspection_email_once(dept_name, site_name, inspector_id, form_data, r
             f"점검 현장: {site_name}\n"
             f"작성자 사번: {inspector_id}\n"
             f"점검 항목: {len(form_data)}건\n\n"
-            "조치 전·후 사진, 설명 및 AI 분석 내용은 첨부된 한글 보고서에서 확인해 주세요.\n\n"
+            "점검 상세 내용은 첨부된 보고서에서 확인해 주세요.\n\n"
             f"보고서명: {report_name or '안전점검_보고서.hwpx'}\n"
             f"첨부파일: {attachment_name}\n"
             f"첨부 크기: {len(report_bytes):,} bytes"
@@ -3855,7 +3864,7 @@ def inspection_history_record(rid, owner, dept, site, created, encoded):
               '점검 현장': str(site or ''), '작성자': str(owner or ''), '항목수': '',
               'AI분석': '', '지적 분류': '', '사진경로': '', '자료 상태': ''}
     try:
-        payload, _ = inspection_payload_parts(encoded)
+        payload, _ = inspection_payload_parts(encoded, include_excluded_ai=True)
         if any(not isinstance(v, dict) for v in payload.values()):
             raise ValueError()
         analyses, details, photos = [], [], []
@@ -7093,9 +7102,14 @@ def render_inspection_registration(logged_user_id):
     st.markdown("---")
 
     st.subheader("3. 보고서를 만들고 확인하세요")
-    st.caption("사진·입력 내용·AI 분석을 한글 파일과 출력용 PDF로 정리합니다. 아래 버튼을 누르세요.")
+    st.caption("사진과 입력 내용을 한글 파일과 출력용 PDF로 정리합니다. 보고서에 추가할 항목을 선택하세요.")
     st.write(f"현재 작성한 점검 항목: **{len(form_data)}개**")
-    current_report_key = inspection_report_key(selected_dept, selected_site, logged_user_id, form_data, weather_note=weather_note)
+    include_ai = st.checkbox("AI 분석 결과", value=True, key="inspection_report_include_ai")
+    include_weather = st.checkbox("금일 작업과 기상특보를 고려한 안전점검사항", value=True,
+                                  key="inspection_report_include_weather")
+    report_weather_note = weather_note if include_weather else ""
+    current_report_key = inspection_report_key(selected_dept, selected_site, logged_user_id, form_data,
+                                               weather_note=report_weather_note, include_ai=include_ai)
     if st.session_state.get("inspection_report_key") != current_report_key:
         st.session_state.pop("inspection_report_bytes", None)
         st.session_state.pop("inspection_report_name", None)
@@ -7107,11 +7121,13 @@ def render_inspection_registration(logged_user_id):
                 ready = (st.session_state.get('inspection_report_key') == current_report_key and
                          st.session_state.get('inspection_report_bytes') and st.session_state.get('inspection_pdf_bytes'))
                 if not ready:
-                    weather_notes = (weather_note,) if weather_note else ()
+                    weather_notes = (report_weather_note,) if report_weather_note else ()
                     status.stage(0)
-                    report_data = generate_inspection_hwpx(selected_dept, selected_site, logged_user_id, form_data, weather_notes=weather_notes)
+                    report_data = generate_inspection_hwpx(selected_dept, selected_site, logged_user_id, form_data,
+                                                           weather_notes=weather_notes, include_ai=include_ai)
                     status.stage(1)
-                    pdf_data = generate_inspection_pdf(selected_dept, selected_site, logged_user_id, form_data, weather_notes=weather_notes)
+                    pdf_data = generate_inspection_pdf(selected_dept, selected_site, logged_user_id, form_data,
+                                                         weather_notes=weather_notes, include_ai=include_ai)
                     safe_site = re.sub(r'[\\/:*?"<>|\r\n]', "_", str(selected_site))[:60]
                     report_name = f"안전점검_{safe_site}_{datetime.datetime.now(ZoneInfo('Asia/Seoul')):%Y%m%d_%H%M%S}.hwpx"
                     st.session_state.inspection_report_bytes = report_data
@@ -7126,7 +7142,7 @@ def render_inspection_registration(logged_user_id):
                     try:
                         archive_inspection(selected_dept, selected_site, logged_user_id, form_data,
                                            st.session_state.inspection_report_bytes, st.session_state.inspection_pdf_bytes,
-                                           weather_note=weather_note)
+                                           weather_note=report_weather_note, include_ai=include_ai)
                     except ValueError as exc:
                         status.update(label='보고서 작성 완료 · 휴지통 확인 필요', state='error', expanded=True)
                         st.warning(str(exc))
@@ -12396,7 +12412,13 @@ def ra_render_writer(actor):
     with guide: st.button('평가구분·평가방법 안내', key='ra_hub_writer_guide', on_click=ra_hub_navigate, args=('guide',), width='stretch')
     with save: st.button('임시 저장', key='ra_save', on_click=ra_hub_save, args=(actor,), type='primary', width='stretch')
     st.caption('입력은 단계 이동 중 유지됩니다. ‘임시 저장’ 또는 ‘목록’을 누르면 저장소에 반영됩니다.')
-    ra_field('공사종류', 'construction_type', kind='select', options=[None]+RA_CONSTRUCTION_TYPES, disabled=meta.get('construction_type') in RA_CONSTRUCTION_TYPES, format_func=lambda value: '공사종류를 선택하세요' if value is None else value)
+    construction_type = meta.get('construction_type')
+    locked = construction_type in RA_CONSTRUCTION_TYPES
+    if locked:
+        # A disabled widget may discard the frontend value that just triggered its callback.
+        st.session_state.ra_edit_meta_construction_type = construction_type
+    ra_field('공사종류', 'construction_type', kind='select', options=[None]+RA_CONSTRUCTION_TYPES,
+             disabled=locked, format_func=lambda value: '공사종류를 선택하세요' if value is None else value)
     if meta.get('legacy_construction_type') and not meta['construction_type']:
         st.caption('기존 공사종류 · '+meta['legacy_construction_type']+' / 새 분류에서 공사종류를 선택해 주세요. 기존 평가 항목은 유지됩니다.')
     if not meta['construction_type']:
