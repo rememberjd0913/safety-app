@@ -13536,7 +13536,7 @@ PTW_TRACK_TEMPLATES = {'2m 이상 고소작업': [{'group': '공통 사항',
                            '안전한 이동통로 확보']},
                 {'group': '기타 관리대상 작업(00 작업)', 'items': []}]}
 
-# 작업허가서: 원본 사진을 보존하고, 접수 차수와 감독자의 확인 이력을 별도로 기록한다.
+# 작업허가서: 제출 원본을 보존하고, 접수 차수와 감독자의 확인 이력을 별도로 기록한다.
 PTW_TRACK_STATES = ('접수', '보완 요청', '검토 완료', '재승인 대기', '승인 기록', '이행 중', '작업 종료', '취소·중단 종결')
 PTW_TRACK_TERMINAL = ('작업 종료', '취소·중단 종결')
 PTW_TRACK_REVIEW_ITEMS = ('신청자·작업명과 작업범위 확인', '허가기간·작업위치 확인', '적용할 안전조치와 점검 항목 확인', '원본 비치 정보 확인')
@@ -13633,29 +13633,49 @@ def ptw_track_load(actor, case_id):
         db.close()
 
 
-def ptw_track_photo(actor, case_id, photo_id):
+def ptw_track_file(actor, case_id, file_id):
     actor, scope = ptw_track_identity(actor)
     db = ptw_track_db()
     try:
         ptw_track_load_row(db, actor, scope, case_id)
         row = db.execute('SELECT content,mime,sha256 FROM ptw_tracking_photos WHERE case_id=? AND id=?',
-                         (case_id, photo_id)).fetchone()
+                         (case_id, file_id)).fetchone()
     finally:
         db.close()
-    if row is None or row[1] not in PTW_TRACK_PHOTO_TYPES.values():
-        raise ValueError('접수 건에 연결된 사진을 확인해 주세요.')
+    if row is None or row[1] not in (*PTW_TRACK_PHOTO_TYPES.values(), 'application/pdf'):
+        raise ValueError('접수 건에 연결된 원본 파일을 확인해 주세요.')
     raw = inspection_photo_bytes(row[0]) if isinstance(row[0], str) else bytes(row[0])
     if hashlib.sha256(raw).hexdigest() != row[2]:
-        raise StorageError('보관한 사진의 원본 일치 여부를 확인할 수 없습니다.')
+        raise StorageError('보관한 파일의 원본 일치 여부를 확인할 수 없습니다.')
     return raw, row[1]
 
 
-def ptw_track_prepare_photos(files, *, required=False):
+def ptw_track_open_pdf(raw):
+    if not raw.startswith(b'%PDF-'):
+        raise ValueError('PDF 형식을 확인해 주세요.')
+    try:
+        import fitz
+    except ImportError:
+        raise ValueError('서버의 PDF 읽기 모듈 설치를 확인해 주세요.') from None
+    try:
+        document = fitz.open(stream=raw, filetype='pdf')
+    except Exception:
+        raise ValueError('PDF를 열 수 없습니다. 원본 파일이 손상되었는지 확인해 주세요.') from None
+    if document.needs_pass or not document.page_count:
+        locked = document.needs_pass
+        document.close()
+        if locked:
+            raise ValueError('암호가 설정된 PDF입니다. 암호를 해제한 사본을 올려 주세요.')
+        raise ValueError('읽을 페이지가 없는 PDF입니다.')
+    return document
+
+
+def ptw_track_prepare_files(files, *, required=False, allow_pdf=False):
     files = list(files or ())
     if required and not files:
-        raise ValueError('제출된 작업허가서 사진을 한 장 이상 올려 주세요.')
+        raise ValueError('제출된 작업허가서 PDF 또는 사진을 한 개 이상 올려 주세요.')
     if len(files) > 12:
-        raise ValueError('한 번에 사진 12장까지 올릴 수 있습니다.')
+        raise ValueError('한 번에 파일 12개까지 올릴 수 있습니다.')
     result = []
     total = 0
     for index, file in enumerate(files, 1):
@@ -13663,30 +13683,43 @@ def ptw_track_prepare_photos(files, *, required=False):
         size = len(raw)
         total += size
         if not size or size > 16*1024**2 or total > 64*1024**2:
-            raise ValueError('사진은 장당 16MB, 한 번에 합계 64MB까지 등록할 수 있습니다.')
-        try:
-            with Image.open(io.BytesIO(raw)) as img:
-                mime = PTW_TRACK_PHOTO_TYPES.get(img.format)
-                if not mime or img.width*img.height > 40_000_000 or getattr(img,'n_frames',1) != 1:
-                    raise ValueError
-                img.verify()
-        except Exception:
-            raise ValueError(f'{index}번째 파일을 확인해 주세요. 정지 사진(JPG·PNG·WEBP)만 등록할 수 있습니다.') from None
-        name = re.sub(r'[\x00-\x1f\\/<>"|:*?]+', '_', str(name)).strip()[:160] or f'사진 {index}'
-        result.append(dict(name=name, raw=bytes(raw), mime=mime, size=size, sha256=hashlib.sha256(raw).hexdigest()))
+            raise ValueError('파일당 16MB, 한 번에 합계 64MB까지 등록할 수 있습니다.')
+        pages = 0
+        if allow_pdf and (str(name).lower().endswith('.pdf') or raw.startswith(b'%PDF-')):
+            with ptw_track_open_pdf(raw) as document:
+                pages = document.page_count
+            mime = 'application/pdf'
+        else:
+            try:
+                with Image.open(io.BytesIO(raw)) as img:
+                    mime = PTW_TRACK_PHOTO_TYPES.get(img.format)
+                    if not mime or img.width*img.height > 40_000_000 or getattr(img,'n_frames',1) != 1:
+                        raise ValueError
+                    img.verify()
+            except Exception:
+                types = 'PDF 또는 정지 사진(JPG·PNG·WEBP)' if allow_pdf else '정지 사진(JPG·PNG·WEBP)'
+                raise ValueError(f'{index}번째 파일을 확인해 주세요. {types}만 등록할 수 있습니다.') from None
+        name = re.sub(r'[\x00-\x1f\\/<>"|:*?]+', '_', str(name)).strip()[:160] or f'원본 {index}'
+        if pages and not name.lower().endswith('.pdf'):
+            name = name[:156] + '.pdf'
+        result.append(dict(name=name, raw=bytes(raw), mime=mime, size=size, sha256=hashlib.sha256(raw).hexdigest(), pages=pages))
     return result
 
 
-def ptw_track_store_photos(db, case_id, photos):
+def ptw_track_store_files(db, case_id, files):
     import uuid
-    storage = nhn_storage_backend() if photos else None
+    storage = nhn_storage_backend() if files else None
     ids = []
-    for photo in photos:
-        photo_id = uuid.uuid4().hex
-        content = storage.photo_pack(photo['raw']) if storage is not None else photo['raw']
+    for file in files:
+        file_id = uuid.uuid4().hex
+        # PDF bytes use the database connection's document storage, while images
+        # keep the existing photo references in the same attachment table.
+        content = file['raw']
+        if storage is not None and file['mime'] in PTW_TRACK_PHOTO_TYPES.values():
+            content = storage.photo_pack(content)
         db.execute('INSERT INTO ptw_tracking_photos VALUES(?,?,?,?,?,?,?)',
-                   (photo_id, case_id, photo['name'], photo['mime'], photo['sha256'], photo['size'], content))
-        ids.append(photo_id)
+                   (file_id, case_id, file['name'], file['mime'], file['sha256'], file['size'], content))
+        ids.append(file_id)
     return ids
 
 
@@ -13861,17 +13894,17 @@ def ptw_track_register(actor, site, values, files):
     if site not in ra_managed_sites() or (scope is not None and site not in scope):
         raise PermissionError('담당 관리현장을 선택해 주세요.')
     if values.get('confirmed') is not True:
-        raise ValueError('원본 사진과 입력 내용을 대조한 후 확인해 주세요.')
+        raise ValueError('제출 원본과 입력 내용을 대조한 후 확인해 주세요.')
     now = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')
     case_id = uuid.uuid4().hex
     number = 'PTW-'+now[:10].replace('-','')+'-'+case_id[:8].upper()
     submission = ptw_track_submission(values, 1, [], actor, now)
-    photos = ptw_track_prepare_photos(files, required=True)
+    attachments = ptw_track_prepare_files(files, required=True, allow_pdf=True)
     db = ptw_track_db()
     try:
         with db:
             db.execute('BEGIN IMMEDIATE')
-            submission['photos'] = ptw_track_store_photos(db, case_id, photos)
+            submission['photos'] = ptw_track_store_files(db, case_id, attachments)
             data = dict(schema_version=1,submissions=[submission],events=[],approval=None,change_waiting=False,reapproval=False)
             ptw_track_event(data, 'receive', 1, actor, now, {'note':submission['note']}, submission['photos'])
             f = submission['fields']
@@ -13889,7 +13922,7 @@ def ptw_track_apply(actor, case_id, revision, action, values, files=()):
         raise ValueError('처리할 기록 종류를 확인해 주세요.')
     if files and action not in {'resubmit','approve','check','action','change'}:
         raise ValueError('이 기록에는 사진을 첨부할 수 없습니다.')
-    photos = ptw_track_prepare_photos(files, required=action=='resubmit')
+    attachments = ptw_track_prepare_files(files, required=action=='resubmit', allow_pdf=action=='resubmit')
     now = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')
     db = ptw_track_db()
     try:
@@ -13905,14 +13938,14 @@ def ptw_track_apply(actor, case_id, revision, action, values, files=()):
             version = current['number']
             if action=='resubmit':
                 if values.get('confirmed') is not True:
-                    raise ValueError('보완본 사진과 입력 내용을 대조한 후 확인해 주세요.')
+                    raise ValueError('보완·변경본 원본과 입력 내용을 대조한 후 확인해 주세요.')
                 new = ptw_track_submission(values, version+1, [], actor, now)
                 if not new['note']:
                     raise ValueError('재접수 또는 정정 사유를 기록해 주세요.')
                 if new['received_on'] < current['received_on']:
                     raise ValueError('재접수일이 이전 차수 접수일보다 빠릅니다.')
                 data['reapproval'] = data['reapproval'] or bool(data['approval'])
-                new['photos'] = ptw_track_store_photos(db, case_id, photos)
+                new['photos'] = ptw_track_store_files(db, case_id, attachments)
                 data['submissions'].append(new)
                 data.update(approval=None,change_waiting=False)
                 status = '재승인 대기' if data['reapproval'] else '접수'
@@ -13997,7 +14030,7 @@ def ptw_track_apply(actor, case_id, revision, action, values, files=()):
                     body = dict(day=day, ending=ending,
                                 note=ptw_track_text(values.get('note'), '종료·종결 확인 내용', 4000, required=True))
                     status = ending
-                photo_ids = ptw_track_store_photos(db, case_id, photos)
+                photo_ids = ptw_track_store_files(db, case_id, attachments)
                 ptw_track_event(data, action, version, actor, now, body, photo_ids)
             fields = current['fields']
             changed = db.execute('''UPDATE ptw_tracking_cases SET updated=?,title=?,start=?,end=?,status=?,
@@ -14016,6 +14049,7 @@ PTW_TRACK_OCR_LABELS = {
     'description':r'작\s*업\s*(?:내\s*용|개\s*요)', 'place':r'작\s*업\s*(?:위\s*치|장\s*소)',
     'applied_on':r'신\s*청\s*일', 'paper_approval_date':r'승\s*인\s*일',
     'company':r'소\s*속', 'applicant_role':r'직\s*책', 'applicant':r'성\s*명',
+    'document_ref':r'문\s*서\s*번\s*호',
 }
 
 
@@ -14049,6 +14083,10 @@ def ptw_track_tsv_lines(tsv):
         except (KeyError, ValueError, TypeError):
             continue
         groups.setdefault(key, []).append((x,y,x+w,y+h,text,confidence))
+    return ptw_track_positioned_lines(groups)
+
+
+def ptw_track_positioned_lines(groups):
     lines = []
     for words in groups.values():
         words.sort(key=lambda w:w[0]);text = '';spans = []
@@ -14169,7 +14207,8 @@ def ptw_track_parse_ocr(lines, width, height):
                             ('description',(anchor('place') or {}).get('x',width*.59),True),
                             ('place',width,True),
                             ('applied_on',(anchor('paper_approval_date') or {}).get('x',width*.59),False),
-                            ('paper_approval_date',width,False)]:
+                            ('paper_approval_date',width,False),
+                            ('document_ref',width,False)]:
         value = cell(key,anchor(key),right,multi)
         if value: fields[key]=value
     split = (anchor('paper_approval_date') or {}).get('x', width*.58)
@@ -14222,6 +14261,45 @@ def ptw_track_parse_ocr(lines, width, height):
     return fields, warnings, raw
 
 
+def ptw_track_pdf_page_image(page):
+    import fitz
+    longest = max(page.rect.width, page.rect.height)
+    if longest <= 0:
+        raise ValueError('PDF 페이지의 크기를 확인해 주세요.')
+    scale = min(3.0, 2600 / longest)
+    return page.get_pixmap(matrix=fitz.Matrix(scale, scale), colorspace=fitz.csRGB, alpha=False).tobytes('png')
+
+
+def ptw_track_pdf_read(raw, page_index, rotation, engine, language):
+    import fitz
+    with ptw_track_open_pdf(raw) as document:
+        page = document[page_index]
+        turn = fitz.Matrix(rotation)
+        bounds = page.rect * turn
+        transform = page.rotation_matrix * turn
+        scale = 2600 / max(1, bounds.width, bounds.height)
+        groups = {}
+        try:
+            words = page.get_text('words')
+        except (RuntimeError, ValueError):
+            words = []
+        for x, y, right, bottom, word, block, line, _ in words:
+            rect = fitz.Rect(x, y, right, bottom) * transform
+            groups.setdefault((block, line), []).append((
+                (rect.x0-bounds.x0)*scale, (rect.y0-bounds.y0)*scale,
+                (rect.x1-bounds.x0)*scale, (rect.y1-bounds.y0)*scale, word, 100))
+        lines = ptw_track_positioned_lines(groups)
+        fields, warnings, text = ptw_track_parse_ocr(lines, bounds.width*scale, bounds.height*scale)
+        if fields:
+            return fields, warnings, text
+        if not engine:
+            return fields, [
+                '이 페이지에서 입력 항목을 읽지 못했습니다. 스캔본이면 아래 AI 버튼으로 다시 읽거나 원본을 보고 입력해 주세요.'
+            ], text
+        image = ptw_track_pdf_page_image(page)
+    return ptw_track_ocr(image, rotation, engine, language)
+
+
 def ptw_track_ocr(raw, rotation, engine, language):
     import subprocess
     from PIL import ImageOps
@@ -14239,14 +14317,14 @@ def ptw_track_ocr(raw, rotation, engine, language):
         result = subprocess.run([engine,'stdin','stdout','-l',language,'--psm','11','-c','tessedit_create_tsv=1'],
                                 input=buffer.getvalue(),capture_output=True,timeout=35,check=False,env=env)
     except subprocess.TimeoutExpired:
-        raise ValueError('사진을 읽는 시간이 길어졌습니다. 첫 장을 다시 촬영하거나 항목을 직접 입력해 주세요.') from None
+        raise ValueError('글자를 읽는 시간이 길어졌습니다. 원본 상태를 확인하거나 항목을 직접 입력해 주세요.') from None
     except OSError:
-        raise ValueError('서버의 사진 인식 프로그램을 실행할 수 없습니다. 직접 입력하거나 설치 상태를 확인해 주세요.') from None
+        raise ValueError('서버의 글자 인식 프로그램을 실행할 수 없습니다. 직접 입력하거나 설치 상태를 확인해 주세요.') from None
     if result.returncode!=0:
-        raise ValueError('서버의 한글 사진 인식 환경을 확인해 주세요. 항목을 직접 입력해 접수할 수 있습니다.')
+        raise ValueError('서버의 한글 글자 인식 환경을 확인해 주세요. 항목을 직접 입력해 접수할 수 있습니다.')
     tsv = result.stdout.decode('utf-8',errors='replace')
     if not tsv.startswith('level\tpage_num\t'):
-        raise ValueError('사진에서 글자 위치를 읽지 못했습니다. 서버의 사진 인식 설정을 확인해 주세요.')
+        raise ValueError('원본에서 글자 위치를 읽지 못했습니다. 서버의 글자 인식 설정을 확인해 주세요.')
     lines = ptw_track_tsv_lines(tsv)
     return ptw_track_parse_ocr(lines,img.width,img.height)
 
@@ -14349,8 +14427,11 @@ def ptw_track_ui_save(actor, record, action, values, files=(), *, message):
     st.rerun()
 
 
-def ptw_track_uploader(label, key, *, multiple=True):
-    return st.file_uploader(label,type=['jpg','jpeg','png','webp'],accept_multiple_files=multiple,key=key)
+def ptw_track_uploader(label, key, *, multiple=True, allow_pdf=False):
+    types = ['jpg', 'jpeg', 'png', 'webp']
+    if allow_pdf:
+        types.append('pdf')
+    return st.file_uploader(label, type=types, accept_multiple_files=multiple, key=key)
 
 
 def ptw_track_image(raw, mime, name):
@@ -14360,20 +14441,34 @@ def ptw_track_image(raw, mime, name):
     st.markdown(f'<img src="data:{mime};base64,{encoded}" alt="{alt}" style="display:block;max-width:100%;height:auto;margin:8px auto;">',unsafe_allow_html=True)
 
 
-def ptw_track_render_photos(actor, record, ids, key):
-    photos = {pid:record['photos'][pid] for pid in ids if pid in record['photos']}
-    if not photos:return
-    if not st.checkbox(f'보관 사진 보기 ({len(photos)}장)',key=key+':show'):
+def ptw_track_attachment_image(attachment, page_index):
+    if attachment['pages']:
+        with ptw_track_open_pdf(attachment['raw']) as document:
+            return ptw_track_pdf_page_image(document[page_index]), 'image/png'
+    return attachment['raw'], attachment['mime']
+
+
+def ptw_track_render_attachments(actor, record, ids, key):
+    attachments = {pid:record['photos'][pid] for pid in ids if pid in record['photos']}
+    if not attachments:return
+    has_pdf = any(file['mime'] == 'application/pdf' for file in attachments.values())
+    label = f'보관 원본 보기 ({len(attachments)}개)' if has_pdf else f'보관 사진 보기 ({len(attachments)}장)'
+    if not st.checkbox(label,key=key+':show'):
         return
-    options = list(photos)
-    selected = st.selectbox('열람할 사진',options,format_func=lambda pid:f'{options.index(pid)+1}. {photos[pid]["name"]}',key=key+':photo')
+    options = list(attachments)
+    selected = st.selectbox('열람할 원본' if has_pdf else '열람할 사진', options,
+                            format_func=lambda pid:f'{options.index(pid)+1}. {attachments[pid]["name"]}',key=key+':photo')
     try:
-        raw,mime=ptw_track_photo(actor,record['id'],selected)
-        ptw_track_image(raw,mime,photos[selected]['name'])
+        raw,mime=ptw_track_file(actor,record['id'],selected)
+        name = attachments[selected]['name']
+        if mime == 'application/pdf':
+            st.download_button('원본 PDF 받기', raw, name, mime, key=key+':download:'+selected, on_click='ignore')
+        else:
+            ptw_track_image(raw,mime,name)
     except (ValueError,PermissionError,StorageError) as exc:
         st.error(str(exc))
     except Exception:
-        st.error('보관 사진을 불러오지 못했습니다. 저장소 연결을 확인해 주세요.')
+        st.error('보관 원본을 불러오지 못했습니다. 저장소 연결을 확인해 주세요.')
 
 
 def ptw_track_render_legacy(actor):
@@ -14451,45 +14546,66 @@ def ptw_track_render_intake(actor, scope, record=None):
             st.warning('다른 화면에서 이 접수 건을 먼저 수정했습니다. 이전 화면으로 돌아가 최신 내용을 확인해 주세요.');return
     else:
         initial={'fields':{},'custom':[],'heavy':False}
-    st.caption('종이 원본은 현장에 비치하고, 글자가 보이도록 촬영한 사진을 순서대로 등록합니다.')
-    files=ptw_track_uploader('제출 작업허가서 사진',base+':files')
+    st.caption('종이 원본은 현장에 비치하고, 제출받은 PDF 또는 글자가 보이는 사진을 올려 주세요.')
+    files=ptw_track_uploader('제출 작업허가서 (PDF 또는 사진)',base+':files',allow_pdf=True)
     extraction=st.session_state.get('ptw_track_extracted',{})
     signature='none'
     request = st.session_state.pop('ptw_track_read_request', None)
+    attachment = None
+    page_index = 0
+    pages = 0
     if files:
         cols=st.columns([2,1])
-        pick=cols[0].selectbox('글자를 읽을 사진',list(range(len(files))),
-                                format_func=lambda i:f'{i+1}. {files[i].name}',key=base+':pick')
+        pick_key = base+':pick'
+        if st.session_state.get(pick_key, 0) not in range(len(files)):
+            st.session_state[pick_key] = 0
+        pick=cols[0].selectbox('글자를 읽을 파일',list(range(len(files))),
+                                format_func=lambda i:f'{i+1}. {files[i].name}',key=pick_key)
         rotation=cols[1].selectbox('읽을 방향',[0,90,180,270],format_func=lambda x:f'{x}°',key=base+':rotation')
-        signature=hashlib.sha256(files[pick].getvalue()).hexdigest()+':'+str(rotation)
-        if st.checkbox('선택 사진 보기',key=base+':preview'):
+        try:
+            attachment=ptw_track_prepare_files([files[pick]], allow_pdf=True)[0]
+        except ValueError as exc:
+            st.error(str(exc))
+    if attachment:
+        pages = attachment['pages']
+        if pages > 1:
+            page_index = st.number_input('읽을 PDF 페이지', min_value=1, max_value=pages, step=1,
+                                         key=base+':page:'+attachment['sha256'], help=f'총 {pages}쪽') - 1
+        signature = f'{attachment["sha256"]}:{rotation}:{page_index}'
+        if st.checkbox('선택한 원본 보기',key=base+':preview'):
             try:
-                photo=ptw_track_prepare_photos([files[pick]])[0]
-                ptw_track_image(photo['raw'],photo['mime'],photo['name'])
+                raw, mime = ptw_track_attachment_image(attachment, page_index)
+                ptw_track_image(raw, mime, attachment['name'])
             except ValueError as exc:st.error(str(exc))
+            except Exception:st.error('선택한 원본을 미리 볼 수 없습니다.')
         engine,language=ptw_track_ocr_engine()
-        if not engine:st.caption('서버 사진 인식 설치가 필요합니다. 사진과 직접 확인한 항목은 지금도 등록할 수 있습니다.')
-        read_clicked=st.button('사진에서 내용 읽기',key=base+':read',disabled=not engine,width='stretch')
-        first_read=bool(engine and st.session_state.get('ptw_track_first_read')!=token)
+        if not pages and not engine:
+            st.caption('서버 사진 인식 설치가 필요합니다. 사진과 직접 확인한 항목은 지금도 등록할 수 있습니다.')
+        source = 'PDF' if pages else '사진'
+        can_read = bool(pages or engine)
+        read_clicked=st.button(source+'에서 내용 읽기',key=base+':read',disabled=not can_read,width='stretch')
+        first_read=can_read and st.session_state.get('ptw_track_first_read')!=token
         if read_clicked or first_read:
             st.session_state.ptw_track_first_read=token
             try:
-                photo=ptw_track_prepare_photos([files[pick]])[0]
-                with keco_loading('작업허가서 사진에서 글자를 읽고 있습니다…'):
-                    values,warnings,raw=ptw_track_ocr(photo['raw'],rotation,engine,language)
-                extraction=dict(signature=signature,fields=values,warnings=warnings,text=raw,
+                with keco_loading('작업허가서 '+source+'에서 글자를 읽고 있습니다…'):
+                    if pages:
+                        values, warnings, recognized = ptw_track_pdf_read(attachment['raw'],page_index,rotation,engine,language)
+                    else:
+                        values, warnings, recognized = ptw_track_ocr(attachment['raw'],rotation,engine,language)
+                extraction=dict(signature=signature,fields=values,warnings=warnings,text=recognized,
                                 revision=extraction.get('revision',0)+1)
                 st.session_state.ptw_track_extracted=extraction
                 if values:st.success(f'{len(values)}개 항목을 읽었습니다. 아래 입력 내용을 원본과 대조해 주세요.')
-                else:st.info('항목을 구분하지 못했습니다. 촬영 방향을 바꾸거나 아래에 직접 입력해 주세요.')
+                else:st.info('항목을 구분하지 못했습니다. 읽을 페이지나 방향을 확인하거나 아래에 직접 입력해 주세요.')
             except (ValueError,StorageError) as exc:st.error(str(exc))
-            except Exception:st.error('사진을 읽지 못했습니다. 촬영 상태를 확인하거나 직접 입력해 주세요.')
+            except Exception:st.error('선택한 원본을 읽지 못했습니다. 파일 상태를 확인하거나 직접 입력해 주세요.')
     if extraction.get('signature') != signature:extraction={}
-    if files and request == (base, signature, 'read'):
+    if attachment and request == (base, signature, 'read'):
         try:
-            photo = ptw_track_prepare_photos([files[pick]])[0]
-            with keco_loading('AI가 선택한 사진의 입력 항목을 다시 읽고 있습니다…'):
-                candidates = ptw_track_ai_read(photo['raw'], rotation)
+            with keco_loading('AI가 선택한 원본의 입력 항목을 다시 읽고 있습니다…'):
+                image, _ = ptw_track_attachment_image(attachment, page_index)
+                candidates = ptw_track_ai_read(image, rotation)
             extraction = {**extraction, 'signature': signature, 'ai_fields': candidates}
             st.session_state.ptw_track_extracted = extraction
         except (ValueError, StorageError) as exc:
@@ -14503,7 +14619,7 @@ def ptw_track_render_intake(actor, scope, record=None):
         for message in extraction.get('warnings', []):
             st.warning(message)
     if extraction.get('text') or (candidates and extraction.get('warnings')):
-        with st.expander('기본 사진 인식 결과'):
+        with st.expander('기본 원본 인식 결과'):
             if candidates:
                 for message in extraction.get('warnings', []):
                     st.caption(message)
@@ -14511,7 +14627,7 @@ def ptw_track_render_intake(actor, scope, record=None):
                 st.text(extraction['text'])
     meta={key:initial['fields'].get(key,'') for key in ('document_ref','original_location')}
     meta.update(extraction.get('fields',{}))
-    prefix=base+':'+signature[:12]+':'+str(extraction.get('revision',0))
+    prefix=base+':'+hashlib.sha256(signature.encode()).hexdigest()[:12]+':'+str(extraction.get('revision',0))
     for field in PTW_TRACK_AI_FIELDS:
         value = meta.get(field, '')
         if field in PTW_TRACK_AI_DATES:
@@ -14527,7 +14643,7 @@ def ptw_track_render_intake(actor, scope, record=None):
             count = ptw_track_apply_reading(prefix, candidates, blanks)
             st.success(f'AI가 {len(candidates)}개 항목을 읽어 빈칸 {count}개를 채웠습니다. 원본과 대조해 주세요.')
         else:
-            st.info('AI가 구분한 입력 항목이 없습니다. 사진 원본에서 값을 확인해 주세요.')
+            st.info('AI가 구분한 입력 항목이 없습니다. 제출 원본에서 값을 확인해 주세요.')
     elif request == (base, signature, 'apply'):
         selected = st.session_state.pop(choice_key, [])
         if ptw_track_apply_reading(prefix, candidates, selected):
@@ -14568,7 +14684,7 @@ def ptw_track_render_intake(actor, scope, record=None):
         original=st.text_input('원본 비치 위치',value=meta.get('original_location','')[:500],max_chars=500,
                                placeholder='예: 공사감독자 현장사무실 · 작업허가서철')
         with st.expander('제출 서류에 기재된 승인자 (선택)'):
-            st.caption('사진에 적힌 내용을 참고로 기록합니다. 실제 승인 결과는 검토 후 별도로 기록합니다.')
+            st.caption('제출 원본에 적힌 내용을 참고로 기록합니다. 실제 승인 결과는 검토 후 별도로 기록합니다.')
             a,b=st.columns(2)
             paper_approver=a.text_input('서류 기재 승인자 성명',value=meta.get('paper_approver','')[:500],max_chars=500)
             paper_day=b.date_input('서류 기재 승인일',value=ptw_track_ui_date(meta.get('paper_approval_date')))
@@ -14581,10 +14697,11 @@ def ptw_track_render_intake(actor, scope, record=None):
         note=st.text_area('보완·변경본 접수 사유 *' if record else '접수 메모 (선택)',max_chars=3000)
         if different:
             st.multiselect('원본에서 확인한 AI 인식값', list(different), format_func=labels.get, key=choice_key)
-        confirmed=st.checkbox('사진 원본과 위 입력 내용을 대조했습니다.',key=prefix+':confirmed')
+        confirmed=st.checkbox('제출 원본과 위 입력 내용을 대조했습니다.',key=prefix+':confirmed')
         submitted=st.form_submit_button('재접수 저장' if record else '접수 저장',type='primary',width='stretch')
-        if files:
-            st.caption('‘AI로 빈칸·오타 확인’을 누르면 선택한 사진 한 장을 Gemini로 보내 입력 후보를 읽습니다.')
+        if attachment:
+            ai_source = '선택한 PDF 페이지를 이미지로 바꿔' if pages else '선택한 사진 한 장을'
+            st.caption('‘AI로 빈칸·오타 확인’을 누르면 '+ai_source+' Gemini로 보내 입력 후보를 읽습니다.')
             st.form_submit_button('AI로 빈칸·오타 확인', on_click=ptw_track_request_read,
                                   args=(base, signature, 'read'), width='stretch')
         if different:
@@ -14601,7 +14718,7 @@ def ptw_track_render_intake(actor, scope, record=None):
     else:
         try:
             case_id=ptw_track_register(actor,site,values,files)
-            st.session_state.ptw_track_notice='작업허가서를 접수했습니다. 사진 원본과 접수정보를 저장했습니다.'
+            st.session_state.ptw_track_notice='작업허가서를 접수했습니다. 제출 원본과 접수정보를 저장했습니다.'
             ptw_track_route('detail',case_id);st.rerun()
         except (ValueError,PermissionError,StorageError) as exc:st.error(str(exc))
         except Exception:st.error('작업허가서를 저장하지 못했습니다. 저장소 연결을 확인해 주세요.')
@@ -14633,7 +14750,7 @@ def ptw_track_render_review(actor, record, prefix):
         if approval['note']:st.text('승인자 의견: '+approval['note'])
         if approval.get('reference'):st.caption('승인 원본 식별정보: '+approval['reference'])
         event=next((e for e in reversed(data['events']) if e['kind']=='approve' and e['version']==approval['version']),None)
-        if event:ptw_track_render_photos(actor,record,event['photos'],prefix+':approved')
+        if event:ptw_track_render_attachments(actor,record,event['photos'],prefix+':approved')
     last_review=ptw_track_last_review(data)
     if last_review:st.text('최근 검토: '+ptw_track_event_note(last_review))
     if closed or approval:return
@@ -14785,7 +14902,7 @@ def ptw_track_export(record):
             value=sub['fields'].get(key)
             if isinstance(value,list):value=' / '.join(value)
             if value:paragraph(label+': '+value)
-        paragraph('원본 사진: '+', '.join(record['photos'][pid]['name'] for pid in sub['photos'] if pid in record['photos']))
+        paragraph('제출 원본: '+', '.join(record['photos'][pid]['name'] for pid in sub['photos'] if pid in record['photos']))
         if sub['note']:paragraph('접수·변경 사유: '+sub['note'])
     paragraph('검토·승인·점검 및 변경 이력',13,True)
     for event in record['data']['events']:
@@ -14824,7 +14941,7 @@ def ptw_track_render_history(actor, record, prefix):
     if event['kind']=='check' and body['rows']:
         st.dataframe(pd.DataFrame([{'안전조치 이행 항목':r['item'],'시공사 점검':r['contractor'],'감독자 확인':r['supervisor'],
                                     '이행·조치 내용':r['note']} for r in body['rows']]),hide_index=True,width='stretch')
-    ptw_track_render_photos(actor,record,event['photos'],prefix+':history:'+event['id'])
+    ptw_track_render_attachments(actor,record,event['photos'],prefix+':history:'+event['id'])
     if st.button('검토·이행 기록 한글파일 만들기',key=prefix+':export'):
         try:st.session_state.ptw_track_export=(prefix,ptw_track_export(record))
         except Exception:st.error('한글 기록 파일을 만들지 못했습니다.')
@@ -14862,8 +14979,8 @@ def ptw_track_render_detail(actor, record):
                 changes=[{'항목':label,'이전 차수':previous[key],'현재 차수':sub['fields'][key]}
                          for key,label in PTW_TRACK_FIELDS if previous[key]!=sub['fields'][key]]
                 if changes:st.dataframe(pd.DataFrame(changes),hide_index=True,width='stretch')
-                else:st.caption('입력 항목이 같으며 사진·접수 이력은 차수별로 보관됩니다.')
-        ptw_track_render_photos(actor,record,sub['photos'],prefix+':submission:'+str(version))
+                else:st.caption('입력 항목이 같으며 제출 원본과 접수 이력은 차수별로 보관됩니다.')
+        ptw_track_render_attachments(actor,record,sub['photos'],prefix+':submission:'+str(version))
     with b:ptw_track_render_review(actor,record,prefix)
     with c:ptw_track_render_checks(actor,record,prefix)
     with d:ptw_track_render_changes(actor,record,prefix)
