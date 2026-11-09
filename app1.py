@@ -7461,13 +7461,15 @@ def render_inspection_history_panel(logged_user_id):
         st.rerun()
     for key, value in st.session_state.pop(resume_key, {}).items():
         st.session_state[key] = value
-    history_mode = st.radio("점검 기록 메뉴", ["내 리포트", "점검 현황", "위험성평가 현황", "여러 점검 취합"], horizontal=True, key="inspection_history_menu")
+    history_mode = st.radio("점검 기록 메뉴", ["내 리포트", "점검 현황", "위험성평가 현황", "작업허가제", "여러 점검 취합"], horizontal=True, key="inspection_history_menu")
     if history_mode == "내 리포트":
         render_report_history(str(logged_user_id))
     elif history_mode == "점검 현황":
         render_inspection_dashboard()
     elif history_mode == "위험성평가 현황":
         render_risk_assessment_dashboard(logged_user_id)
+    elif history_mode == "작업허가제":
+        ptw_track_render_dashboard(logged_user_id)
     else:
         with st.expander("여러 점검을 보고서 하나로 모으기", expanded=False):
             st.caption("저장한 보안 점검 보고서를 하나로 취합해 보세요")
@@ -13537,7 +13539,7 @@ PTW_TRACK_TEMPLATES = {'2m 이상 고소작업': [{'group': '공통 사항',
                 {'group': '기타 관리대상 작업(00 작업)', 'items': []}]}
 
 # 작업허가서: 제출 원본을 보존하고, 접수 차수와 감독자의 확인 이력을 별도로 기록한다.
-PTW_TRACK_STATES = ('접수', '초안 저장', '일부 승인', '보완 요청', '검토 완료', '재승인 대기', '승인 기록', '이행 중', '작업 종료', '취소·중단 종결')
+PTW_TRACK_STATES = ('접수', '작업 전 승인', '작업 중 제출', '초안 저장', '일부 승인', '보완 요청', '검토 완료', '재승인 대기', '승인 기록', '이행 중', '작업 종료', '취소·중단 종결')
 PTW_TRACK_TERMINAL = ('작업 종료', '취소·중단 종결')
 PTW_TRACK_REVIEW_ITEMS = ('신청자·작업명과 작업범위 확인', '허가기간·작업위치 확인', '적용할 안전조치와 점검 항목 확인', '원본 비치 정보 확인')
 PTW_TRACK_CONTRACTOR = ('미기록', '이행', '미이행', '해당 없음')
@@ -14077,9 +14079,6 @@ body{margin:0;background:white}
 .sheet-scroll{overflow-x:auto;max-width:100%;padding:2px 0}
 #permit-sheet{min-width:830px;padding:10px 4px 4px;background:#fff;color:#171b20}
 .paper-meta{margin:0 0 7px;color:#48564f;font-size:11px;overflow-wrap:anywhere}
-.banner{display:flex;align-items:stretch;gap:5px;width:91%;font-size:16px;font-weight:800}
-.banner b{padding:3px 9px;background:#19164e;color:white;border:1px solid #171b20}
-.banner span{border:1px solid #171b20;padding:3px 9px;flex:1}
 h2{font-size:21px;line-height:1.2;text-align:center;margin:1px 0 5px}
 table{width:100%;table-layout:fixed;border-collapse:collapse;color:inherit;font-size:12px;line-height:1.35}
 td,th{border:1px solid #33383c;padding:3px 5px;vertical-align:middle}
@@ -14120,13 +14119,12 @@ textarea.field{resize:vertical;display:block}
 .location label{flex:0 0 auto;font-weight:700}
 .toolbar{display:flex;justify-content:flex-end;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:8px 4px}
 .toolbar button{appearance:none;border:1px solid #087f57;background:#087f57;color:#fff;padding:8px 15px;border-radius:7px;font:inherit;font-weight:750;cursor:pointer}
-.toolbar label{font-size:13px;display:flex;align-items:center;gap:4px}
-.local-message{font-size:12px;color:#9a3412;margin:3px 4px;min-height:1px;text-align:right}
+.toolbar .save-draft{color:#08734e;background:#f0f7f4}
 .empty{font-size:12px;padding:7px 0;text-align:center;color:#5b6861}
 @media(max-width:650px){.toolbar{justify-content:flex-start}}
 @media print{
  @page{size:A4;margin:9mm}
- .toolbar,.local-message{display:none}
+ .toolbar{display:none}
  .sheet-scroll{overflow:visible}
  #permit-sheet{min-width:0;padding:0}
  table{font-size:9px}
@@ -14141,7 +14139,7 @@ textarea.field{resize:vertical;display:block}
 <div id="app"></div>
 <script>
 "use strict";
-let args, signature, category, categories = {}, sharedDates = [], ui;
+let args, signature;
 const app = document.getElementById("app");
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, ch =>
     ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch]);
@@ -14157,21 +14155,14 @@ function resize() {
     }
 }
 new ResizeObserver(resize).observe(app);
-const editing = () => args.mode === "draft" || args.mode === "approval";
-const input = (id, label, kind = "text", limit = 500) => {
-    const value = escape(args.sheet.fields[id]);
-    if (!editing()) return `<span class="static-value">${value}</span>`;
-    const attrs = `class="field" id="${id}" data-field="${id}" aria-label="${escape(label)}"`;
-    if (kind === "area") return `<textarea ${attrs} maxlength="${limit}" rows="2">${value}</textarea>`;
-    return `<input ${attrs} type="${kind}" maxlength="${limit}" value="${value}">`;
-};
+const editing = () => args.mode === "before" || args.mode === "during";
+const input = (id) => `<span class="static-value">${escape(args.sheet.fields[id])}</span>`;
 function cols(widths) {
     return "<colgroup>"+widths.map(width=>`<col style="width:${width}%">`).join("")+"</colgroup>";
 }
 function targetBox(name) {
-    const checked = category === name ? "checked" : "";
-    if (!editing()) return `<span class="mark-printed">${checked ? "☑" : "□"}</span> ${escape(name)}`;
-    return `<label><input class="target" type="radio" name="category" value="${escape(name)}" ${checked}>${escape(name)}</label>`;
+    const checked = args.sheet.category === name;
+    return `<span class="mark-printed">${checked ? "☑" : "□"}</span> ${escape(name)}`;
 }
 function tableHeader() {
     const names = Object.keys(args.layout);
@@ -14181,40 +14172,44 @@ function tableHeader() {
         targetRows += names.slice(start,start+3).map(name=>`<td>${targetBox(name)}</td>`).join("") + "</tr>";
     }
     return `
-      <div class="banner"><b>붙 임 2.</b><span>공종별 작업허가서[양식]</span></div>
+
       <h2>건설공사 작업허가서(PTW)</h2>
       <table class="targets" aria-label="허가대상">${cols([12.3,29.2,29.2,29.3])}<tbody>${targetRows}</tbody></table>
       <table class="work" aria-label="작업 정보">${cols([12.3,37.4,12.3,38])}
-       <tbody><tr><th scope="row">작업명</th><td>${input("title","작업명")}</td><th scope="row">허가기간</th>
-        <td><div class="period">${input("start","허가 시작일","date")} <span>~</span> ${input("end","허가 종료일","date")}</div></td></tr>
-       <tr><th scope="row">작업내용</th><td>${input("description","작업내용","area",5000)}</td>
-        <th scope="row">작업위치</th><td>${input("place","작업위치","area")}</td></tr></tbody></table>
+       <tbody><tr><th scope="row">작업명</th><td>${input("title")}</td><th scope="row">허가기간</th>
+        <td><div class="period">${input("start")} <span>~</span> ${input("end")}</div></td></tr>
+       <tr><th scope="row">작업내용</th><td>${input("description")}</td>
+        <th scope="row">작업위치</th><td>${input("place")}</td></tr></tbody></table>
       <table class="people" aria-label="신청자 및 승인자">${cols([12.3,6.8,22.4,8.2,12.3,6.9,23.6,7.5])}
        <tbody><tr><th rowspan="4" scope="rowgroup">신청자<br>(작업책임자)</th>
-        <th scope="row">신청일</th><td colspan="2">${input("applied_on","신청일","date")}</td>
-        <th rowspan="4" scope="rowgroup">승인자</th><th scope="row">승인일</th><td colspan="2">${input("paper_approval_date","승인일","date")}</td></tr>
-       <tr><th scope="row">소속</th><td colspan="2">${input("company","신청자 소속")}</td>
-        <th scope="row">소속</th><td colspan="2">${input("paper_approver_company","승인자 소속")}</td></tr>
-       <tr><th scope="row">직책</th><td colspan="2">${input("applicant_role","신청자 직책")}</td>
-        <th scope="row">직책</th><td colspan="2">${input("paper_approver_role","승인자 직책")}</td></tr>
-       <tr><th scope="row">성명</th><td>${input("applicant","신청자 성명")}</td><td class="sign">(인)</td>
-        <th scope="row">성명</th><td>${input("paper_approver","승인자 성명","text",200)}</td><td class="sign">(인)</td></tr></tbody></table>`;
+        <th scope="row">신청일</th><td colspan="2">${input("applied_on")}</td>
+        <th rowspan="4" scope="rowgroup">승인자</th><th scope="row">승인일</th><td colspan="2">${input("paper_approval_date")}</td></tr>
+       <tr><th scope="row">소속</th><td colspan="2">${input("company")}</td>
+        <th scope="row">소속</th><td colspan="2">${input("paper_approver_company")}</td></tr>
+       <tr><th scope="row">직책</th><td colspan="2">${input("applicant_role")}</td>
+        <th scope="row">직책</th><td colspan="2">${input("paper_approver_role")}</td></tr>
+       <tr><th scope="row">성명</th><td>${input("applicant")}</td><td class="sign">(인)</td>
+        <th scope="row">성명</th><td>${input("paper_approver")}</td><td class="sign">(인)</td></tr></tbody></table>`;
 }
 function dayCell(i) {
-    const value = escape(sharedDates[i]);
-    const label = i === 0 ? "작업 전 점검일" : `작업 중 점검일 ${i}`;
-    const content = editing() ? `<input class="field slot" type="date" data-day="${i}" aria-label="${label}" value="${value}">`
+    const value = escape(args.sheet.dates[i]);
+    const editable = args.mode === "during" && i > 0;
+    const content = editable
+        ? `<input class="field slot" type="date" data-day="${i}" aria-label="작업 중 점검일 ${i}" value="${value}">`
         : `<span class="static-value">${value.replaceAll("-",".")}</span>`;
     return `<td class="date-cell" colspan="2">${content}</td>`;
 }
-function checkMark(mark, label, checked) {
-    if (!editing()) return `<span class="mark-printed">${checked ? "✓" : ""}</span>`;
-    return `<input class="mark" type="checkbox" data-mark="${mark}" aria-label="${escape(label)}" ${checked ? "checked" : ""}>`;
+function checkMark(mark, label, checked, hasItem) {
+    if (!editing()) return `<span class="mark-printed">${checked ? "✓" : "□"}</span>`;
+    const column = mark % 12;
+    const enabled = hasItem && (args.mode === "before" ? column === 1 : column >= 2);
+    return `<input class="mark" type="checkbox" data-mark="${mark}" aria-label="${escape(label)}"
+        ${checked ? "checked" : ""} ${enabled ? "" : "disabled"}>`;
 }
 function checklist() {
-    if (!category) return '<p class="empty">위 표에서 허가대상을 선택해 주세요.</p>';
-    const template = args.layout[category];
-    const values = categories[category] || {marks:[], groups:[], entries:{}};
+    const values = args.sheet;
+    const template = args.layout[values.category];
+    if (!template) return '<p class="empty">보완·변경본 재접수에서 허가대상을 선택해 주세요.</p>';
     const marks = new Set(values.marks);
     const groups = new Set(values.groups);
     let content = `<table class="checklist" aria-label="안전조치 이행표">${cols([55,...Array(12).fill(3.75)])}
@@ -14224,16 +14219,14 @@ function checklist() {
     template.rows.forEach(([kind,label,markup],row) => {
         if (kind === "group") {
             const selected = groups.has(row);
-            const checkbox = editing() ? `<input type="checkbox" class="mark" data-group="${row}" ${selected ? "checked" : ""}>`
-                : `<span class="mark-printed">${selected ? "☑" : "□"}</span>`;
+            const checkbox = `<span class="mark-printed">${selected ? "☑" : "□"}</span>`;
             content += `<tr class="group"><td class="item-text"><label class="group-label">${checkbox}${escape(label)}</label></td>
                 ${"<th scope='col'>점검</th><th scope='col'>확인</th>".repeat(6)}</tr>`;
             return;
         }
         if (kind === "entry") {
             const value = escape(values.entries[row]);
-            const field = editing() ? `<input class="field" data-entry="${row}" aria-label="${escape(label)} 현장 점검 항목" maxlength="350" value="${value}">`
-                : `<span class="static-value">${value}</span>`;
+            const field = `<span class="static-value">${value}</span>`;
             markup = `<div class="extra">${escape(label)}${field}</div>`;
         }
         content += `<tr><td class="item-text">${markup}</td>`;
@@ -14241,23 +14234,11 @@ function checklist() {
             const mark = row*12+col;
             const phase = col<2 ? "작업 전" : `작업 중 ${Math.floor(col/2)}`;
             const description = `${phase} ${col%2===0 ? "점검" : "확인"} · ${label}`;
-            content += `<td class="check-cell">${kind === "blank" ? "" : checkMark(mark,description,marks.has(mark))}</td>`;
+            content += `<td class="check-cell">${kind === "blank" ? "" : checkMark(mark,description,marks.has(mark),kind==="item" || Boolean(values.entries[row]))}</td>`;
         }
         content += "</tr>";
     });
     return content+"</tbody></table>";
-}
-function snapshot() {
-    const fields = Object.fromEntries([...app.querySelectorAll("[data-field]")].map(el=>[el.dataset.field,el.value]));
-    if (category) {
-        sharedDates = [...app.querySelectorAll("[data-day]")].map(el=>el.value);
-        categories[category] = {
-            marks:[...app.querySelectorAll("[data-mark]:checked")].map(el=>Number(el.dataset.mark)),
-            groups:[...app.querySelectorAll("[data-group]:checked")].map(el=>Number(el.dataset.group)),
-            entries:Object.fromEntries([...app.querySelectorAll("[data-entry]")].map(el=>[el.dataset.entry,el.value])),
-        };
-    }
-    return {fields,category,dates:sharedDates,...categories[category]};
 }
 function download() {
     const style = document.getElementById("sheet-style").textContent;
@@ -14272,40 +14253,30 @@ function download() {
     setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function draw() {
-    const approval = args.mode === "approval";
-    const action = approval ? "승인 저장" : "초안 저장";
-    const toolbar = editing() ? `<div class="toolbar">${approval ?
-        '<label><input class="mark" id="confirm-approval" type="checkbox">원본 승인 내용과 승인자를 확인했습니다.</label>' : ""}
-        <button type="submit">${action}</button></div>` :
-        (args.download ? '<div class="toolbar"><button id="download" type="button">저장본 내려받기</button></div>' : "");
+    const toolbar = args.mode === "before"
+        ? '<div class="toolbar"><button type="submit" value="before_approve">작업 전 승인 저장</button></div>'
+        : args.mode === "during"
+        ? '<div class="toolbar"><button class="save-draft" type="submit" value="during_save">저장</button><button type="submit" value="during_submit">제출</button></div>'
+        : (args.download ? '<div class="toolbar"><button id="download" type="button">저장본 내려받기</button></div>' : "");
     app.innerHTML = `<form autocomplete="off"><div class="sheet-scroll"><div id="permit-sheet">
         <div class="paper-meta">${escape(args.source)}</div>${tableHeader()}
         <div id="checklist-area">${checklist()}</div>
         <table class="opinion">${cols([27.3,72.7])}<tbody><tr>
-        <th scope="row">추가 안전대책(승인자 의견)</th><td>${input("opinion","추가 안전대책(승인자 의견)","area",4000)}</td>
+        <th scope="row">추가 안전대책(승인자 의견)</th><td>${input("opinion")}</td>
         </tr></tbody></table>
         <div class="notes">※ ${args.notes.map(note=>`<div>${escape(note)}</div>`).join("")}</div>
-        <div class="location"><label for="original_location">원본 비치 위치</label>${input("original_location","원본 비치 위치")}</div>
-        </div></div>${toolbar}<p id="message" class="local-message" aria-live="polite"></p></form>`;
-    ui = app.querySelector("form");
-    ui.addEventListener("change", event => {
-        if (event.target.name === "category") {
-            snapshot();
-            category = event.target.value;
-            app.querySelector("#checklist-area").innerHTML = checklist();
-        }
-    });
-    ui.addEventListener("submit", event => {
+        <div class="location"><label for="original_location">원본 비치 위치</label>${input("original_location")}</div>
+        </div></div>${toolbar}</form>`;
+    app.querySelector("form").addEventListener("submit", event => {
         event.preventDefault();
         if (!editing()) return;
-        const message = app.querySelector("#message");
-        if (!category) { message.textContent = "양식에서 허가대상을 선택해 주세요."; return; }
-        const confirmed = approval && app.querySelector("#confirm-approval").checked;
-        if (approval && !confirmed) { message.textContent = "원본 승인 내용과 승인자를 확인해 주세요."; return; }
-        message.textContent = "";
+        const action = event.submitter?.value;
+        if (!action) return;
         const nonce = window.crypto.randomUUID ? window.crypto.randomUUID() :
             Date.now().toString(36)+"-"+Math.random().toString(36).slice(2).padEnd(18,"0");
-        emit("streamlit:setComponentValue", {dataType:"json", value:{nonce,revision:args.revision,sheet:snapshot(),confirmed}});
+        const marks = [...app.querySelectorAll("[data-mark]:checked:not(:disabled)")].map(el=>Number(el.dataset.mark));
+        const days = [...app.querySelectorAll("[data-day]")].map(el=>el.value);
+        emit("streamlit:setComponentValue", {dataType:"json", value:{nonce,revision:args.revision,action,marks,days}});
     });
     app.querySelector("#download")?.addEventListener("click", download);
     requestAnimationFrame(resize);
@@ -14316,9 +14287,6 @@ window.addEventListener("message", event => {
     const incoming = `${args.mode}:${args.revision}:${args.snapshot}`;
     if (signature !== incoming) {
         signature = incoming;
-        category = args.sheet.category;
-        sharedDates = args.sheet.dates.slice();
-        categories = category ? {[category]:args.sheet} : {};
         draw();
     } else {
         requestAnimationFrame(resize);
@@ -14331,7 +14299,8 @@ emit("streamlit:componentReady", {apiVersion:1});
 '''
 
 
-PTW_SHEET_EVENTS = {'sheet_draft': '초안 저장', 'sheet_approve': '승인 저장'}
+PTW_SHEET_EVENTS = {'sheet_draft': '초안 저장', 'sheet_approve': '승인 저장',
+                    'sheet_before_approve': '작업 전 승인', 'sheet_during_submit': '작업 중 제출'}
 PTW_SHEET_FIELDS = {
     'title': '작업명', 'start': '허가 시작일', 'end': '허가 종료일',
     'description': '작업내용', 'place': '작업위치', 'applied_on': '신청일',
@@ -14340,7 +14309,6 @@ PTW_SHEET_FIELDS = {
     'paper_approver_role': '승인자 직책', 'paper_approver': '승인자 성명',
     'opinion': '추가 안전대책(승인자 의견)', 'original_location': '원본 비치 위치',
 }
-PTW_SHEET_DATE_FIELDS = {'start', 'end', 'applied_on', 'paper_approval_date'}
 PTW_SHEET_DAY_COUNT = 6
 PTW_SHEET_MARKS_PER_ROW = 12
 
@@ -14350,9 +14318,11 @@ def ptw_sheet_events(data, version, file_id):
             and event['version'] == version and event['body']['file_id'] == file_id]
 
 
-def ptw_sheet_from_submission(data, submission):
+def ptw_sheet_from_submission(data, submission, file_id=None):
     fields = {key: submission['fields'].get(key, '') for key in PTW_SHEET_FIELDS}
-    category = next((name for name in submission['fields']['categories'] if name in PTW_SHEET_LAYOUT), '')
+    received = submission.get('received_checks', {}).get(file_id, {})
+    category = received.get('category') or next(
+        (name for name in submission['fields']['categories'] if name in PTW_SHEET_LAYOUT), '')
     dates = [''] * PTW_SHEET_DAY_COUNT
     marks, groups, entries = [], [], {}
     if category:
@@ -14385,73 +14355,107 @@ def ptw_sheet_from_submission(data, submission):
     if old_approval and old_approval['version'] == submission['number']:
         fields.update(paper_approval_date=old_approval['day'], paper_approver=old_approval['approver'],
                       opinion=old_approval.get('note', ''))
-    return dict(fields=fields, category=category, dates=dates, marks=marks, groups=groups, entries=entries)
+    if received:
+        dates[0] = received['day'] or dates[0]
+        marks = [mark for mark in marks if mark % PTW_SHEET_MARKS_PER_ROW != 0]
+        marks.extend(row * PTW_SHEET_MARKS_PER_ROW for row in received['rows'])
+    return dict(fields=fields, category=category, dates=dates, marks=sorted(set(marks)), groups=groups, entries=entries)
 
 
-def ptw_sheet_validate(raw, received_on, *, approval=False):
-    category = raw.get('category') if isinstance(raw, dict) else None
-    if not isinstance(category, str) or category not in PTW_SHEET_LAYOUT:
-        raise ValueError('양식에서 허가대상을 선택해 주세요.')
+PTW_SHEET_ACTIONS = {
+    'before_approve': '작업 전 승인을 저장했습니다.',
+    'during_save': '작업 중 확인 내용을 저장했습니다.',
+    'during_submit': '작업 중 승인 내역을 제출했습니다. 관리이력에서 확인할 수 있습니다.',
+}
+
+
+def ptw_sheet_received_checks(values, submission, count):
+    captured = values.get('received_checks', [])
+    if captured == []:
+        return []
+    if not isinstance(captured, list) or len(captured) != count:
+        raise ValueError('첨부 파일별 작업 전 점검 표시를 확인해 주세요.')
+    categories = submission['fields']['categories']
+    default_category = categories[0] if categories else ''
+    result = []
+    for item in captured:
+        if not isinstance(item, dict) or not isinstance(item.get('rows'), list):
+            raise ValueError('시공사 작업 전 점검 항목을 확인해 주세요.')
+        category = item.get('category', default_category)
+        if category not in categories:
+            raise ValueError('첨부 파일별 허가대상을 확인해 주세요.')
+        rows = PTW_SHEET_LAYOUT[category]['rows']
+        allowed = {index for index, row in enumerate(rows) if row[0] == 'item'}
+        picked = item['rows']
+        if len(picked) > len(allowed) or any(type(index) is not int or index not in allowed for index in picked):
+            raise ValueError('시공사 작업 전 점검 항목을 확인해 주세요.')
+        day = ptw_track_date(item.get('day'), '원본의 작업 전 점검일', past=True)
+        if day and submission['fields']['start'] and day > submission['fields']['start']:
+            raise ValueError('원본의 작업 전 점검일과 허가 시작일을 확인해 주세요.')
+        result.append(dict(category=category, day=day, rows=sorted(set(picked))))
+    return result
+
+
+def ptw_sheet_progress(data, submission, file_id):
+    progress = submission.get('sheet_progress', {}).get(file_id, {})
+    if 'base' in progress:
+        return progress
+    legacy = next((event for event in reversed(ptw_sheet_events(data, submission['number'], file_id))
+                   if event['kind'] in ('sheet_draft', 'sheet_approve')), None)
+    base = legacy['body']['sheet'] if legacy else ptw_sheet_from_submission(data, submission, file_id)
+    return dict(progress, base=base)
+
+
+def ptw_sheet_apply_checks(sheet, request, action):
+    category = sheet['category']
+    if category not in PTW_SHEET_LAYOUT:
+        raise ValueError('보완·변경본 재접수에서 제출 원본의 허가대상을 선택해 주세요.')
+    before = action == 'before_approve'
+    columns = {1} if before else set(range(2, PTW_SHEET_MARKS_PER_ROW))
     rows = PTW_SHEET_LAYOUT[category]['rows']
-    values = raw.get('fields')
-    if not isinstance(values, dict) or any(not isinstance(values.get(key, ''), str) for key in PTW_SHEET_FIELDS):
-        raise ValueError('양식의 입력 내용을 확인해 주세요.')
-    fields = {}
-    for key, label in PTW_SHEET_FIELDS.items():
-        limit = {'description': 5000, 'opinion': 4000, 'paper_approver': 200}.get(key, 500)
-        value = ptw_track_text(values.get(key), label, limit, required=key == 'title')
-        fields[key] = ptw_track_date(value, label) if key in PTW_SHEET_DATE_FIELDS else value
-    start, end = fields['start'], fields['end']
-    if start and end and start > end:
-        raise ValueError('허가 종료일은 시작일 이후로 입력해 주세요.')
-    dates = raw.get('dates')
-    if not isinstance(dates, list) or len(dates) != PTW_SHEET_DAY_COUNT:
-        raise ValueError('작업 전·작업 중 점검일을 확인해 주세요.')
-    dates = [ptw_track_date(day, '점검일') for day in dates]
-    marks, groups, entries = raw.get('marks'), raw.get('groups'), raw.get('entries')
-    if (not isinstance(marks, list) or len(marks) > len(rows)*PTW_SHEET_MARKS_PER_ROW
-            or any(type(mark) is not int or not 0 <= mark < len(rows)*PTW_SHEET_MARKS_PER_ROW
-                   or rows[mark//PTW_SHEET_MARKS_PER_ROW][0] not in ('item','entry') for mark in marks)):
-        raise ValueError('안전조치 표의 점검·확인 칸을 확인해 주세요.')
-    if (not isinstance(groups, list) or len(groups) > len(rows)
-            or any(type(index) is not int or not 0 <= index < len(rows) or rows[index][0] != 'group' for index in groups)):
-        raise ValueError('안전조치 표의 항목 구분을 확인해 주세요.')
-    entry_keys = {str(i) for i, row in enumerate(rows) if row[0] == 'entry'}
-    if (not isinstance(entries, dict) or not entries.keys() <= entry_keys
-            or any(not isinstance(value, str) for value in entries.values())):
-        raise ValueError('기타 작업의 점검 항목을 확인해 주세요.')
-    entries = {key: ptw_track_text(value, '현장 점검 항목', 350) for key, value in entries.items() if value.strip()}
-    if approval:
-        submission = {'fields': dict(fields, categories=[category]), 'custom': list(entries.values())}
-        missing = ptw_track_approval_missing(submission)
+    allowed = {
+        row * PTW_SHEET_MARKS_PER_ROW + column for row, (kind, _, _) in enumerate(rows)
+        if kind == 'item' or (kind == 'entry' and sheet['entries'].get(str(row)))
+        for column in columns
+    }
+    marks = request.get('marks')
+    if (not isinstance(marks, list) or len(marks) > len(allowed)
+            or any(type(mark) is not int or mark not in allowed for mark in marks)):
+        raise ValueError('현재 단계에서 입력할 수 있는 점검·확인 칸을 확인해 주세요.')
+    checked = set(marks)
+    dates = list(sheet['dates'])
+    existing = {mark for mark in sheet['marks'] if mark % PTW_SHEET_MARKS_PER_ROW not in columns}
+    if before:
+        if not checked:
+            raise ValueError('작업 전 확인 항목을 한 건 이상 체크해 주세요.')
+        missing = {mark+1 for mark in existing if mark % PTW_SHEET_MARKS_PER_ROW == 0} - checked
         if missing:
-            raise ValueError('승인 전 입력을 확인해 주세요. '+', '.join(missing))
-        day = ptw_track_date(fields['paper_approval_date'], '승인일', required=True, past=True)
-        if not received_on <= day <= end:
-            raise ValueError('승인일이 접수일과 허가 종료일 사이인지 확인해 주세요.')
-        if not fields['paper_approver']:
-            raise ValueError('승인자 성명을 입력해 주세요.')
-        for mark in marks:
-            row, column = divmod(mark, PTW_SHEET_MARKS_PER_ROW)
-            if not dates[column//2]:
-                raise ValueError('체크한 열의 점검일을 입력해 주세요.')
-            if rows[row][0] == 'entry' and not entries.get(str(row)):
-                raise ValueError('체크한 기타 작업의 점검 항목을 입력해 주세요.')
-        if (dates[0] and dates[0] > start) or any(day and not start <= day <= end for day in dates[1:]):
-            raise ValueError('작업 전·작업 중 점검일이 허가기간과 맞는지 확인해 주세요.')
-    return dict(fields=fields, category=category, dates=dates, marks=sorted(set(marks)),
-                groups=sorted(set(groups)), entries=entries)
+            raise ValueError(f'시공사가 점검한 항목 중 감독자 확인이 필요한 항목이 {len(missing)}개 남았습니다.')
+    else:
+        days = request.get('days')
+        if (not isinstance(days, list) or len(days) != PTW_SHEET_DAY_COUNT - 1
+                or any(not isinstance(day, str) for day in days)):
+            raise ValueError('작업 중 점검일을 확인해 주세요.')
+        dates[1:] = [ptw_track_date(day, '작업 중 점검일') for day in days]
+        if action == 'during_submit':
+            if not any(mark % 2 == 1 for mark in checked):
+                raise ValueError('작업 중 확인 항목을 한 건 이상 체크해 주세요.')
+            start, end = sheet['fields']['start'], sheet['fields']['end']
+            for index in {mark % PTW_SHEET_MARKS_PER_ROW // 2 for mark in checked}:
+                day = ptw_track_date(dates[index], '체크한 열의 작업 중 점검일', required=True, past=True)
+                if (start and day < start) or (end and day > end):
+                    raise ValueError('체크한 열의 작업 중 점검일과 허가기간을 확인해 주세요.')
+    return dict(sheet, marks=sorted(existing | checked), dates=dates)
 
 
-def ptw_sheet_save(actor, case_id, version, file_id, request, kind):
+def ptw_sheet_save(actor, case_id, version, file_id, request, action):
     actor, scope = ptw_track_identity(actor)
     nonce = request.get('nonce')
     revision = request.get('revision')
-    if kind not in PTW_SHEET_EVENTS or not isinstance(nonce, str) or not re.fullmatch(r'[a-z0-9-]{20,64}', nonce):
+    if action not in PTW_SHEET_ACTIONS or not isinstance(nonce, str) or not re.fullmatch(r'[a-z0-9-]{20,64}', nonce):
         raise ValueError('저장 요청을 확인해 주세요.')
     if type(revision) is not int:
         raise ValueError('접수 건을 다시 열어 주세요.')
-    approval = kind == 'sheet_approve'
     now = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')
     db = ptw_track_db()
     try:
@@ -14459,38 +14463,44 @@ def ptw_sheet_save(actor, case_id, version, file_id, request, kind):
             db.execute('BEGIN IMMEDIATE')
             record = ptw_track_load_row(db, actor, scope, case_id)
             data = record['data']
-            previous = ptw_sheet_events(data, version, file_id)
-            if any(event['body'].get('nonce') == nonce and event['by'] == actor for event in previous):
-                return
-            if record['revision'] != revision:
-                raise ValueError('다른 화면에서 먼저 저장했습니다. 접수 건을 다시 열어 최신 내용을 확인해 주세요.')
             submission = data['submissions'][-1]
             if (record['status'] in PTW_TRACK_TERMINAL or submission['number'] != version
                     or file_id not in submission['photos'] or data.get('change_waiting')):
                 raise ValueError('현재 접수 원본을 확인하거나 변경본을 재접수해 주세요.')
-            if approval and (not previous or request.get('confirmed') is not True):
-                raise ValueError('이 파일의 초안을 저장하고 원본 승인 내용과 승인자를 확인해 주세요.')
-            sheet = ptw_sheet_validate(request.get('sheet'), submission['received_on'], approval=approval)
-            body = dict(file_id=file_id, sheet=sheet, nonce=nonce)
-            ptw_track_event(data, kind, version, actor, now, body, [file_id])
-            file_ids = submission['photos']
-            latest = {event['body']['file_id']: event for event in data['events']
-                      if event['kind'] in PTW_SHEET_EVENTS and event['version'] == version}
-            primary = latest[file_ids[0]]['body']['sheet']['fields'] if file_ids[0] in latest else submission['fields']
-            approved_count = sum(pid in latest and latest[pid]['kind'] == 'sheet_approve' for pid in file_ids)
-            had_approval = data.get('approval') or data.get('reapproval')
-            if approved_count == len(file_ids):
-                data['approval'] = dict(version=version, day=primary['paper_approval_date'],
-                                        approver=primary['paper_approver'], note=primary['opinion'],
-                                        extra_items=[], reference=submission['fields'].get('document_ref',''))
-                status = '승인 기록'
+            progress = ptw_sheet_progress(data, submission, file_id)
+            if any(progress.get(stage, {}).get('nonce') == nonce and progress[stage]['by'] == actor
+                   for stage in ('before', 'during', 'submitted')):
+                return
+            if record['revision'] != revision:
+                raise ValueError('다른 화면에서 먼저 저장했습니다. 접수 건을 다시 열어 최신 내용을 확인해 주세요.')
+            if action == 'before_approve':
+                if progress.get('before'):
+                    raise ValueError('이 제출 파일은 작업 전 승인까지 저장되었습니다.')
+                sheet = ptw_sheet_apply_checks(progress['base'], request, action)
+                progress['before'] = dict(sheet=sheet, at=now, by=actor, nonce=nonce)
+                ptw_track_event(data, 'sheet_before_approve', version, actor, now, dict(file_id=file_id, sheet=sheet), [file_id])
             else:
-                data.update(approval=None, reapproval=bool(had_approval))
-                status = '재승인 대기' if had_approval else ('일부 승인' if approved_count else '초안 저장')
-            changed = db.execute('''UPDATE ptw_tracking_cases SET updated=?,title=?,start=?,end=?,status=?,
-                revision=revision+1,payload=? WHERE id=? AND revision=?''',
-                (now, primary['title'], primary['start'], primary['end'], status,
-                 json.dumps(data, ensure_ascii=False, allow_nan=False), case_id, revision))
+                if not progress.get('before'):
+                    raise ValueError('작업 전 승인을 저장한 뒤 작업 중 확인을 진행해 주세요.')
+                source = progress.get('during', progress['before'])['sheet']
+                sheet = ptw_sheet_apply_checks(source, request, action)
+                progress['during'] = dict(sheet=sheet, at=now, by=actor, nonce=nonce)
+                if action == 'during_submit':
+                    progress['submitted'] = dict(at=now, by=actor, nonce=nonce)
+                    ptw_track_event(data, 'sheet_during_submit', version, actor, now, dict(file_id=file_id, sheet=sheet), [file_id])
+            progress_by_file = submission.setdefault('sheet_progress', {})
+            progress_by_file[file_id] = progress
+            confirmed = [progress_by_file.get(pid, {}) for pid in submission['photos']]
+            if all(item.get('before') for item in confirmed):
+                primary = confirmed[0]['before']
+                data['approval'] = dict(version=version, day=primary['at'][:10], approver=primary['by'],
+                                        note='', extra_items=[], reference=submission['fields'].get('document_ref',''))
+                status = '작업 중 제출' if any(item.get('submitted') for item in confirmed) else '작업 전 승인'
+            else:
+                status = '일부 승인'
+            changed = db.execute('''UPDATE ptw_tracking_cases SET updated=?,status=?,revision=revision+1,payload=?
+                WHERE id=? AND revision=?''',
+                (now, status, json.dumps(data, ensure_ascii=False, allow_nan=False), case_id, revision))
             if changed.rowcount != 1:
                 raise ValueError('저장 중 접수 내용이 변경되었습니다. 목록에서 다시 열어 주세요.')
     finally:
@@ -14517,18 +14527,21 @@ def ptw_track_identity(actor):
 def ptw_track_db():
     db = nhn_record_connection('reports.sqlite3')
     try:
-        if {'ptw_tracking_cases','ptw_tracking_photos'} <= report_history_tables(db):
-            return db
-        db.execute('''CREATE TABLE IF NOT EXISTS ptw_tracking_cases (
-            id TEXT PRIMARY KEY, owner TEXT NOT NULL, site TEXT NOT NULL,
-            number TEXT NOT NULL UNIQUE, created TEXT NOT NULL, updated TEXT NOT NULL,
-            title TEXT NOT NULL, start TEXT NOT NULL, end TEXT NOT NULL,
-            status TEXT NOT NULL, revision INTEGER NOT NULL, payload TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS ptw_tracking_photos (
-            id TEXT PRIMARY KEY, case_id TEXT NOT NULL, name TEXT NOT NULL,
-            mime TEXT NOT NULL, sha256 TEXT NOT NULL, size INTEGER NOT NULL, content BLOB NOT NULL)''')
-        db.execute('CREATE INDEX IF NOT EXISTS ptw_tracking_site_updated ON ptw_tracking_cases(site, updated)')
-        db.execute('CREATE INDEX IF NOT EXISTS ptw_tracking_photos_case ON ptw_tracking_photos(case_id)')
+        tables = {'ptw_tracking_cases','ptw_tracking_photos','ptw_tracking_trash'}
+        if not tables <= report_history_tables(db):
+            with db:
+                db.execute('''CREATE TABLE IF NOT EXISTS ptw_tracking_cases (
+                    id TEXT PRIMARY KEY, owner TEXT NOT NULL, site TEXT NOT NULL,
+                    number TEXT NOT NULL UNIQUE, created TEXT NOT NULL, updated TEXT NOT NULL,
+                    title TEXT NOT NULL, start TEXT NOT NULL, end TEXT NOT NULL,
+                    status TEXT NOT NULL, revision INTEGER NOT NULL, payload TEXT NOT NULL)''')
+                db.execute('''CREATE TABLE IF NOT EXISTS ptw_tracking_photos (
+                    id TEXT PRIMARY KEY, case_id TEXT NOT NULL, name TEXT NOT NULL,
+                    mime TEXT NOT NULL, sha256 TEXT NOT NULL, size INTEGER NOT NULL, content BLOB NOT NULL)''')
+                db.execute('''CREATE TABLE IF NOT EXISTS ptw_tracking_trash (
+                    case_id TEXT PRIMARY KEY, deleted_at TEXT NOT NULL, deleted_by TEXT NOT NULL)''')
+                db.execute('CREATE INDEX IF NOT EXISTS ptw_tracking_site_updated ON ptw_tracking_cases(site, updated)')
+                db.execute('CREATE INDEX IF NOT EXISTS ptw_tracking_photos_case ON ptw_tracking_photos(case_id)')
         return db
     except Exception:
         db.close()
@@ -14539,26 +14552,35 @@ def ptw_track_access(owner, site, actor, scope):
     return owner == actor if scope is None else site in scope
 
 
-def ptw_track_list(actor):
+def ptw_track_list(actor, *, trashed=False):
     actor, scope = ptw_track_identity(actor)
     if scope == ():
         return []
-    keys = ('id','site','number','created','updated','title','start','end','status')
-    where, params = ('owner=?', (actor,)) if scope is None else (
-        'site IN ('+','.join('?' for _ in scope)+')', scope)
+    keys = ('id','site','number','created','updated','title','start','end','status','revision','trashed_at')
+    where, params = ('c.owner=?', (actor,)) if scope is None else (
+        'c.site IN ('+','.join('?' for _ in scope)+')', scope)
+    trash_filter = 't.case_id IS NOT NULL' if trashed else 't.case_id IS NULL'
+    order = 't.deleted_at' if trashed else 'c.updated'
     db = ptw_track_db()
     try:
-        return [dict(zip(keys, row)) for row in db.execute(
-            'SELECT '+','.join(keys)+' FROM ptw_tracking_cases WHERE '+where+' ORDER BY updated DESC,id', params).fetchall()]
+        columns = ','.join('c.'+key for key in keys[:-1])
+        rows = db.execute(f'''SELECT {columns},t.deleted_at FROM ptw_tracking_cases c
+            LEFT JOIN ptw_tracking_trash t ON t.case_id=c.id
+            WHERE {where} AND {trash_filter} ORDER BY {order} DESC,c.id''', params).fetchall()
+        return [dict(zip(keys, row)) for row in rows]
     finally:
         db.close()
 
 
-def ptw_track_load_row(db, actor, scope, case_id):
+def ptw_track_load_row(db, actor, scope, case_id, *, trashed=False):
     keys = ('id','owner','site','number','created','updated','title','start','end','status','revision','payload')
-    row = db.execute('SELECT '+','.join(keys)+' FROM ptw_tracking_cases WHERE id=?', (str(case_id),)).fetchone()
+    columns = ','.join('c.'+key for key in keys)
+    condition = 'IS NOT NULL' if trashed else 'IS NULL'
+    row = db.execute(f'''SELECT {columns} FROM ptw_tracking_cases c
+        LEFT JOIN ptw_tracking_trash t ON t.case_id=c.id WHERE c.id=? AND t.case_id {condition}''',
+        (str(case_id),)).fetchone()
     if row is None or not ptw_track_access(row[1], row[2], actor, scope):
-        raise PermissionError('접수 건을 찾을 수 없거나 담당 현장이 아닙니다.')
+        raise PermissionError('접수 건의 담당 현장과 보관 상태를 확인해 주세요.')
     record = dict(zip(keys, row))
     record['data'] = json.loads(record.pop('payload'))
     return record
@@ -14591,6 +14613,87 @@ def ptw_track_file(actor, case_id, file_id):
     if hashlib.sha256(raw).hexdigest() != row[2]:
         raise StorageError('보관한 파일의 원본 일치 여부를 확인할 수 없습니다.')
     return raw, row[1]
+
+
+def ptw_track_change_case_trash(actor, case_id, revision, action):
+    if action not in ('move', 'restore', 'purge'):
+        raise ValueError('보관함 작업을 확인해 주세요.')
+    actor, scope = ptw_track_identity(actor)
+    now = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')
+    db = ptw_track_db()
+    queued = set()
+    try:
+        with db:
+            db.execute('BEGIN IMMEDIATE')
+            record = ptw_track_load_row(db, actor, scope, case_id, trashed=action != 'move')
+            if record['revision'] != revision:
+                raise ValueError('접수 건이 변경되었습니다. 목록에서 다시 선택해 주세요.')
+            if action == 'move':
+                db.execute('INSERT INTO ptw_tracking_trash VALUES(?,?,?)', (case_id, now, actor))
+            else:
+                db.execute('DELETE FROM ptw_tracking_trash WHERE case_id=?', (case_id,))
+            if action == 'purge':
+                if nhn_storage_backend() is not None:
+                    prefixes = (b'KECO-NHN-BLOB-V1:', PHOTO_REF.encode())
+                    for (encoded,) in db.execute(
+                            'SELECT hex(substr(content,1,256)) FROM ptw_tracking_photos WHERE case_id=?', (case_id,)):
+                        raw = bytes.fromhex(encoded)
+                        for prefix in prefixes:
+                            if raw.startswith(prefix):
+                                key = raw[len(prefix):].decode('ascii', errors='replace')
+                                if re.fullmatch(r'(?:files|images)/[0-9a-f]{64}\.[a-z0-9]+', key):
+                                    queued.add(key)
+                    if queued:
+                        db.execute('CREATE TABLE IF NOT EXISTS risk_file_cleanup (object_key TEXT PRIMARY KEY)')
+                        db.executemany('INSERT OR IGNORE INTO risk_file_cleanup VALUES (?)', [(key,) for key in queued])
+                db.execute('DELETE FROM ptw_tracking_photos WHERE case_id=?', (case_id,))
+                db.execute('DELETE FROM ptw_tracking_cases WHERE id=?', (case_id,))
+            else:
+                db.execute('UPDATE ptw_tracking_cases SET updated=?,revision=revision+1 WHERE id=?', (now, case_id))
+    finally:
+        db.close()
+    if queued:
+        try:
+            return ra_cleanup_files() != 0
+        except Exception:
+            return True
+    return False
+
+
+def ptw_track_change_history_trash(actor, case_id, revision, version, file_id, event_id, action):
+    if action not in ('move', 'restore', 'purge'):
+        raise ValueError('관리이력 보관함 작업을 확인해 주세요.')
+    actor, scope = ptw_track_identity(actor)
+    now = datetime.datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds')
+    db = ptw_track_db()
+    try:
+        with db:
+            db.execute('BEGIN IMMEDIATE')
+            record = ptw_track_load_row(db, actor, scope, case_id)
+            if record['revision'] != revision:
+                raise ValueError('관리이력이 변경되었습니다. 목록에서 다시 선택해 주세요.')
+            data = record['data']
+            submission = next((item for item in data['submissions'] if item['number'] == version), None)
+            if submission is None or file_id not in submission['photos']:
+                raise PermissionError('이력의 원본 파일을 확인해 주세요.')
+            event = next((item for item in ptw_sheet_events(data, version, file_id) if item['id'] == event_id), None)
+            if event is None or bool(event.get('trashed_at')) != (action != 'move'):
+                raise ValueError('선택한 저장본의 보관 상태를 확인해 주세요.')
+            if action == 'move':
+                event.update(trashed_at=now, trashed_by=actor)
+            elif action == 'restore':
+                event.pop('trashed_at', None)
+                event.pop('trashed_by', None)
+            else:
+                # Earlier versions used the most recent saved sheet as the starting form.
+                # Retain that form even when the historical copy is permanently removed.
+                if event['kind'] in ('sheet_draft', 'sheet_approve'):
+                    submission.setdefault('sheet_progress', {})[file_id] = ptw_sheet_progress(data, submission, file_id)
+                data['events'].remove(event)
+            db.execute('UPDATE ptw_tracking_cases SET revision=revision+1,payload=? WHERE id=?',
+                       (json.dumps(data, ensure_ascii=False, allow_nan=False), case_id))
+    finally:
+        db.close()
 
 
 def ptw_track_open_pdf(raw):
@@ -14843,11 +14946,13 @@ def ptw_track_register(actor, site, values, files):
     number = 'PTW-'+now[:10].replace('-','')+'-'+case_id[:8].upper()
     submission = ptw_track_submission(values, 1, [], actor, now)
     attachments = ptw_track_prepare_files(files, required=True, allow_pdf=True)
+    captured = ptw_sheet_received_checks(values, submission, len(attachments))
     db = ptw_track_db()
     try:
         with db:
             db.execute('BEGIN IMMEDIATE')
             submission['photos'] = ptw_track_store_files(db, case_id, attachments)
+            submission['received_checks'] = dict(zip(submission['photos'], captured))
             data = dict(schema_version=1,submissions=[submission],events=[],approval=None,change_waiting=False,reapproval=False)
             ptw_track_event(data, 'receive', 1, actor, now, {'note':submission['note']}, submission['photos'])
             f = submission['fields']
@@ -14887,8 +14992,11 @@ def ptw_track_apply(actor, case_id, revision, action, values, files=()):
                     raise ValueError('재접수 또는 정정 사유를 기록해 주세요.')
                 if new['received_on'] < current['received_on']:
                     raise ValueError('재접수일이 이전 차수 접수일보다 빠릅니다.')
-                data['reapproval'] = data['reapproval'] or bool(data['approval'])
+                captured = ptw_sheet_received_checks(values, new, len(attachments))
+                already_started = any(progress.get('before') for progress in current.get('sheet_progress', {}).values())
+                data['reapproval'] = data['reapproval'] or bool(data['approval']) or already_started
                 new['photos'] = ptw_track_store_files(db, case_id, attachments)
+                new['received_checks'] = dict(zip(new['photos'], captured))
                 data['submissions'].append(new)
                 data.update(approval=None,change_waiting=False)
                 status = '재승인 대기' if data['reapproval'] else '접수'
@@ -15391,7 +15499,7 @@ def ptw_track_attachment_image(attachment, page_index):
     return attachment['raw'], attachment['mime']
 
 
-def ptw_track_render_attachments(actor, record, ids, key):
+def ptw_track_render_attachments(actor, record, ids, key, *, preview_pdf=False):
     attachments = {pid:record['photos'][pid] for pid in ids if pid in record['photos']}
     if not attachments:return
     has_pdf = any(file['mime'] == 'application/pdf' for file in attachments.values())
@@ -15408,6 +15516,13 @@ def ptw_track_render_attachments(actor, record, ids, key):
         name = attachments[selected]['name']
         if mime == 'application/pdf':
             st.download_button('원본 PDF 받기', raw, name, mime, key=key+':download:'+selected, on_click='ignore')
+            if preview_pdf:
+                with ptw_track_open_pdf(raw) as document:
+                    page = 1
+                    if len(document) > 1:
+                        page = st.number_input('원본 PDF 페이지', min_value=1, max_value=len(document), step=1,
+                                               key=key+':page:'+selected)
+                    ptw_track_image(ptw_track_pdf_page_image(document[page-1]), 'image/png', name)
         else:
             ptw_track_image(raw,mime,name)
     except (ValueError,PermissionError,StorageError) as exc:
@@ -15416,40 +15531,122 @@ def ptw_track_render_attachments(actor, record, ids, key):
         st.error('보관 원본을 불러오지 못했습니다. 저장소 연결을 확인해 주세요.')
 
 
-def ptw_track_render_list(actor, scope):
-    records=ptw_track_list(actor)
-    st.button('＋ 작업허가서 접수',type='primary',key='ptw_track_new',width='stretch',
-              disabled=scope==(),on_click=ptw_track_route,args=('new',))
-    if scope==():st.info('이 계정에 배정된 작업허가 담당 현장이 없습니다.')
-    a,b,c=st.columns(3)
-    a.metric('진행 중',sum(r['status'] not in PTW_TRACK_TERMINAL for r in records))
-    b.metric('보완·재승인',sum(r['status'] in ('보완 요청','재승인 대기') for r in records))
-    c.metric('종결',sum(r['status'] in PTW_TRACK_TERMINAL for r in records))
+def ptw_track_rows(records, *, trashed=False):
+    table = [
+        {'접수번호':row['number'], '현장':row['site'], '작업명':row['title'],
+         '허가기간':(row['start'] or '미확인')+' ~ '+(row['end'] or '미확인'), '상태':row['status'],
+         '휴지통 이동일' if trashed else '최근 기록':(row['trashed_at'] if trashed else row['updated'])[:16].replace('T',' ')}
+        for row in records
+    ]
+    return pd.DataFrame(table)
+
+
+def ptw_track_render_dashboard(actor):
+    st.subheader('작업허가제 현황')
+    try:
+        records = ptw_track_list(actor)
+    except (PermissionError, ValueError, StorageError) as exc:
+        st.info(str(exc))
+        return
+    except Exception:
+        st.error('작업허가제 현황을 불러오지 못했습니다. 저장소 연결을 확인해 주세요.')
+        return
+    a,b,c = st.columns(3)
+    a.metric('접수 건', len(records))
+    b.metric('작업 전 승인 완료', sum(row['status'] in ('작업 전 승인', '작업 중 제출') for row in records))
+    c.metric('작업 중 제출', sum(row['status'] == '작업 중 제출' for row in records))
     if records:
-        a,b,c=st.columns([1.2,1,1.5])
-        sites=['전체 현장']+sorted({r['site'] for r in records})
-        if st.session_state.get('ptw_track_filter_site') not in sites:st.session_state.ptw_track_filter_site='전체 현장'
-        site=a.selectbox('관리현장',sites,key='ptw_track_filter_site')
-        status=b.selectbox('처리 상태',['전체 상태']+list(PTW_TRACK_STATES),key='ptw_track_filter_status')
-        search=c.text_input('접수번호·작업명 검색',key='ptw_track_search').strip().casefold()
-        choices={r['id']:r for r in records if (site=='전체 현장' or r['site']==site) and
-                 (status=='전체 상태' or r['status']==status) and search in (r['number']+' '+r['title']).casefold()}
-        if choices:
-            st.caption(f'검색 결과 {len(choices)}건'+(' · 최근 100건 표시' if len(choices)>100 else ''))
-            rows = list(choices.values())[:100]
-            row_ids = [row['id'] for row in rows]
-            table_key = 'ptw_track_rows:'+hashlib.sha256('|'.join(row_ids).encode()).hexdigest()[:16]
-            table = st.dataframe(pd.DataFrame([
-                {'접수번호':row['number'], '현장':row['site'], '작업명':row['title'],
-                 '허가기간':(row['start'] or '미확인')+' ~ '+(row['end'] or '미확인'), '상태':row['status'],
-                 '최근 기록':row['updated'][:16].replace('T',' ')} for row in rows
-            ]), hide_index=True, width='stretch', key=table_key, on_select='rerun', selection_mode='single-row')
-            indices = table.selection.rows
-            selected = row_ids[indices[0]] if indices and 0 <= indices[0] < len(row_ids) else None
-            st.button('선택한 접수 건 열기', key='ptw_track_open', disabled=selected is None, width='stretch',
-                      on_click=ptw_track_route, args=('detail',selected))
-        else:st.info('조건에 맞는 접수 건이 없습니다.')
-    else:st.info('등록된 작업허가서가 없습니다. 시공사 제출자료를 접수해 주세요.')
+        st.dataframe(ptw_track_rows(records), hide_index=True, width='stretch')
+    else:
+        st.info('보관함에 등록된 작업허가서가 없습니다.')
+
+
+def ptw_track_case_trash_action(actor, case_id, revision, action):
+    try:
+        pending = ptw_track_change_case_trash(actor, case_id, revision, action)
+    except (PermissionError, ValueError, StorageError) as exc:
+        st.session_state.ptw_track_error = str(exc)
+    except Exception:
+        st.session_state.ptw_track_error = '접수 건을 처리하지 못했습니다. 저장소 연결을 확인해 주세요.'
+    else:
+        notice = {'move':'접수 건을 휴지통으로 옮겼습니다.', 'restore':'접수 건을 보관함으로 복원했습니다.',
+                  'purge':'접수 건과 연결된 자료를 완전삭제했습니다.'}[action]
+        if pending:
+            notice = '접수 기록을 삭제했습니다. 남은 원본 파일 정리는 저장소 확인이 필요합니다.'
+            st.session_state.ptw_track_cleanup_pending = True
+        st.session_state.ptw_track_notice = notice
+
+
+def ptw_track_retry_file_cleanup():
+    try:
+        pending = ra_cleanup_files()
+    except Exception:
+        pending = -1
+    st.session_state.ptw_track_cleanup_pending = bool(pending)
+    if pending:
+        st.session_state.ptw_track_error = '남은 원본 파일 정리는 저장소 연결과 삭제 권한 확인이 필요합니다.'
+    else:
+        st.session_state.ptw_track_notice = '남은 원본 파일 정리를 마쳤습니다.'
+
+
+def ptw_track_render_list(actor, scope):
+    area = st.radio('접수 건 보관 상태', ['보관함','휴지통'], horizontal=True, key='ptw_track_list_area')
+    trashed = area == '휴지통'
+    records = ptw_track_list(actor, trashed=trashed)
+    if trashed:
+        if st.session_state.get('ptw_track_cleanup_pending'):
+            st.button('남은 원본 파일 정리 재시도', key='ptw_track_cleanup_retry', on_click=ptw_track_retry_file_cleanup)
+    else:
+        st.button('＋ 작업허가서 접수', type='primary', key='ptw_track_new', width='stretch',
+                  disabled=scope==(), on_click=ptw_track_route, args=('new',))
+        if scope == ():
+            st.info('이 계정에 배정된 작업허가 담당 현장이 없습니다.')
+        a,b,c = st.columns(3)
+        a.metric('진행 중', sum(r['status'] not in PTW_TRACK_TERMINAL for r in records))
+        b.metric('보완·재승인', sum(r['status'] in ('보완 요청','재승인 대기') for r in records))
+        c.metric('종결', sum(r['status'] in PTW_TRACK_TERMINAL for r in records))
+    if not records:
+        st.info('휴지통에 있는 접수 건이 없습니다.' if trashed else '등록된 작업허가서가 없습니다. 시공사 제출자료를 접수해 주세요.')
+        return
+    a,b,c = st.columns([1.2,1,1.5])
+    sites = ['전체 현장']+sorted({row['site'] for row in records})
+    site_key = 'ptw_track_filter_site:'+area
+    if st.session_state.get(site_key) not in sites:
+        st.session_state[site_key] = '전체 현장'
+    site = a.selectbox('관리현장', sites, key=site_key)
+    status = b.selectbox('처리 상태', ['전체 상태']+list(PTW_TRACK_STATES), key='ptw_track_filter_status:'+area)
+    search = c.text_input('접수번호·작업명 검색', key='ptw_track_search:'+area).strip().casefold()
+    choices = [row for row in records if (site=='전체 현장' or row['site']==site) and
+               (status=='전체 상태' or row['status']==status) and search in (row['number']+' '+row['title']).casefold()]
+    if not choices:
+        st.info('조건에 맞는 접수 건이 없습니다.')
+        return
+    st.caption(f'검색 결과 {len(choices)}건'+(' · 최근 100건 표시' if len(choices)>100 else ''))
+    rows = choices[:100]
+    order = '|'.join(row['id'] for row in rows)
+    table_key = 'ptw_track_rows:'+area+':'+hashlib.sha256(order.encode()).hexdigest()[:16]
+    table = st.dataframe(ptw_track_rows(rows, trashed=trashed), hide_index=True, width='stretch',
+                         key=table_key, on_select='rerun', selection_mode='single-row')
+    indices = table.selection.rows
+    selected = rows[indices[0]] if indices and 0 <= indices[0] < len(rows) else None
+    if trashed:
+        if not selected:
+            st.caption('표에서 복원하거나 완전삭제할 접수 건을 선택해 주세요.')
+            return
+        case_id, revision = selected['id'], selected['revision']
+        st.button('선택한 접수 건 복원', key='ptw_track_restore', on_click=ptw_track_case_trash_action,
+                  args=(actor, case_id, revision, 'restore'))
+        confirm = st.checkbox('선택한 접수 건의 원본과 이력까지 완전삭제합니다.',
+                              key=f'ptw_track_case_purge:{case_id}:{revision}')
+        st.button('선택한 접수 건 완전삭제', key='ptw_track_purge', disabled=not confirm,
+                  on_click=ptw_track_case_trash_action, args=(actor, case_id, revision, 'purge'))
+    else:
+        open_col, trash_col = st.columns(2)
+        open_col.button('선택한 접수 건 열기', key='ptw_track_open', disabled=selected is None, width='stretch',
+                        on_click=ptw_track_route, args=('detail', selected['id'] if selected else None))
+        if selected:
+            trash_col.button('휴지통으로 이동', key='ptw_track_move', width='stretch',
+                             on_click=ptw_track_case_trash_action, args=(actor, selected['id'], selected['revision'], 'move'))
 
 
 def ptw_track_render_intake(actor, scope, record=None):
@@ -15579,6 +15776,18 @@ def ptw_track_render_intake(actor, scope, record=None):
             for field, value in different.items()
         ]), hide_index=True, width='stretch')
     date_limits = dict(value=None, min_value=datetime.date(1900, 1, 1), max_value=datetime.date(2099, 12, 31))
+    category_options = list(PTW_SHEET_LAYOUT)
+    file_categories = []
+    for index, uploaded in enumerate(files or [None]):
+        prior = (meta.get('categories', initial['fields'].get('categories', []))
+                 if not files or index == pick else [])
+        default_category = next((name for name in prior if name in PTW_SHEET_LAYOUT), None)
+        source_key = uploaded.file_id if uploaded else 'pending'
+        label = f'허가대상 · {index+1}. {uploaded.name}' if len(files) > 1 else '허가대상'
+        file_categories.append(st.selectbox(label, category_options,
+            index=category_options.index(default_category) if default_category else None,
+            key=base+':receipt_category:'+source_key, placeholder='원본의 허가대상을 선택하세요'))
+    categories = list(dict.fromkeys(category for category in file_categories if category))
     with st.form(prefix+':form'):
         if record:
             site=record['site'];st.write('관리현장 · '+site)
@@ -15590,7 +15799,6 @@ def ptw_track_render_intake(actor, scope, record=None):
         received=a.date_input('접수일',value=ptw_track_ui_date(ptw_today()),max_value=ptw_track_ui_date(ptw_today()))
         document_ref=b.text_input('문서번호 (선택)',value=None,key=prefix+':document_ref',max_chars=500)
         title=st.text_input('작업명 *',value=None,key=prefix+':title',max_chars=500)
-        categories=st.multiselect('허가대상',list(PTW_TRACK_TEMPLATES),default=meta.get('categories',[]))
         a,b=st.columns(2)
         start=a.date_input('허가 시작일',key=prefix+':start',**date_limits)
         end=b.date_input('허가 종료일',key=prefix+':end',**date_limits)
@@ -15615,6 +15823,20 @@ def ptw_track_render_intake(actor, scope, record=None):
         st.caption('선택한 허가대상의 공통·공종별 점검 항목을 접수 건에 연결합니다.')
         heavy=st.checkbox('중장비 사용·중량물 인양 항목 추가',value=initial['heavy'])
         custom=st.text_area('현장 추가 점검 항목 (한 줄에 한 항목)',value='\n'.join(initial['custom']),max_chars=6000)
+        received_checks = []
+        if files and all(file_categories):
+            with st.expander('시공사 작업 전 점검 표시 대조'):
+                st.caption('제출 원본의 작업 전 점검란에서 표시를 확인한 항목만 선택해 주세요.')
+                for index, (uploaded, category) in enumerate(zip(files, file_categories), 1):
+                    rows = PTW_SHEET_LAYOUT[category]['rows']
+                    key = f'{base}:received:{uploaded.file_id}:{category}'
+                    st.caption(f'{index}. {uploaded.name} · {category}')
+                    day = st.date_input('원본의 작업 전 점검일 (선택)', value=None,
+                                        max_value=ptw_track_ui_date(ptw_today()), key=key+':day')
+                    with st.container(height=200, border=True):
+                        marks = [i for i, (kind, label, _) in enumerate(rows) if kind == 'item'
+                                 and st.checkbox(' '.join(label.split()), key=key+f':mark:{i}')]
+                    received_checks.append(dict(category=category, day=day, rows=marks))
         note=st.text_area('보완·변경본 접수 사유 *' if record else '접수 메모 (선택)',max_chars=3000)
         if different:
             st.multiselect('원본에서 확인한 AI 인식값', list(different), format_func=labels.get, key=choice_key)
@@ -15629,11 +15851,14 @@ def ptw_track_render_intake(actor, scope, record=None):
             st.form_submit_button('선택한 인식값 반영', on_click=ptw_track_request_read,
                                   args=(base, signature, 'apply'), width='stretch')
     if not submitted:return
+    if not all(file_categories):
+        st.error('제출 원본별 허가대상을 선택해 주세요.')
+        return
     values=dict(title=title,categories=categories,start=start,end=end,place=place,description=description,
                 applied_on=applied,company=company,applicant_role=applicant_role,applicant=applicant,
                 paper_approval_date=paper_day,paper_approver_company=paper_company,paper_approver_role=paper_role,
                 paper_approver=paper_approver,document_ref=document_ref,original_location=original,
-                received_on=received,note=note,confirmed=confirmed,heavy=heavy,custom=custom)
+                received_on=received,note=note,confirmed=confirmed,heavy=heavy,custom=custom,received_checks=received_checks)
     if record:
         ptw_track_ui_save(actor,record,'resubmit',values,files,message='보완·변경본을 같은 접수 건에 저장했습니다.')
     else:
@@ -15685,6 +15910,8 @@ def ptw_track_export(record):
         if sub['note']:paragraph('접수·변경 사유: '+sub['note'])
     paragraph('검토·승인·점검 및 변경 이력',13,True)
     for event in record['data']['events']:
+        if event.get('trashed_at'):
+            continue
         body=event['body']
         paragraph(f'{event["at"][:16].replace("T"," ")} · {event["version"]}차 · {ptw_track_event_label(event)} · 기록자 {event["by"]}',10,True)
         paragraph(ptw_track_event_note(event))
@@ -15714,23 +15941,25 @@ def ptw_sheet_component():
     return components.declare_component('keco_permit_sheet', path=str(directory))
 
 
-def ptw_sheet_render(actor, record, submission, file_id, sheet, mode, *, snapshot=None):
+def ptw_sheet_render(actor, record, submission, file_id, sheet, mode, *, section, snapshot=None):
     version = submission['number']
     name = record['photos'].get(file_id, {}).get('name', '제출 원본')
     source = f'{record["number"]} · {version}차 제출본 · {name}'
     download = None
-    context = mode
+    context = section+':'+mode
     if snapshot:
-        number = snapshot['number']
-        source += f' · 저장 {number}회 · {snapshot["event"]["at"][:19].replace("T", " ")}'
+        event_id = snapshot['id']
+        kind = ptw_track_event_label(snapshot)
+        source += f' · {kind} · {snapshot["at"][:19].replace("T", " ")}'
         stem = Path(name).stem[:35] or '제출원본'
-        download = f'{record["number"]}_{version}차_{stem}_{file_id[:6]}_저장{number}회.html'
-        context += ':'+snapshot['event']['id']
+        download = f'{record["number"]}_{version}차_{stem}_{event_id[:6]}.html'
+        context += ':'+event_id
     key = f'ptw_track:sheet:{record["id"]}:{version}:{file_id}:{context}'
     request = ptw_sheet_component()(
         layout=PTW_SHEET_LAYOUT, notes=PTW_SHEET_NOTES, sheet=sheet, mode=mode,
         revision=record['revision'], source=source, download=download, snapshot=context, key=key, default=None)
-    if mode not in ('draft', 'approval') or not isinstance(request, dict):
+    allowed = {'before': ('before_approve',), 'during': ('during_save','during_submit')}
+    if not isinstance(request, dict) or request.get('action') not in allowed.get(mode, ()):
         return
     nonce = request.get('nonce')
     if not isinstance(nonce, str) or not nonce:
@@ -15738,9 +15967,9 @@ def ptw_sheet_render(actor, record, submission, file_id, sheet, mode, *, snapsho
     response_key = key+':response'
     response = st.session_state.get(response_key, {})
     if response.get('nonce') != nonce:
-        kind = 'sheet_approve' if mode == 'approval' else 'sheet_draft'
+        action = request['action']
         try:
-            ptw_sheet_save(actor, record['id'], version, file_id, request, kind)
+            ptw_sheet_save(actor, record['id'], version, file_id, request, action)
         except (ValueError, PermissionError, StorageError) as exc:
             response = {'nonce':nonce, 'error':str(exc)}
         except Exception:
@@ -15749,39 +15978,62 @@ def ptw_sheet_render(actor, record, submission, file_id, sheet, mode, *, snapsho
             response = {'nonce':nonce}
         st.session_state[response_key] = response
         if not response.get('error'):
-            st.session_state.ptw_track_notice = PTW_SHEET_EVENTS[kind]+'을 완료했습니다. 관리이력에서 저장본을 확인할 수 있습니다.'
+            st.session_state.ptw_track_notice = PTW_SHEET_ACTIONS[action]
             st.rerun()
     if response.get('error'):
         st.error(response['error'])
+
+
+def ptw_track_history_trash_action(actor, case_id, revision, version, file_id, event_id, action):
+    try:
+        ptw_track_change_history_trash(actor, case_id, revision, version, file_id, event_id, action)
+    except (ValueError, PermissionError, StorageError) as exc:
+        st.session_state.ptw_track_error = str(exc)
+    except Exception:
+        st.session_state.ptw_track_error = '관리이력을 처리하지 못했습니다. 저장소 연결을 확인해 주세요.'
+    else:
+        st.session_state.ptw_track_notice = {'move':'저장본을 관리이력 휴지통으로 옮겼습니다.',
+                                             'restore':'저장본을 관리이력에 복원했습니다.',
+                                             'purge':'관리이력 저장본을 완전삭제했습니다.'}[action]
 
 
 def ptw_sheet_render_history(actor, record, submission, file_id, prefix):
     version = submission['number']
     data = record['data']
     file_name = record['photos'].get(file_id, {}).get('name', '제출 원본')
-    snapshots = ptw_sheet_events(data, version, file_id)
-    numbers = {event['id']:number for number,event in enumerate(snapshots,1)}
+    area = st.radio('관리이력 보관 상태', ['보관함','휴지통'], horizontal=True, key=prefix+':history_area')
+    trashed = area == '휴지통'
+    snapshots = {event['id'] for event in ptw_sheet_events(data, version, file_id)
+                 if bool(event.get('trashed_at')) == trashed}
     events = [event for event in reversed(data['events']) if event['version'] == version
-              and (event['kind'] not in PTW_SHEET_EVENTS or event['id'] in numbers)]
+              and (event['id'] in snapshots or (not trashed and event['kind'] not in PTW_SHEET_EVENTS))]
     if not events:
-        st.info('이 제출본의 관리이력이 없습니다.')
+        st.info('휴지통에 있는 저장본이 없습니다.' if trashed else '이 제출본의 관리이력이 없습니다.')
         return
     options = {event['id']:event for event in events}
-    def title(event):
-        label = ptw_track_event_label(event)
-        return f'{numbers[event["id"]]}회 · {label}' if event['id'] in numbers else label
     st.dataframe(pd.DataFrame([
-        {'기록일시':event['at'][:19].replace('T',' '), '구분':title(event),
-         '원본 파일':file_name if event['id'] in numbers else '제출 차수 공통', '저장자':event['by'],
+        {'기록일시':event['at'][:19].replace('T',' '), '구분':ptw_track_event_label(event),
+         '원본 파일':file_name if event['id'] in snapshots else '제출 차수 공통', '저장자':event['by'],
          '내용':ptw_track_event_note(event)} for event in events
     ]), hide_index=True, width='stretch')
     selected = st.selectbox('열람할 이력', list(options),
-                            format_func=lambda event_id: options[event_id]['at'][:19].replace('T',' ')+' · '+title(options[event_id]),
-                            key=prefix+':history:'+str(record['revision']))
+                            format_func=lambda eid: options[eid]['at'][:19].replace('T',' ')+' · '+ptw_track_event_label(options[eid])+' · '+eid[:6],
+                            key=prefix+':history:'+area+':'+str(record['revision']))
     event = options[selected]
-    if selected in numbers:
+    if selected in snapshots:
+        args = (actor, record['id'], record['revision'], version, file_id, selected)
+        st.caption('저장본 보관함과 접수 건의 승인 상태는 별도로 관리합니다.')
+        if trashed:
+            st.button('선택한 저장본 복원', key=prefix+':history_restore', on_click=ptw_track_history_trash_action,
+                      args=(*args, 'restore'))
+            confirm = st.checkbox('선택한 이력 저장본을 완전삭제합니다.', key=prefix+':history_confirm:'+selected)
+            st.button('선택한 저장본 완전삭제', key=prefix+':history_purge', disabled=not confirm,
+                      on_click=ptw_track_history_trash_action, args=(*args, 'purge'))
+        else:
+            st.button('저장본 휴지통으로 이동', key=prefix+':history_move',
+                      on_click=ptw_track_history_trash_action, args=(*args, 'move'))
         ptw_sheet_render(actor, record, submission, file_id, event['body']['sheet'], 'readonly',
-                         snapshot={'number':numbers[selected], 'event':event})
+                         section='history', snapshot=event)
     else:
         body = event['body']
         st.caption('기록자 '+event['by'])
@@ -15796,16 +16048,17 @@ def ptw_sheet_render_history(actor, record, submission, file_id, prefix):
                                        '감독자 확인':row['supervisor'], '이행·조치 내용':row['note']} for row in body['rows']]),
                          hide_index=True, width='stretch')
         ptw_track_render_attachments(actor, record, event['photos'], prefix+':history:'+selected)
-    with st.expander('전체 관리이력 한글파일'):
-        if st.button('전체 관리이력 한글파일 만들기', key=prefix+':export'):
-            try:
-                st.session_state.ptw_track_export = (prefix, record['revision'], ptw_track_export(record))
-            except Exception:
-                st.error('한글 기록 파일을 만들지 못했습니다.')
-        export = st.session_state.get('ptw_track_export')
-        if export and export[:2] == (prefix, record['revision']):
-            st.download_button('한글 이력 파일 받기', export[2], record['number']+'_관리이력.hwpx',
-                               'application/hwp+zip', key=prefix+':download', on_click='ignore')
+    if not trashed:
+        with st.expander('전체 관리이력 한글파일'):
+            if st.button('전체 관리이력 한글파일 만들기', key=prefix+':export'):
+                try:
+                    st.session_state.ptw_track_export = (prefix, record['revision'], ptw_track_export(record))
+                except Exception:
+                    st.error('한글 기록 파일을 만들지 못했습니다.')
+            export = st.session_state.get('ptw_track_export')
+            if export and export[:2] == (prefix, record['revision']):
+                st.download_button('한글 이력 파일 받기', export[2], record['number']+'_관리이력.hwpx',
+                                   'application/hwp+zip', key=prefix+':download', on_click='ignore')
 
 
 def ptw_track_render_detail(actor, record):
@@ -15833,25 +16086,38 @@ def ptw_track_render_detail(actor, record):
         file_id = next(iter(files))
         st.caption(f'{version}차 제출본 · '+files[file_id]['name'])
     else:
-        file_id = st.selectbox('작성할 원본 파일', list(files), format_func=lambda pid:files[pid]['name'], key=prefix+':file')
+        file_id = st.selectbox('확인할 원본 파일', list(files), format_func=lambda pid:files[pid]['name'], key=prefix+':file')
     prefix += ':'+file_id
-    events = ptw_sheet_events(record['data'], version, file_id)
-    latest = events[-1] if events else None
-    sheet = latest['body']['sheet'] if latest else ptw_sheet_from_submission(record['data'], submission)
-    editable = version == current and not closed and not record['data'].get('change_waiting')
-    original, approval, history = st.tabs(['접수원본','검토승인','관리이력'])
-    with original:
+    progress = ptw_sheet_progress(record['data'], submission, file_id)
+    before = progress.get('before')
+    sheet = before['sheet'] if before else progress['base']
+    editable = (version == current and not closed and not record['data'].get('change_waiting')
+                and sheet['category'] in PTW_SHEET_LAYOUT)
+    before_tab, during_tab, history = st.tabs(['작업 전 승인','작업 중 승인','관리이력'])
+    with before_tab:
         st.caption('접수일 '+submission['received_on']+' · 등록자 '+submission['by'])
-        ptw_track_render_attachments(actor, record, [file_id], prefix+':original')
-        if latest:
-            st.caption('최근 '+PTW_SHEET_EVENTS[latest['kind']]+' · '+latest['at'][:19].replace('T',' '))
-        ptw_sheet_render(actor, record, submission, file_id, sheet, 'draft' if editable else 'readonly')
-    with approval:
-        if not latest:
-            st.info('접수원본에서 이 파일의 초안을 저장하면 검토승인에서 열 수 있습니다.')
+        ptw_track_render_attachments(actor, record, [file_id], prefix+':original', preview_pdf=True)
+        if before:
+            st.caption('작업 전 승인 · '+before['at'][:19].replace('T',' ')+' · '+before['by'])
+        elif editable:
+            st.caption('제출 원본의 점검 표시를 대조한 뒤 작업 전 확인 칸을 체크하세요.')
+        ptw_sheet_render(actor, record, submission, file_id, sheet, 'before' if editable and not before else 'readonly',
+                         section='before')
+    with during_tab:
+        if not before:
+            st.info('작업 전 승인을 저장하면 이 파일의 작업 중 확인을 시작할 수 있습니다.'
+                    if editable else '이 제출본에는 저장된 작업 전 승인이 없습니다.')
         else:
-            st.caption('이 파일의 최근 저장본 · '+latest['at'][:19].replace('T',' ')+' · '+latest['by'])
-            ptw_sheet_render(actor, record, submission, file_id, sheet, 'approval' if editable else 'readonly')
+            during = progress.get('during')
+            submitted = progress.get('submitted')
+            if submitted:
+                st.caption('최근 제출 · '+submitted['at'][:19].replace('T',' ')+' · '+submitted['by'])
+            if during and (not submitted or during['nonce'] != submitted['nonce']):
+                st.caption('편집 내용 저장 · '+during['at'][:19].replace('T',' ')+' · '+during['by'])
+            if editable:
+                st.caption('저장은 편집 내용을 보관합니다. 제출한 양식은 관리이력에서 확인할 수 있습니다.')
+            ptw_sheet_render(actor, record, submission, file_id, during['sheet'] if during else sheet,
+                             'during' if editable else 'readonly', section='during')
     with history:
         ptw_sheet_render_history(actor, record, submission, file_id, prefix)
 
@@ -15872,11 +16138,14 @@ def render_work_permit(actor):
         ptw_track_route()
     st.markdown(PTW_CSS,unsafe_allow_html=True)
     st.markdown(puru_intro('작업허가서 검토·승인',
-                    '제출자료를 접수한 뒤 공종별 양식에서 초안과 승인본을 저장합니다.',
+                    '제출 원본을 보관하고, 작업 전 승인을 저장한 뒤 작업 중 확인 내역을 제출합니다.',
                     'traffic','ptw-intro'),unsafe_allow_html=True)
     notice = st.session_state.pop('ptw_track_notice', None)
+    error = st.session_state.pop('ptw_track_error', None)
     notice_slot = st.empty()
-    if notice:
+    if error:
+        notice_slot.error(error)
+    elif notice:
         notice_slot.success(notice)
     view=st.session_state.get('ptw_track_view','list')
     try:
