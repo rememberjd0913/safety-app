@@ -5781,8 +5781,11 @@ def render_safety_documents(actor):
         st.info('표시할 자료가 없습니다. 자료를 올리거나 검색어·분류를 바꿔보세요.')
         return
     by_id = {r['id']:r for r in rows}
-    selected = st.selectbox('열어볼 자료 선택', list(by_id),
+    selected = st.selectbox('열어볼 자료 선택', list(by_id), index=None,
+        placeholder='원본을 불러올 자료를 선택하세요',
         format_func=lambda i: f"{by_id[i]['title']} · {by_id[i]['category']} · {by_id[i]['created']}", key='safety_doc_selected')
+    if selected is None:
+        return
     doc = safety_doc_get(actor, selected)
     with st.container(border=True):
         st.write('**자료 제목**', doc['title'])
@@ -6187,7 +6190,6 @@ def render_safety_calendar_create(actor):
 def render_safety_calendar(actor):
     from html import escape
     actor = safety_cal_actor(actor)
-    render_main_tab_home_control(actor, 5)
     today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
     if 'cal_selected_day' not in st.session_state:
         safety_cal_pick_day(today)
@@ -6202,9 +6204,11 @@ def render_safety_calendar(actor):
         events, _, rejected = safety_cal_fold(rows)
     except (ValueError, StorageError) as exc:
         st.error(str(exc))
+        render_main_tab_home_control(actor, 5, reusable=False)
         return
     except Exception:
         st.error('공유 일정 조회에 실패했습니다. 저장소 연결을 확인해 주세요.')
+        render_main_tab_home_control(actor, 5, reusable=False)
         return
     if st.session_state.pop('cal_saved', False):
         st.success('공유 일정을 저장했습니다.')
@@ -6316,6 +6320,7 @@ def render_safety_calendar(actor):
             st.caption(f'충돌 또는 형식 오류로 반영하지 않은 기록 {len(rejected)}건이 있습니다. 변경 이력은 저장소에 남아 있습니다.')
     if st.session_state.get('cal_form_open'):
         render_safety_calendar_create(actor)
+    render_main_tab_home_control(actor, 5)
 
 
 
@@ -6411,11 +6416,13 @@ MAIN_TAB_HOME_SCRIPT = r'''<script>(() => {
   try { host = window.parent; void host.document.body; } catch (_) { return; }
   const install = function () {
     const w = window;
-    const owner = __OWNER__, version = 'home-click-v7-fragments';
+    const owner = __OWNER__, version = 'home-click-v8-reuse';
     const prior = w.__kecoHomeHover;
     if (prior && prior.owner === owner && prior.version === version) { prior.refresh(); return; }
     if (prior?.cleanup) prior.cleanup();
-    const state = {owner, version, homeTimer: null, guardTimer: null, pending: null};
+    const state = {owner, version, homeTimer: null, guardTimer: null, pending: null, activation: null,
+      activity: 0, views: new Map()};
+    const maxReuseMs = 15000;
     const mainTabs = () => {
       const list = w.document.querySelector('.st-key-keco_main_menu [role="tablist"]');
       return list ? Array.from(list.querySelectorAll('[role="tab"]')) : [];
@@ -6425,10 +6432,17 @@ MAIN_TAB_HOME_SCRIPT = r'''<script>(() => {
       const main = w.document.querySelector('[data-testid="stMain"]');
       if (main) main.scrollTo({top: 0, behavior: 'auto'});
     };
-    const busy = () => {
-      const main = w.document.querySelector('[data-testid="stMain"]') || w.document.body;
-      return !!(w.document.querySelector('[data-testid="stStatusWidgetRunningIcon"]') ||
-        main.querySelector('[data-testid="stElementContainer"][data-stale="true"]:not(:has(.keco-run-loading))'));
+    const running = () => !!w.document.querySelector('[data-testid="stStatusWidgetRunningIcon"]');
+    const invalidate = () => { state.activity++; };
+    const onInput = event => { if (event.isTrusted) invalidate(); };
+    const rememberSelection = event => {
+      if (!event.isTrusted) return;
+      const tab = event.target.closest?.('[role="tab"]');
+      const index = mainTabs().indexOf(tab);
+      state.activation = index < 0 ? null : {index, selected: tab.getAttribute('aria-selected') === 'true'};
+    };
+    const onKeyDown = event => {
+      if (event.key === 'Enter' || event.key === ' ') rememberSelection(event);
     };
     const finish = () => {
       state.pending = null;
@@ -6437,7 +6451,7 @@ MAIN_TAB_HOME_SCRIPT = r'''<script>(() => {
     };
     const fallback = () => {
       if (!state.pending) return;
-      if (!busy()) { finish(); return; }
+      if (!running()) { finish(); return; }
       state.guardTimer = w.setTimeout(fallback, 1000);
     };
     const clickHome = (index, attempt = 0) => {
@@ -6447,7 +6461,7 @@ MAIN_TAB_HOME_SCRIPT = r'''<script>(() => {
       if (attempt < 50) state.homeTimer = w.setTimeout(() => clickHome(index, attempt + 1), 50);
       else finish();
     };
-    const enter = index => {
+    const enter = (index, force = false) => {
       w.clearTimeout(state.homeTimer);
       if (index === 3) {
         // The AI guide has one view, so switching to its existing tab needs no server event.
@@ -6455,6 +6469,17 @@ MAIN_TAB_HOME_SCRIPT = r'''<script>(() => {
         w.requestAnimationFrame(scrollHome);
         return;
       }
+      const view = state.views.get(index);
+      const current = marker(index);
+      const atEntry = current ? current.dataset.entry === 'yes' : view?.entry;
+      if (!force && !state.pending && atEntry && view && view.activity === state.activity &&
+          (!current || current.dataset.view === view.id) &&
+          w.performance.now() - view.loadedAt < maxReuseMs &&
+          !current?.closest('[data-stale="true"]') && !running()) {
+        w.requestAnimationFrame(scrollHome);
+        return;
+      }
+      if (!atEntry) invalidate();
       state.pending = {index, beforeToken: marker(index)?.dataset.token || ''};
       w.document.body.setAttribute('data-keco-view-pending', 'true');
       w.clearTimeout(state.guardTimer);
@@ -6473,29 +6498,64 @@ MAIN_TAB_HOME_SCRIPT = r'''<script>(() => {
       }
       const tab = event.target.closest?.('[role="tab"]');
       const index = tabs.indexOf(tab);
-      if (index >= 0 && !tab.disabled && tab.getAttribute('aria-disabled') !== 'true') enter(index);
+      if (index >= 0 && !tab.disabled && tab.getAttribute('aria-disabled') !== 'true') {
+        // Some tab implementations select on pointer-up, before dispatching click.
+        const selected = state.activation?.index === index
+          ? state.activation.selected : tab.getAttribute('aria-selected') === 'true';
+        state.activation = null;
+        enter(index, selected);
+      } else if (event.target.closest?.('button, a, input, textarea, select, [role="option"], [role="tab"]')) {
+        invalidate();
+      }
     };
     const refresh = () => {
       const pending = state.pending;
+      if (w.document.querySelector('.login-brand-bar') && !mainTabs().length) {
+        state.views.clear();
+        if (pending) finish();
+        return;
+      }
+      const updates = [];
+      for (const index of [0, 1, 2, 4, 5, 6]) {
+        const node = marker(index);
+        const previous = state.views.get(index);
+        if (node?.dataset.view && node.dataset.view !== previous?.id) {
+          updates.push({index, node, previous});
+        }
+      }
+      if (updates.some(({index, node, previous}) => previous &&
+          (pending?.index !== index || node.dataset.token === pending.beforeToken))) invalidate();
+      for (const {index, node} of updates) {
+        state.views.set(index, {id: node.dataset.view, entry: node.dataset.entry === 'yes',
+          activity: state.activity, loadedAt: w.performance.now()});
+      }
       if (!pending) return;
-      if (w.document.querySelector('.login-brand-bar') && !mainTabs().length) { finish(); return; }
       const token = marker(pending.index)?.dataset.token;
-      if (token && token !== pending.beforeToken && !busy()) {
+      // The selected fragment emits its token after it has finished preparing the view.
+      if (token && token !== pending.beforeToken) {
         finish();
         w.requestAnimationFrame(scrollHome);
       }
     };
     const observer = new w.MutationObserver(refresh);
     observer.observe(w.document.body, {
-      childList: true, subtree: true, attributes: true, attributeFilter: ['data-token', 'data-stale', 'aria-selected'],
+      childList: true, subtree: true, attributes: true, attributeFilter: ['data-token', 'data-view', 'data-entry'],
     });
     w.document.addEventListener('click', onClick, true);
+    w.document.addEventListener('pointerdown', rememberSelection, true);
+    w.document.addEventListener('keydown', onKeyDown, true);
+    w.document.addEventListener('input', onInput, true);
+    w.document.addEventListener('change', onInput, true);
     state.refresh = refresh;
     state.cleanup = () => {
       observer.disconnect();
       w.clearTimeout(state.homeTimer);
       finish();
       w.document.removeEventListener('click', onClick, true);
+      w.document.removeEventListener('pointerdown', rememberSelection, true);
+      w.document.removeEventListener('keydown', onKeyDown, true);
+      w.document.removeEventListener('input', onInput, true);
+      w.document.removeEventListener('change', onInput, true);
     };
     w.__kecoHomeHover = state;
     refresh();
@@ -6542,7 +6602,7 @@ def main_tab_home(actor, index, *, select_tab=True):
     elif index==4:
         st.session_state.safety_doc_search=''
         st.session_state.safety_doc_filter='전체'
-        st.session_state.pop('safety_doc_selected',None)
+        st.session_state.safety_doc_selected=None
     elif index==5:
         today=datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
         st.session_state.update(cal_selected_day=today,cal_year=today.year,cal_month=today.month,
@@ -6560,13 +6620,48 @@ def main_tab_home(actor, index, *, select_tab=True):
                 st.session_state.pop(key,None)
 
 
-def render_main_tab_home_control(actor, index):
+def main_tab_is_entry(actor, index):
+    state = st.session_state
+    if index == 0:
+        return not state.get('ws_registration_open')
+    if index == 1:
+        defaults = dict(year=str(ra_current_year()), kind='전체', site='전체', name='전체')
+        filters = state.get('ra_hub_filters', {})
+        return (state.get('ra_hub_page', 'list') == 'list' and state.get('ra_hub_area', '평가 목록') == '평가 목록'
+                and state.get('ra_hub_page_number', 1) == 1
+                and not any(state.get('ra_hub_'+key) for key in ('selection', 'focus_id', 'site_info', 'delete_confirm', 'purge_ids'))
+                and all(filters.get(key, value) == value and state.get('ra_hub_filter_'+key, value) == value
+                        for key, value in defaults.items()))
+    if index == 2:
+        return state.get('ptw_track_view', 'list') == 'list' and not state.get('ptw_dirty')
+    if index == 4:
+        return (not state.get('safety_doc_search') and state.get('safety_doc_filter', '전체') == '전체'
+                and not state.get('safety_doc_selected'))
+    if index == 5:
+        today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
+        return (state.get('cal_selected_day') == today
+                and (state.get('cal_year'), state.get('cal_month')) == (today.year, today.month)
+                and state.get('cal_view', '월간 달력') == '월간 달력' and state.get('cal_filter_dept', '전체') == '전체'
+                and not state.get('cal_form_open') and not state.get('cal_detail'))
+    if index == 6:
+        owner = str(actor)
+        defaults = {'view': '보관 중', 'search': '', 'period': '전체 기간', 'site': '전체 현장'}
+        return (state.get('inspection_history_menu', '내 리포트') == '내 리포트'
+                and all(state.get('report_history_'+key+':'+owner, value) == value for key, value in defaults.items())
+                and not any(state.get('report_history_'+key+':'+owner)
+                            for key in ('open', 'preview', 'selected', 'trash_selected', 'purge_request')))
+    return False
+
+
+def render_main_tab_home_control(actor, index, *, reusable=True):
     # Streamlit assigns this navigation event to the fragment containing the button.
     with st.container(key=f'keco_tab_home_control_{index}'):
         st.button('상단 메뉴 첫 화면 '+str(index), key=f'keco_tab_home_{index}', on_click=main_tab_home,
                   args=(actor, index), kwargs={'select_tab': False})
         token = st.session_state.get('keco_tab_home_tokens', {}).get(index, '')
-        st.markdown(f'<span id="keco-tab-home-state-{index}" data-token="{token}"></span>', unsafe_allow_html=True)
+        entry = 'yes' if reusable and main_tab_is_entry(actor, index) else 'no'
+        st.markdown(f'<span id="keco-tab-home-state-{index}" data-token="{token}" '
+                    f'data-entry="{entry}" data-view="{time.monotonic_ns()}"></span>', unsafe_allow_html=True)
 
 
 def render_main_tab_home_bridge(actor):
@@ -7106,7 +7201,6 @@ def render_workstation_dashboard_panel(actor):
     if navigation and navigation.pop('refresh_other_tab', False):
         # Dashboard shortcuts prepare a different section's view before selecting it.
         st.rerun()
-    render_main_tab_home_control(actor, 0)
     opened = st.session_state.get('ws_registration_open', False)
     home_display, form_display = ('none', 'flex') if opened else ('flex', 'none')
     st.html(f'<style>@media(min-width:769px){{.st-key-workstation_home{{display:{home_display}!important}}.st-key-workstation_registration,.st-key-workstation_return{{display:{form_display}!important}}}}</style>')
@@ -7116,6 +7210,7 @@ def render_workstation_dashboard_panel(actor):
     st.markdown('<div id="keco-workstation-view" data-registration="' + ('yes' if opened else 'no') + '" style="display:none"></div>', unsafe_allow_html=True)
     with st.container(key="workstation_return"):
         st.button('← 업무 대시보드', key='ws_return_home', on_click=workstation_navigate, args=(-1,))
+    render_main_tab_home_control(actor, 0)
     if navigation and navigation['index'] == 0:
         render_workstation_route()
 
@@ -7350,7 +7445,6 @@ def render_inspection_history_panel(logged_user_id):
         st.rerun()
     for key, value in st.session_state.pop(resume_key, {}).items():
         st.session_state[key] = value
-    render_main_tab_home_control(logged_user_id, 6)
     history_mode = st.radio("점검 기록 메뉴", ["내 리포트", "점검 현황", "위험성평가 현황", "여러 점검 취합"], horizontal=True, key="inspection_history_menu")
     if history_mode == "내 리포트":
         render_report_history(str(logged_user_id))
@@ -7399,6 +7493,7 @@ def render_inspection_history_panel(logged_user_id):
                 if st.button("📧 일괄 보고서 이메일 전송"):
                     ok, detail = send_inspection_email("일괄 보고", f"{len(selected_reports)}건", logged_user_id, combined, hwpx, "안전점검_일괄보고서.hwpx", pdf, "batch:" + str(logged_user_id) + ":" + batch_key)
                     (st.success if ok else st.error)(detail)
+    render_main_tab_home_control(logged_user_id, 6)
 
 
 
@@ -7830,13 +7925,15 @@ with main_tab3:
 @st.fragment
 def render_safety_documents_panel(logged_user_id):
     if not _perf_actor_allowed(logged_user_id): return
-    render_main_tab_home_control(logged_user_id, 4)
+    loaded = False
     try:
         render_safety_documents(logged_user_id)
+        loaded = True
     except PermissionError as exc:
         st.error(str(exc))
     except Exception:
         st.error("자료실을 열지 못했습니다. 잠시 후 다시 시도하거나 관리자에게 저장소 연결을 확인해 달라고 요청하세요.")
+    render_main_tab_home_control(logged_user_id, 4, reusable=loaded)
 
 
 with documents_tab:
@@ -12378,7 +12475,6 @@ def render_risk_back_bridge(actor):
 @st.fragment
 def render_risk_assessment(actor):
     if not actor or not st.session_state.get('password_correct'): return
-    render_main_tab_home_control(actor, 1)
     st.markdown(RA_SITE_SELECT_CSS, unsafe_allow_html=True)
     ra_initialize(actor)
     st.session_state.setdefault('ra_hub_page', 'list')
@@ -12447,6 +12543,7 @@ def render_risk_assessment(actor):
     elif page == 'original': ra_render_original_view(actor)
     else: ra_render_history(actor)
     render_risk_back_bridge(actor)
+    render_main_tab_home_control(actor, 1)
 
 with risk_tab:
     st.markdown("""<style>
@@ -14754,9 +14851,11 @@ def ptw_track_render_detail(actor, record):
 @st.fragment
 def render_work_permit(actor):
     if not _perf_actor_allowed(actor):return
-    render_main_tab_home_control(actor, 2)
     try:actor,scope=ptw_track_identity(actor)
-    except PermissionError as exc:st.info(str(exc));return
+    except PermissionError as exc:
+        st.info(str(exc))
+        render_main_tab_home_control(actor, 2, reusable=False)
+        return
     if st.session_state.get('ptw_track_actor')!=actor:
         for key in list(st.session_state):
             if str(key).startswith('ptw_track_') or str(key).startswith('ptw_track:'):
@@ -14783,6 +14882,7 @@ def render_work_permit(actor):
         st.error('작업허가서 화면을 불러오지 못했습니다. 저장소 연결을 확인해 주세요.')
         st.button('← 검토대장',key='ptw_track_error_back',on_click=ptw_track_route)
     ptw_render_back_bridge(actor)
+    render_main_tab_home_control(actor, 2)
 
 
 with permit_tab:
