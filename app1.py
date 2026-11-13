@@ -3601,12 +3601,12 @@ def render_report_history_detail(owner, row, selection):
             with st.expander(f"점검 항목 {index}",expanded=True):
                 for field,label,description in (("before_files","조치 전","desc_before"),("after_files","조치 후","desc_after")):
                     st.markdown("**"+label+"**")
-                    st.text(str(item.get(description,"")) or "기록된 설명이 없습니다.")
                     for number,value in enumerate(item.get(field,[]),1):
                         try:
                             st.image(inspection_photo_bytes(value),caption=f"{label} 사진 {number}",width="stretch")
                         except Exception:
                             st.warning("저장된 사진을 읽지 못했습니다. 원본 자료와 저장소 연결을 확인해 주세요.")
+                    st.text(str(item.get(description,"")) or "기록된 설명이 없습니다.")
                 if item.get("ai_analysis"):
                     st.markdown("**저장한 AI 분석**")
                     st.text(str(item["ai_analysis"]))
@@ -7267,6 +7267,21 @@ def inspection_render_case_reports(owner, record):
     return preview
 
 
+def inspection_render_uploaded_photos(files, label):
+    if not files:
+        return
+    st.write(f"📷 첨부된 {label} 사진: **{len(files)}장**")
+    columns = st.columns(2)
+    for index, file in enumerate(files):
+        with columns[index % 2]:
+            try:
+                photo = _perf_photo(inspection_file_bytes(file), 1000, 88)[0]
+            except (OSError, ValueError):
+                st.warning(f'{label} 사진 {index + 1}의 미리보기 확인이 필요합니다.')
+            else:
+                st.image(photo, caption=f'{label} #{index + 1}', width='stretch')
+
+
 def inspection_render_action_photos(refs, label, *, keep_key=None):
     kept = []
     for number, value in enumerate(refs, 1):
@@ -7290,8 +7305,8 @@ def inspection_render_action_items(record, *, editing=False):
             before, after = st.columns(2)
             with before:
                 st.markdown('**조치 전 자료**')
-                st.text(item.get('desc_before') or '기록된 설명이 없습니다.')
                 inspection_render_action_photos(item.get('before_files', []), '조치 전')
+                st.text(item.get('desc_before') or '기록된 설명이 없습니다.')
             with after:
                 st.markdown('**조치 후 자료**')
                 description = str(item.get('desc_after') or '')
@@ -7300,6 +7315,7 @@ def inspection_render_action_items(record, *, editing=False):
                 if editing:
                     upload = st.file_uploader(f'항목 {index} 조치 후 사진 추가', type=['jpg', 'jpeg', 'png'],
                                               accept_multiple_files=True, key=index_key+':photos')
+                    inspection_render_uploaded_photos(upload, '조치 후')
                     description = st.text_area(f'항목 {index} 조치 결과', value=description, key=index_key+':text')
                     changes[index] = (description, kept, upload or [])
                 else:
@@ -7322,6 +7338,19 @@ def inspection_render_actions(owner, case_id):
     st.caption(f'{record["dept"]} · {record["site"]} · 점검일 {str(record["created"])[:10]} · {record["status"]}')
     st.caption(f'점검번호 {case_id}')
     editing = st.session_state.get('inspection_followup_edit') == case_id and record['status'] != '조치 완료'
+    report_open = st.session_state.get('inspection_followup_report') == case_id
+    st.button('점검 항목 접기' if report_open else '점검 항목 펼쳐 보기',
+              key='inspection_case_report:'+case_id, on_click=inspection_toggle_case_report, args=(case_id,),
+              width='stretch')
+    if report_open:
+        with st.container(border=True):
+            try:
+                preview = inspection_render_case_reports(owner, record)
+            except (ValueError, PermissionError, StorageError) as exc:
+                st.error(str(exc))
+            else:
+                if not preview and not editing:
+                    inspection_render_action_items(record)
     if editing:
         st.caption('조치 후 사진과 설명을 모두 저장한 항목은 완료로 표시됩니다.')
         changes = inspection_render_action_items(record, editing=True)
@@ -7341,19 +7370,6 @@ def inspection_render_actions(owner, case_id):
     elif record['status'] != '조치 완료':
         st.button('조치 결과 등록', type='primary', key='inspection_begin_action:'+case_id,
                   on_click=inspection_open_actions, args=(case_id,), width=320)
-    report_open = st.session_state.get('inspection_followup_report') == case_id
-    st.button('점검 항목 접기' if report_open else '점검 항목 펼쳐 보기',
-              key='inspection_case_report:'+case_id, on_click=inspection_toggle_case_report, args=(case_id,),
-              width='stretch')
-    if report_open:
-        with st.container(border=True):
-            try:
-                preview = inspection_render_case_reports(owner, record)
-            except (ValueError, PermissionError, StorageError) as exc:
-                st.error(str(exc))
-            else:
-                if not preview and not editing:
-                    inspection_render_action_items(record)
 
 
 def inspection_open_actions(case_id):
@@ -7378,14 +7394,14 @@ def render_inspection_registration(logged_user_id):
         return
     case_id = st.session_state.setdefault('inspection_registration_id', 'SI-'+uuid.uuid4().hex)
     st.markdown(puru_intro('현장 안전점검 등록',
-                           '① 현장 선택 → ② 사진·내용 입력 → ③ 점검 저장 또는 보고서 만들기',
+                           '① 현장 선택 → ② 사진·내용 입력 → ③ 점검 저장 → ④ 보고서 만들기',
                            'guide', 'keco-easy-intro'), unsafe_allow_html=True)
     with st.expander('처음 사용하시나요? 사용 방법 보기'):
         st.markdown("""1. **담당 부서와 현장**을 선택하세요.
 2. **조치 전 사진**을 올리고, 어떤 문제가 있는지 적으세요.
 3. 필요하면 **사진의 위험요인 확인**을 눌러 AI의 도움을 받으세요.
 4. 조치했다면 **조치 후 사진과 내용**도 입력하세요. 아직 조치 전이면 비워둘 수 있습니다.
-5. **점검 저장**을 누르면 기록이 보관됩니다. **보고서 만들기**를 누르면 한글·PDF도 함께 보관됩니다.
+5. **점검 저장**으로 기록을 보관한 뒤 **보고서 만들기**를 눌러 한글·PDF를 만드세요.
 6. 이후 **점검 기록 보기 → 점검 현황**에서 같은 건의 조치 결과를 등록하세요.""")
     st.subheader('1. 어느 현장인가요?')
     col_dept, col_site = st.columns(2)
@@ -7447,6 +7463,7 @@ def render_inspection_registration(logged_user_id):
                     if cam_file is not None:
                         before_img_files.append(cam_file)
             
+                inspection_render_uploaded_photos(before_img_files, '조치 전')
                 desc_before = st.text_area(
                     f"항목 {idx} · 어떤 문제가 있었나요?",
                     placeholder="예: 바닥 구멍 주변에 안전난간이 없습니다.",
@@ -7457,12 +7474,6 @@ def render_inspection_registration(logged_user_id):
                     st.session_state.ai_results.pop(idx, None)
                     st.session_state[fingerprint_key] = photo_fingerprint
                 if before_img_files:
-                    st.write(f"📷 첨부된 조치 전 사진: **{len(before_img_files)}장**")
-                    cols = st.columns(2)
-                    for img_i, img_f in enumerate(before_img_files):
-                        with cols[img_i % 2]:
-                            st.image(_perf_photo(inspection_file_bytes(img_f), 1000, 88)[0], caption=f"조치 전 #{img_i+1}", width="stretch")
-                
                     analyze_clicked = st.button("사진의 위험요인 확인 (AI 도움)", key=f"btn_ai_{idx}:{case_id}", width="stretch")
                     refresh_clicked = False
                     if st.session_state.ai_results.get(idx):
@@ -7518,13 +7529,7 @@ def render_inspection_registration(logged_user_id):
                     if cam_file_after is not None:
                         after_img_files.append(cam_file_after)
 
-                if after_img_files:
-                    st.write(f"📷 첨부된 조치 후 사진: **{len(after_img_files)}장**")
-                    cols = st.columns(2)
-                    for img_i, img_f in enumerate(after_img_files):
-                        with cols[img_i % 2]:
-                            st.image(_perf_photo(inspection_file_bytes(img_f), 1000, 88)[0], caption=f"조치 후 #{img_i+1}", width="stretch")
-
+                inspection_render_uploaded_photos(after_img_files, '조치 후')
                 desc_after = st.text_area(
                     f"항목 {idx} · 어떻게 조치했나요?",
                     placeholder="예: 안전난간을 설치하고 출입을 막았습니다. 아직 조치 전이면 비워두세요.",
@@ -7578,32 +7583,19 @@ def render_inspection_registration(logged_user_id):
         include_weather = st.checkbox("금일 작업과 기상특보를 고려한 안전점검사항", value=True,
                                       key="inspection_report_include_weather")
     report_weather_note = weather_note if include_weather else ""
-    save_col, report_col = st.columns(2)
-    save = save_col.button("점검 저장", disabled=not form_data, width="stretch", key='inspection_save_only')
-    make = report_col.button("보고서 만들기", type="primary", disabled=not form_data, width="stretch")
-    if save or make:
-        signature = inspection_report_key(selected_dept, selected_site, logged_user_id, form_data,
-                                          weather_note=report_weather_note, include_ai=include_ai)
-        inspected_at = case_now()
-        files = None
+    if st.button("점검 저장", type="primary", disabled=not form_data, width="stretch", key='inspection_save_only'):
         try:
-            with keco_loading('점검 보고서를 만들고 있습니다' if make else '점검을 저장하고 있습니다',
-                              kind='steps', steps=('한글 작성', 'PDF 작성', '사진·보고서 보관') if make else ()) as status:
-                if make:
-                    files = inspection_report_build(selected_dept, selected_site, logged_user_id, form_data,
-                                                    kind=INSPECTION_REPORT_INITIAL, weather_note=report_weather_note,
-                                                    include_ai=include_ai, inspected_at=inspected_at, case_id=case_id,
-                                                    progress=status)
-                    status.stage(2)
-                files = archive_inspection(logged_user_id, case_id, selected_dept, selected_site, form_data, signature,
-                                           weather_note=report_weather_note, include_ai=include_ai,
-                                           inspected_at=inspected_at, files=files)
+            with keco_loading('점검을 저장하고 있습니다', kind='steps'):
+                signature = inspection_report_key(selected_dept, selected_site, logged_user_id, form_data,
+                                                  weather_note=report_weather_note, include_ai=include_ai)
+                archive_inspection(logged_user_id, case_id, selected_dept, selected_site, form_data, signature,
+                                   weather_note=report_weather_note, include_ai=include_ai, inspected_at=case_now())
         except (ValueError, PermissionError, StorageError) as exc:
             st.error(str(exc))
         except Exception:
-            st.error('점검을 저장하거나 보고서를 만들지 못했습니다. 사진과 저장소 연결을 확인해 주세요.')
+            st.error('점검을 저장하지 못했습니다. 사진과 저장소 연결을 확인해 주세요.')
         else:
-            inspection_registration_saved(case_id, files)
+            inspection_registration_saved(case_id)
 
 
 @st.fragment
