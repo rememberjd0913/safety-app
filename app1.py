@@ -2624,7 +2624,8 @@ def inspection_payload_parts(encoded, *, include_excluded_ai=False):
     return items, note if isinstance(note, str) else ""
 
 
-def generate_inspection_hwpx(dept, site, inspector, items, report_title="현장 안전점검 및 조치 결과 보고서", *, weather_notes=(), include_ai=True):
+def generate_inspection_hwpx(dept, site, inspector, items, report_title="현장 안전점검 및 조치 결과 보고서", *,
+                           weather_notes=(), include_ai=True, inspected_at='', case_id=''):
     """A4 보고서: 가운데 제목, 기본정보, 조치 전후 비교표, AI 분석."""
     from PIL import ImageOps
     if not items:
@@ -2666,6 +2667,8 @@ def generate_inspection_hwpx(dept, site, inspector, items, report_title="현장 
     created = datetime.datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M")
     paragraph(report_title, size=20, bold=True, align="CENTER")
     paragraph("")
+    if case_id:
+        paragraph(f"점검번호 {case_id} · 최초 점검일 {str(inspected_at)[:10] or '미기록'}", size=10)
     paragraph(f"◎ 담당부서: {dept}", size=11)
     # 테두리 없는 1행 표로 현장명과 생성시간을 같은 줄에 배치.
     info = doc.add_table(rows=1, cols=2, width=49324, height=1700)
@@ -2735,38 +2738,14 @@ def inspection_store():
     db = nhn_record_connection("reports.sqlite3")
     db.execute("CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, owner TEXT, dept TEXT, site TEXT, created TEXT, payload TEXT)")
     db.execute("CREATE TABLE IF NOT EXISTS deliveries (id TEXT PRIMARY KEY, status TEXT, detail TEXT)")
+    db.execute("""CREATE TABLE IF NOT EXISTS inspection_followup (
+        report_id TEXT PRIMARY KEY, revision INTEGER NOT NULL, confirmed TEXT NOT NULL,
+        initial_payload TEXT NOT NULL, initial_signature TEXT)""")
     return db
 
 
-def archive_inspection(dept, site, owner, items, hwpx=None, pdf=None, *, weather_note="", include_ai=True):
-    now = datetime.datetime.now(ZoneInfo("Asia/Seoul"))
-    day = now.strftime("%Y-%m-%d")
-    key = day + ":" + inspection_report_key(dept, site, owner, items, weather_note=weather_note, include_ai=include_ai)
-    payload = {}
-    for idx, item in items.items():
-        payload[str(idx)] = {k: str(item.get(k, "")) for k in ("desc_before", "desc_after", "ai_analysis")}
-        for field in ("before_files", "after_files"):
-            payload[str(idx)][field] = [inspection_photo_pack(f) for f in item.get(field, [])]
-    if weather_note:
-        payload["_weather_note"] = weather_note
-    if not include_ai:
-        payload["_report_include_ai"] = False
-    db = inspection_store()
-    try:
-        with db:
-            report_history_require_active(db, "inspection", key)
-            db.execute("INSERT OR IGNORE INTO reports VALUES (?, ?, ?, ?, ?, ?)",
-                       (key, str(owner), dept, site, now.isoformat(timespec="seconds"), json.dumps(payload, ensure_ascii=False)))
-            if hwpx is not None or pdf is not None:
-                db.execute("""CREATE TABLE IF NOT EXISTS report_files (
-                    id TEXT PRIMARY KEY, hwpx BLOB, pdf BLOB)""")
-                db.execute("INSERT OR REPLACE INTO report_files VALUES (?,?,?)", (key, hwpx, pdf))
-    finally:
-        db.close()
-    return key
-
-
-def generate_inspection_pdf(dept, site, inspector, items, report_title="현장 안전점검 및 조치 결과 보고서", *, weather_notes=(), include_ai=True):
+def generate_inspection_pdf(dept, site, inspector, items, report_title="현장 안전점검 및 조치 결과 보고서", *,
+                           weather_notes=(), include_ai=True, inspected_at='', case_id=''):
     """HWPX와 동일한 입력으로 만드는 A4 출력용 PDF. 긴 설명은 표 밖에서 이어짐."""
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
@@ -2792,9 +2771,11 @@ def generate_inspection_pdf(dept, site, inspector, items, report_title="현장 �
         ratio = min(225 / photo_width, 210 / photo_height)
         return PDFImage(io.BytesIO(photo_bytes), width=photo_width * ratio, height=photo_height * ratio)
     out = io.BytesIO()
-    story = [p(report_title, title),
-             p(f"담당부서: {dept}"), p(f"점검현장: {site}"),
-             p(f"작성자: {inspector} | 보고서 생성: {datetime.datetime.now(ZoneInfo('Asia/Seoul')):%Y-%m-%d %H:%M}"), Spacer(1, 16)]
+    story = [p(report_title, title)]
+    if case_id:
+        story.append(p(f"점검번호 {case_id} · 최초 점검일 {str(inspected_at)[:10] or '미기록'}"))
+    story.extend([p(f"담당부서: {dept}"), p(f"점검현장: {site}"),
+             p(f"작성자: {inspector} | 보고서 생성: {datetime.datetime.now(ZoneInfo('Asia/Seoul')):%Y-%m-%d %H:%M}"), Spacer(1, 16)])
     for order, (idx, item) in enumerate(items.items()):
         if order:
             story.append(PageBreak())
@@ -2834,6 +2815,208 @@ def report_history_identity(owner):
     if not owner or not st.session_state.get("password_correct") or str(st.session_state.get("logged_user", "")) != owner:
         raise PermissionError("다시 로그인해 주세요.")
     return owner
+
+
+INSPECTION_REPORT_INITIAL = '최초 점검 보고서'
+INSPECTION_REPORT_COMPLETE = '조치 완료 보고서'
+INSPECTION_STATES = ('조치 대기', '일부 조치', '조치 완료')
+
+
+def inspection_progress(items, confirmed):
+    confirmed = set(confirmed)
+    if items and all(index in confirmed and inspection_action_has_evidence(item) for index, item in items.items()):
+        return '조치 완료'
+    if any(item.get('after_files') or str(item.get('desc_after') or '').strip() for item in items.values()):
+        return '일부 조치'
+    return '조치 대기'
+
+
+def inspection_action_has_evidence(item):
+    return bool(item.get('after_files') and str(item.get('desc_after') or '').strip())
+
+
+def inspection_case_row(db, owner, case_id):
+    row = db.execute('''SELECT r.id, r.dept, r.site, r.created, r.payload,
+                                COALESCE(s.revision, 0), COALESCE(s.confirmed, '[]'), s.initial_payload
+                         FROM reports r LEFT JOIN inspection_followup s ON s.report_id=r.id
+                         WHERE r.id=? AND r.owner=?''', (str(case_id), owner)).fetchone()
+    if row is None:
+        raise PermissionError('본인이 저장한 점검 기록을 선택해 주세요.')
+    report_history_require_active(db, 'inspection', row[0])
+    items, weather_note = inspection_payload_parts(row[4], include_excluded_ai=True)
+    if not items or any(not isinstance(item, dict) or
+                        not all(isinstance(item.get(field, []), list) for field in ('before_files', 'after_files'))
+                        for item in items.values()):
+        raise ValueError('저장된 점검 내용의 형식을 확인해 주세요.')
+    confirmed = json.loads(row[6])
+    encoded = json.loads(row[4])
+    return dict(id=row[0], owner=owner, dept=row[1], site=canonical_site_label(row[2]), created=row[3],
+                encoded=row[4], initial_payload=row[7] or row[4], items=items, weather_note=weather_note,
+                include_ai=encoded.get('_report_include_ai', True) is not False, revision=row[5],
+                confirmed=confirmed, status=inspection_progress(items, confirmed))
+
+
+def inspection_case_load(owner, case_id):
+    owner = inspection_history_actor(owner)
+    db = inspection_store()
+    try:
+        return inspection_case_row(db, owner, case_id)
+    finally:
+        db.close()
+
+
+def archive_inspection(owner, case_id, dept, site, items, signature, *, weather_note, include_ai,
+                             inspected_at, files=None):
+    import sqlite3
+    owner = inspection_history_actor(owner)
+    if not items:
+        raise ValueError('사진이나 설명을 입력해 주세요.')
+    if not re.fullmatch(r'SI-[0-9a-f]{32}', case_id):
+        raise ValueError('새 점검을 열고 다시 저장해 주세요.')
+    db = inspection_store()
+    try:
+        with db:
+            db.execute('BEGIN IMMEDIATE')
+            existing = db.execute('SELECT owner FROM reports WHERE id=?', (case_id,)).fetchone()
+            if existing:
+                previous = db.execute('SELECT initial_signature FROM inspection_followup WHERE report_id=?',
+                                      (case_id,)).fetchone()
+                if existing[0] != owner or previous is None or previous[0] != signature:
+                    raise ValueError('저장한 점검입니다. 점검 기록에서 열어 주세요.')
+                report_history_require_active(db, 'inspection', case_id)
+                if files:
+                    db.execute('CREATE TABLE IF NOT EXISTS report_files (id TEXT PRIMARY KEY, hwpx BLOB, pdf BLOB)')
+                    saved = db.execute('SELECT hwpx,pdf FROM report_files WHERE id=?', (case_id,)).fetchone()
+                    if saved and all(saved):
+                        return tuple(saved)
+            else:
+                payload = case_pack(items)
+                if weather_note:
+                    payload['_weather_note'] = weather_note
+                if not include_ai:
+                    payload['_report_include_ai'] = False
+                encoded = json.dumps(payload, ensure_ascii=False)
+                db.execute('INSERT INTO reports VALUES (?,?,?,?,?,?)',
+                           (case_id, owner, dept, canonical_site_label(site), inspected_at, encoded))
+                db.execute('''INSERT INTO inspection_followup
+                    (report_id, revision, confirmed, initial_payload, initial_signature) VALUES (?,0,'[]',?,?)''',
+                           (case_id, encoded, signature))
+            if files:
+                db.execute('CREATE TABLE IF NOT EXISTS report_files (id TEXT PRIMARY KEY, hwpx BLOB, pdf BLOB)')
+                db.execute('''INSERT INTO report_files VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET
+                               hwpx=COALESCE(report_files.hwpx, excluded.hwpx),
+                               pdf=COALESCE(report_files.pdf, excluded.pdf)''', (case_id, *files))
+    except sqlite3.Error as exc:
+        raise StorageError('점검을 저장하지 못했습니다. 저장소를 확인한 뒤 다시 시도해 주세요.') from exc
+    finally:
+        db.close()
+    return files
+
+
+def inspection_save_actions(owner, case_id, revision, changes):
+    import sqlite3
+    owner = inspection_history_actor(owner)
+    db = inspection_store()
+    try:
+        with db:
+            db.execute('BEGIN IMMEDIATE')
+            record = inspection_case_row(db, owner, case_id)
+            if record['revision'] != revision:
+                raise ValueError('다른 화면에서 먼저 저장했습니다. 최신 기록을 다시 열어 주세요.')
+            if record['status'] == '조치 완료':
+                raise ValueError('조치 완료된 점검입니다.')
+            items = record['items']
+            if set(changes) != set(items):
+                raise ValueError('저장할 점검 항목을 다시 확인해 주세요.')
+            for index, (description, keep_photos, new_photos, checked) in changes.items():
+                if any(value not in items[index].get('after_files', []) for value in keep_photos):
+                    raise ValueError('이 항목에 저장된 조치 후 사진을 다시 확인해 주세요.')
+                if checked and not (description.strip() and (keep_photos or new_photos)):
+                    raise ValueError(f'항목 {index}의 조치 완료를 확인하려면 조치 후 사진과 설명을 모두 등록해 주세요.')
+            confirmed = []
+            for index, (description, keep_photos, new_photos, checked) in changes.items():
+                item = items[index]
+                original_photos = item.get('after_files', [])
+                additions = [inspection_photo_pack(file) for file in new_photos]
+                photos = list(dict.fromkeys([*keep_photos, *additions]))
+                changed = photos != original_photos or description.strip() != str(item.get('desc_after') or '').strip()
+                item['after_files'] = photos
+                item['desc_after'] = description.strip()
+                if checked and (index not in record['confirmed'] or not changed):
+                    confirmed.append(index)
+            payload = json.loads(record['encoded'])
+            payload.update(items)
+            db.execute('UPDATE reports SET payload=? WHERE id=? AND owner=?',
+                       (json.dumps(payload, ensure_ascii=False), case_id, owner))
+            db.execute('''INSERT INTO inspection_followup (report_id, revision, confirmed, initial_payload)
+                          VALUES (?,?,?,?) ON CONFLICT(report_id) DO UPDATE SET
+                          revision=excluded.revision, confirmed=excluded.confirmed''',
+                       (case_id, revision+1, json.dumps(confirmed), record['initial_payload']))
+            return inspection_progress(items, confirmed)
+    except sqlite3.Error as exc:
+        raise StorageError('조치 결과를 저장하지 못했습니다. 저장소를 확인한 뒤 다시 시도해 주세요.') from exc
+    finally:
+        db.close()
+
+
+def inspection_report_build(dept, site, owner, items, *, kind, weather_note, include_ai,
+                            inspected_at, case_id, progress=None):
+    title = '현장 안전점검 보고서' if kind == INSPECTION_REPORT_INITIAL else '현장 안전점검 및 조치 완료 보고서'
+    options = dict(report_title=title, weather_notes=(weather_note,) if weather_note else (),
+                   include_ai=include_ai, inspected_at=inspected_at, case_id=case_id)
+    if progress:
+        progress.stage(0)
+    hwpx = generate_inspection_hwpx(dept, site, owner, items, **options)
+    if progress:
+        progress.stage(1)
+    return hwpx, generate_inspection_pdf(dept, site, owner, items, **options)
+
+
+def inspection_report_filename(kind, site, case_id):
+    safe_site = re.sub(r'[\\/:*?"<>|\r\n]', '_', str(site))[:60]
+    return f'{kind.replace(" ", "_")}_{safe_site}_{case_id[-12:]}'
+
+
+def inspection_case_make_report(owner, case_id, kind):
+    import sqlite3
+    owner = inspection_history_actor(owner)
+    if kind not in (INSPECTION_REPORT_INITIAL, INSPECTION_REPORT_COMPLETE):
+        raise ValueError('보고서 종류를 확인해 주세요.')
+    db = inspection_store()
+    try:
+        record = inspection_case_row(db, owner, case_id)
+        if kind == INSPECTION_REPORT_COMPLETE and record['status'] != '조치 완료':
+            raise ValueError('모든 항목의 조치 완료를 확인한 뒤 보고서를 만들 수 있습니다.')
+        table = 'report_files' if kind == INSPECTION_REPORT_INITIAL else 'inspection_completion_files'
+        if table in report_history_tables(db):
+            existing = db.execute(f'SELECT hwpx IS NOT NULL AND pdf IS NOT NULL FROM {table} WHERE id=?',
+                                  (case_id,)).fetchone()
+            if existing and existing[0]:
+                return
+    finally:
+        db.close()
+
+    encoded = record['initial_payload'] if kind == INSPECTION_REPORT_INITIAL else record['encoded']
+    items, weather_note = inspection_payload_parts(encoded, include_excluded_ai=True)
+    files = inspection_report_build(record['dept'], record['site'], owner, case_unpack(items), kind=kind,
+                                    weather_note=weather_note, include_ai=json.loads(encoded).get('_report_include_ai') is not False,
+                                    inspected_at=record['created'], case_id=case_id)
+    db = inspection_store()
+    try:
+        with db:
+            db.execute('BEGIN IMMEDIATE')
+            current = inspection_case_row(db, owner, case_id)
+            if kind == INSPECTION_REPORT_COMPLETE and (
+                    current['status'] != '조치 완료' or current['revision'] != record['revision']):
+                raise ValueError('보고서를 만드는 중 기록이 변경되었습니다. 다시 열어 주세요.')
+            db.execute(f'CREATE TABLE IF NOT EXISTS {table} (id TEXT PRIMARY KEY, hwpx BLOB, pdf BLOB)')
+            db.execute(f'''INSERT INTO {table} VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET
+                           hwpx=COALESCE({table}.hwpx, excluded.hwpx),
+                           pdf=COALESCE({table}.pdf, excluded.pdf)''', (case_id, *files))
+    except sqlite3.Error as exc:
+        raise StorageError('보고서를 보관하지 못했습니다. 저장소를 확인한 뒤 다시 시도해 주세요.') from exc
+    finally:
+        db.close()
 
 
 def report_history_tables(db):
@@ -2907,8 +3090,9 @@ def report_history_list(owner, *, trashed=False):
         else:
             sql = "SELECT id,created,dept,site,0,0 FROM reports WHERE owner=?"
         for rid, created, dept, site, hwpx, pdf in db.execute(sql, (owner,)).fetchall():
+            title = "안전점검 보고서" if hwpx or pdf else "안전점검 기록"
             records.append({"source":"inspection", "id":rid, "created":created or "", "dept":dept or "",
-                            "site":site or "", "title":"안전점검 보고서", "kind":"안전점검",
+                            "site":site or "", "title":title, "kind":"안전점검",
                             "has_hwpx":bool(hwpx), "has_pdf":bool(pdf)})
         if "generated_reports" in tables:
             info_join = " LEFT JOIN generated_report_info i ON i.id=g.id AND i.owner=g.owner" if "generated_report_info" in tables else ""
@@ -2952,9 +3136,12 @@ def report_history_get(owner, source, report_id):
             if row is None:
                 raise PermissionError("이 계정에서 조회할 수 있는 리포트가 아닙니다.")
             files = db.execute("SELECT hwpx,pdf FROM report_files WHERE id=?", (row[0],)).fetchone() if "report_files" in tables else None
-            items, weather_note = inspection_payload_parts(row[4])
+            current, _ = inspection_payload_parts(row[4], include_excluded_ai=True)
+            state = db.execute("SELECT confirmed, initial_payload FROM inspection_followup WHERE report_id=?", (row[0],)).fetchone()
+            items, weather_note = inspection_payload_parts(state[1] if state else row[4])
             return {"id":row[0], "created":row[1], "dept":row[2], "site":canonical_site_label(row[3]),
                     "payload":items, "weather_note":weather_note,
+                    "progress":inspection_progress(current, json.loads(state[0]) if state else []),
                     "hwpx":files[0] if files else None, "pdf":files[1] if files else None}
         if source == "generated" and "generated_reports" in tables:
             row = db.execute("SELECT hwpx,pdf FROM generated_reports WHERE id=? AND owner=?", (str(report_id),owner)).fetchone()
@@ -3032,22 +3219,7 @@ def report_history_save_upload(owner, title, site, created, hwpx=None, pdf=None,
 
 
 def report_history_restore_files(owner, report_id):
-    owner = report_history_identity(owner)
-    record = report_history_get(owner, "inspection", report_id)
-    items = case_unpack(record["payload"])
-    weather_notes = (record["weather_note"],) if record["weather_note"] else ()
-    hwpx = record["hwpx"] or generate_inspection_hwpx(record["dept"],record["site"],owner,items,weather_notes=weather_notes)
-    pdf = record["pdf"] or generate_inspection_pdf(record["dept"],record["site"],owner,items,weather_notes=weather_notes)
-    db = inspection_store()
-    try:
-        with db:
-            if not db.execute("SELECT 1 FROM reports WHERE id=? AND owner=?", (str(report_id),owner)).fetchone():
-                raise PermissionError("이 계정에서 조회할 수 있는 리포트가 아닙니다.")
-            report_history_require_active(db, "inspection", report_id)
-            db.execute("CREATE TABLE IF NOT EXISTS report_files (id TEXT PRIMARY KEY, hwpx BLOB, pdf BLOB)")
-            db.execute("INSERT OR REPLACE INTO report_files VALUES (?,?,?)", (str(report_id),hwpx,pdf))
-    finally:
-        db.close()
+    inspection_case_make_report(owner, report_id, INSPECTION_REPORT_INITIAL)
 
 
 def render_report_history_import(owner, *, inspection=False):
@@ -3155,23 +3327,32 @@ def report_history_remove_trashed(db, tables, owner, source, report_id, table):
     keys = set()
     refs = None
     if source == 'inspection':
-        if 'report_files' in tables:
-            refs = db.execute('SELECT hex(hwpx),hex(pdf) FROM report_files WHERE id=?', (report_id,)).fetchone()
-        encoded = db.execute('SELECT payload FROM reports WHERE id=? AND owner=?', (report_id, owner)).fetchone()[0]
-        try:
-            payload = json.loads(encoded)
-            items = payload.values() if isinstance(payload, dict) else []
-            for item in items:
-                if not isinstance(item, dict): continue
+        refs = []
+        for file_table in ('report_files', 'inspection_completion_files'):
+            if file_table in tables:
+                refs.extend(db.execute(f'SELECT hex(hwpx),hex(pdf) FROM {file_table} WHERE id=?',
+                                       (report_id,)).fetchone() or ())
+                db.execute(f'DELETE FROM {file_table} WHERE id=?', (report_id,))
+        original = db.execute('SELECT payload FROM reports WHERE id=? AND owner=?', (report_id, owner)).fetchone()
+        initial = db.execute('SELECT initial_payload FROM inspection_followup WHERE report_id=?', (report_id,)).fetchone()
+        for encoded in (*original, *(initial or ())):
+            try:
+                payload = json.loads(encoded)
+            except (ValueError, TypeError):
+                continue
+            for item in payload.values() if isinstance(payload, dict) else ():
+                if not isinstance(item, dict):
+                    continue
                 for field in ('before_files', 'after_files'):
                     values = item.get(field, [])
-                    if not isinstance(values, list): continue
+                    if not isinstance(values, list):
+                        continue
                     for value in values:
                         if isinstance(value, str) and value.startswith(PHOTO_REF):
                             key = value[len(PHOTO_REF):]
-                            if re.fullmatch(r'images/[0-9a-f]{64}\.[a-z0-9]+', key): keys.add(key)
-        except (ValueError, TypeError):
-            pass
+                            if re.fullmatch(r'images/[0-9a-f]{64}\.[a-z0-9]+', key):
+                                keys.add(key)
+        db.execute('DELETE FROM inspection_followup WHERE report_id=?', (report_id,))
     else:
         refs = db.execute('SELECT hex(hwpx),hex(pdf) FROM '+table+' WHERE id=? AND owner=?', (report_id, owner)).fetchone()
     for encoded in refs or ():
@@ -3184,8 +3365,6 @@ def report_history_remove_trashed(db, tables, owner, source, report_id, table):
         if re.fullmatch(r'files/[0-9a-f]{64}\.[a-z0-9]+', key): keys.add(key)
     for key in keys:
         db.execute('INSERT OR IGNORE INTO risk_file_cleanup VALUES (?)', (key,))
-    if source == 'inspection' and 'report_files' in tables:
-        db.execute('DELETE FROM report_files WHERE id=?', (report_id,))
     if source == 'generated':
         if 'generated_report_info' in tables:
             db.execute('DELETE FROM generated_report_info WHERE id=? AND owner=?', (report_id, owner))
@@ -3374,7 +3553,7 @@ def render_report_history_management(owner, choices, selection, *, trashed=False
                      disabled=not selection, width='stretch',
                      on_click=report_history_request_purge, args=(owner, selection))
     if selection and st.session_state.get('report_history_purge_request:'+owner) == selection:
-        st.warning(f'선택한 리포트 {len(selection)}건과 저장 파일을 완전삭제합니다. 삭제한 리포트는 복원할 수 없습니다.')
+        st.warning(f'선택한 리포트 {len(selection)}건과 저장 파일을 완전삭제합니다. 안전점검 기록은 연결된 조치 결과와 완료 보고서도 삭제합니다.')
         if len(selection) == 1:
             row = choices[selection[0]]
             st.write('삭제 대상: '+(row['site'] or row['title'])+' · '+row['created'].replace('T', ' ')[:19]+' · '+row['id'][-6:])
@@ -3413,9 +3592,13 @@ def render_report_history_detail(owner, row, selection):
             except Exception:
                 st.warning("PDF 미리보기를 만들지 못했습니다. 파일을 내려받아 확인해 주세요.")
     if row["source"] == "inspection":
+        st.caption('현재 상태 · '+detail['progress'])
+        st.button('조치 결과 및 보고서' if detail['progress'] == '조치 완료' else '조치 결과 등록',
+                  key='report_history_open_actions:'+row['id'], on_click=inspection_link_to_actions,
+                  args=(row['id'],), width='stretch')
         if not detail["pdf"] or not detail["hwpx"]:
-            st.caption("예전 기록에 없는 보고서 파일은 저장된 사진과 내용으로 다시 만들 수 있습니다. 다시 만든 파일에는 현재 생성 시간이 표시됩니다.")
-            if st.button("저장된 내용으로 보고서 다시 만들기",key="report_history_restore:"+owner,width="stretch"):
+            st.caption("최초 저장한 사진과 내용으로 한글·PDF 보고서를 만들 수 있습니다.")
+            if st.button("최초 점검 보고서 만들기",key="report_history_restore:"+owner,width="stretch"):
                 try:
                     report_history_restore_files(owner,row["id"])
                     st.session_state["report_history_notice:" + owner] = "저장된 내용으로 보고서 파일을 다시 만들었습니다."
@@ -3461,7 +3644,7 @@ def render_report_history(owner):
                         on_change=report_history_reset_selection, args=(owner,))
         trashed = view == '휴지통'
         if trashed:
-            st.caption('휴지통의 안전점검 보고서는 점검 현황 집계와 취합 대상에서 제외됩니다. 복원하면 다시 반영됩니다.')
+            st.caption('안전점검 기록을 휴지통으로 옮기면 같은 건의 조치 결과와 보고서도 함께 보관됩니다. 복원하면 점검 현황과 취합에 다시 반영됩니다.')
         try:
             records = report_history_list(owner, trashed=trashed)
         except StorageError as exc:
@@ -3515,18 +3698,20 @@ def case_now():
 
 
 def case_new_registration():
-    # 기존 자료는 DB에 유지하고 새 등록 화면만 비웁니다.
     for key in list(st.session_state):
         if str(key).startswith(('case_capture:', 'desc_before_', 'desc_after_', 'before_imgs_',
                                 'after_imgs_', 'before_cam_', 'after_cam_', 'mode_b_', 'mode_a_',
-                                'before_analysis_fingerprint_', 'inspection_report_', 'inspection_pdf_')):
+                                'before_analysis_fingerprint_', 'inspection_report_', 'inspection_pdf_',
+                                'easy_remove_', 'wx_warn_works_', 'wx_warn_direct_')):
             del st.session_state[key]
-    for key in ('wx_result', 'wx_warnings', 'wx_weather_ai'):
+    for key in ('wx_result', 'wx_warnings', 'wx_weather_ai', 'inspection_registration_id',
+                'inspection_registration_saved', '_perf_private_cache'):
         st.session_state.pop(key, None)
     st.session_state.item_count = 1
     st.session_state.ai_results = {}
-    st.session_state.pop("_perf_private_cache", None)
-    st.session_state.easy_reset_confirmed = False
+    location = st.session_state.get('inspection_registration_location')
+    if location:
+        st.session_state.selected_dept_box, st.session_state.selected_site_box = location
 
 
 def case_db():
@@ -3859,10 +4044,10 @@ def inspection_history_item_count(value):
     return int(match.group(1)) if match and int(match.group(1)) <= 100000 else None
 
 
-def inspection_history_record(rid, owner, dept, site, created, encoded):
+def inspection_history_record(rid, owner, dept, site, created, encoded, *, confirmed=()):
     record = {'기록ID': str(rid), '날짜': str(created or ''), '점검 부서': str(dept or ''),
               '점검 현장': str(site or ''), '작성자': str(owner or ''), '항목수': '',
-              'AI분석': '', '지적 분류': '', '사진경로': '', '자료 상태': ''}
+              'AI분석': '', '지적 분류': '', '사진경로': '', '자료 상태': '', '조치 상태': '확인 필요'}
     try:
         payload, _ = inspection_payload_parts(encoded, include_excluded_ai=True)
         if any(not isinstance(v, dict) for v in payload.values()):
@@ -3877,7 +4062,7 @@ def inspection_history_record(rid, owner, dept, site, created, encoded):
                 analyses.append(f'[항목 #{idx}]:\n{analysis}')
             details.append(f"[항목 #{idx}] 조치 전: {item.get('desc_before', '') or '미기재'} / 조치 후: {item.get('desc_after', '') or '미기재'}")
             photos.append(f'[항목 #{idx}] 전:{len(before)}장, 후:{len(after)}장')
-        record.update({'항목수': f'{len(payload)}개 항목',
+        record.update({'항목수': f'{len(payload)}개 항목', '조치 상태': inspection_progress(payload, confirmed),
                        'AI분석': '\n\n'.join(analyses) or '조치 전 AI 분석 미실행',
                        '지적 분류': '\n'.join(details), '사진경로': ' | '.join(photos)})
     except (ValueError, TypeError, KeyError):
@@ -3891,13 +4076,15 @@ def get_nhn_inspection_records(actor):
     actor = inspection_history_actor(actor)
     db = inspection_store()
     try:
-        records = [inspection_history_record(*row) for row in report_history_inspection_rows(db)]
+        confirmed = dict(db.execute('SELECT report_id,confirmed FROM inspection_followup'))
+        records = [inspection_history_record(*row, confirmed=json.loads(confirmed.get(row[0], '[]')))
+                   for row in report_history_inspection_rows(db)]
         trashed = report_history_trash_map(db, actor)
         for rid, created, dept, site, title, _, _, kind in report_history_imports(db, actor):
             if kind == "기존 안전점검" and ("uploaded", rid) not in trashed:
                 records.append({'기록ID': rid, '날짜': created, '점검 부서': dept,
                                 '점검 현장': canonical_site_label(site), '작성자': actor,
-                                '지적 분류': '등록 원본 · ' + title})
+                                '지적 분류': '등록 원본 · ' + title, '조치 상태': '기존 자료'})
         return records
     finally:
         db.close()
@@ -4130,6 +4317,9 @@ departments = list(department_sites_map.keys())
 
 # 같은 브라우저에서 계정을 바꿀 때 이전 사용자의 입력을 새 점검으로 저장하지 않음.
 if st.session_state.get('case_active_actor') != str(logged_user_id):
+    for key in ('inspection_registration_location', 'inspection_followup_edit', 'inspection_followup_target',
+                'inspection_followup_notice'):
+        st.session_state.pop(key, None)
     case_new_registration()
     for key in list(st.session_state):
         if str(key).startswith(('case:', 'batch_')) or key == 'case_bundle':
@@ -6858,7 +7048,7 @@ def render_workstation_home(actor):
         except (PermissionError, StorageError, ValueError, OSError, sqlite3.Error):
             st.info('점검 기록을 불러오지 못했습니다. 저장소 연결 확인 필요')
         else:
-            st.caption(f'{now.year}년 · 총 {sum(counts):,}건 · 앱에서 생성한 보관 중 보고서 기준')
+            st.caption(f'{now.year}년 · 총 {sum(counts):,}건 · 앱에서 저장한 점검 기준')
             months = [f'{month}월' for month in range(1, len(counts) + 1)]
             peak = max(1, max(counts))
             fig = go.Figure(go.Bar(x=months, y=counts, text=[f'{count:,}' for count in counts],
@@ -6906,19 +7096,267 @@ with st.container(key="keco_main_menu"):
         "안전 점검 등록", "위험성평가", "작업허가제", AI_GUIDE_MENU_LABEL, "안전자료실", "안전캘린더", "점검 기록 보기"
     ])
 
+def inspection_registration_saved(case_id, files=None):
+    st.session_state.inspection_registration_saved = case_id
+    if files:
+        st.session_state.inspection_report_bytes, st.session_state.inspection_pdf_bytes = files
+    st.rerun()
+
+
+def inspection_render_saved_registration(owner):
+    case_id = st.session_state.inspection_registration_saved
+    try:
+        record = inspection_case_load(owner, case_id)
+    except (ValueError, PermissionError, StorageError) as exc:
+        st.warning(str(exc))
+        st.button('＋ 새 점검 등록', on_click=case_new_registration, key='inspection_new_after_archive')
+        return
+    st.success('점검을 저장했습니다.')
+    st.caption(f'{record["dept"]} · {record["site"]} · {record["status"]} · {case_id}')
+    files = (st.session_state.get('inspection_report_bytes'), st.session_state.get('inspection_pdf_bytes'))
+    if not all(files):
+        if st.button('보고서 만들기', key='inspection_registration_build_saved', type='primary', width='stretch'):
+            try:
+                with keco_loading('최초 점검 보고서를 만들고 있습니다', kind='steps'):
+                    inspection_case_make_report(owner, case_id, INSPECTION_REPORT_INITIAL)
+                    detail = report_history_get(owner, 'inspection', case_id)
+            except (ValueError, PermissionError, StorageError) as exc:
+                st.error(str(exc))
+            except Exception:
+                st.error('보고서를 만들지 못했습니다. 저장한 사진과 문서 생성 설정을 확인해 주세요.')
+            else:
+                inspection_registration_saved(case_id, (detail['hwpx'], detail['pdf']))
+    hwpx, pdf = files
+    filename = inspection_report_filename(INSPECTION_REPORT_INITIAL, record['site'], case_id)
+    if hwpx and pdf:
+        st.html('''<style>
+        .st-key-inspection_report_downloads [data-testid="stHorizontalBlock"] {
+            display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important;
+        }
+        .st-key-inspection_report_downloads [data-testid="stColumn"] {width:100%!important;min-width:0!important;}
+        </style>''')
+        with st.container(key='inspection_report_downloads'):
+            korean, output_pdf = st.columns(2)
+            korean.download_button('📄 한글파일받기', hwpx, filename+'.hwpx', 'application/vnd.hancom.hwpx',
+                                   width='stretch', on_click='ignore')
+            output_pdf.download_button('🖨️ PDF파일받기', pdf, filename+'.pdf', 'application/pdf',
+                                       width='stretch', on_click='ignore')
+    first, history = st.columns(2)
+    first.button('＋ 새 점검 등록', on_click=case_new_registration, key='inspection_new_after_archive', width='stretch')
+    if history.button('저장한 점검 열기', key='inspection_registration_open_history', width='stretch'):
+        inspection_link_to_actions(case_id, edit=False)
+        workstation_navigate(6)
+        st.rerun()
+    if hwpx and pdf:
+        initial, _ = inspection_payload_parts(record['initial_payload'], include_excluded_ai=True)
+        try:
+            inspection_render_email(owner, record, initial, hwpx, pdf, filename, case_id+':initial')
+        except StorageError as exc:
+            st.warning(str(exc))
+
+
+def inspection_render_email(owner, record, items, hwpx, pdf, filename, delivery_key):
+    st.subheader('보고서를 이메일로 보내세요')
+    st.caption('한글 파일과 PDF가 함께 첨부됩니다.')
+    db = inspection_store()
+    try:
+        delivery = db.execute('SELECT status, detail FROM deliveries WHERE id=?', (delivery_key,)).fetchone()
+    finally:
+        db.close()
+    if delivery:
+        st.info('이 보고서는 전송 이력이 있습니다.')
+        with st.expander('전송 처리 결과 보기'):
+            st.text(f'{delivery[0]} · {delivery[1]}')
+    if st.button('이메일 보내기', type='primary', disabled=bool(delivery), width='stretch', key='inspection_email:'+delivery_key):
+        with keco_loading('보고서 첨부·이메일 전송 중입니다…', kind='helmet'):
+            try:
+                ok, message = send_inspection_email(record['dept'], record['site'], owner, items, hwpx,
+                                                    filename+'.hwpx', pdf, delivery_key)
+            except StorageError as exc:
+                st.error('이메일 처리 결과 확인 필요 · '+str(exc))
+            else:
+                (st.success if ok else st.warning)(message)
+
+
+def inspection_render_case_reports(owner, record):
+    case_id = record['id']
+    db = inspection_store()
+    try:
+        tables = report_history_tables(db)
+        versions = {}
+        for kind, table in ((INSPECTION_REPORT_INITIAL, 'report_files'),
+                            (INSPECTION_REPORT_COMPLETE, 'inspection_completion_files')):
+            if table in tables:
+                available = db.execute(f'SELECT hwpx IS NOT NULL, pdf IS NOT NULL FROM {table} WHERE id=?',
+                                       (case_id,)).fetchone()
+                if available and any(available):
+                    versions[kind] = (table, all(available))
+    finally:
+        db.close()
+    report_open = st.session_state.get('inspection_report_open_after_build') == case_id
+    with st.expander('보고서 보기 및 내려받기', expanded=report_open):
+        make_initial, make_complete = st.columns(2)
+        requested = None
+        if not versions.get(INSPECTION_REPORT_INITIAL, (None, False))[1] and make_initial.button(
+                '최초 점검 보고서 만들기', key='inspection_make_initial:'+case_id, width='stretch'):
+            requested = INSPECTION_REPORT_INITIAL
+        if record['status'] == '조치 완료' and not versions.get(INSPECTION_REPORT_COMPLETE, (None, False))[1] and make_complete.button(
+                '조치 완료 보고서 만들기', type='primary', key='inspection_make_complete:'+case_id, width='stretch'):
+            requested = INSPECTION_REPORT_COMPLETE
+        if requested:
+            try:
+                with keco_loading('점검 보고서를 만들고 있습니다', kind='steps'):
+                    inspection_case_make_report(owner, case_id, requested)
+            except (ValueError, PermissionError, StorageError) as exc:
+                st.error(str(exc))
+            except Exception:
+                st.error('보고서를 만들지 못했습니다. 저장한 사진과 문서 생성 설정을 확인해 주세요.')
+            else:
+                st.session_state.inspection_followup_notice = requested+'를 저장했습니다.'
+                st.session_state.inspection_report_open_after_build = case_id
+                st.session_state['inspection_version:'+case_id] = requested
+                st.rerun(scope='fragment')
+        if not versions:
+            st.caption('저장된 한글·PDF 보고서가 없습니다.')
+            return
+        kind = st.radio('보고서 종류', list(versions), horizontal=True, key='inspection_version:'+case_id)
+        if not st.checkbox('선택한 보고서 파일 열기', key='inspection_version_open:'+case_id):
+            return
+        db = inspection_store()
+        try:
+            inspection_case_row(db, owner, case_id)
+            table = versions[kind][0]
+            hwpx, pdf = db.execute(f'SELECT hwpx,pdf FROM {table} WHERE id=?', (case_id,)).fetchone() or (None, None)
+        finally:
+            db.close()
+        stem = inspection_report_filename(kind, record['site'], case_id)
+        left, right = st.columns(2)
+        if hwpx:
+            left.download_button(kind+' 한글 받기', hwpx, stem+'.hwpx', 'application/vnd.hancom.hwpx',
+                                 key='inspection_version_hwpx:'+case_id, on_click='ignore', width='stretch')
+        if pdf:
+            right.download_button(kind+' PDF 받기', pdf, stem+'.pdf', 'application/pdf',
+                                  key='inspection_version_pdf:'+case_id, on_click='ignore', width='stretch')
+        if kind == INSPECTION_REPORT_COMPLETE and hwpx and pdf:
+            inspection_render_email(owner, record, record['items'], hwpx, pdf, stem, case_id+':complete')
+
+
+def inspection_render_action_photos(refs, label, *, keep_key=None):
+    kept = []
+    for number, value in enumerate(refs, 1):
+        try:
+            photo = _perf_photo(inspection_photo_bytes(value), 900, 88)[0]
+            st.image(photo, caption=f'{label} 사진 {number}', width='stretch')
+        except Exception:
+            st.warning(f'{label} 사진 {number}을 불러오지 못했습니다. 저장소 연결을 확인해 주세요.')
+        if keep_key is None or not st.checkbox(f'저장된 사진 {number} 삭제', key=f'{keep_key}:drop:{number}'):
+            kept.append(value)
+    return kept
+
+
+def inspection_render_actions(owner, case_id):
+    try:
+        record = inspection_case_load(owner, case_id)
+    except (ValueError, PermissionError, StorageError) as exc:
+        st.error(str(exc))
+        return
+    st.markdown('#### 조치 결과 등록' if record['status'] != '조치 완료' else '#### 조치 결과 및 보고서')
+    st.caption(f'{record["dept"]} · {record["site"]} · 점검일 {str(record["created"])[:10]} · {record["status"]}')
+    st.caption(f'점검번호 {case_id}')
+    try:
+        inspection_render_case_reports(owner, record)
+    except (ValueError, PermissionError, StorageError) as exc:
+        st.error(str(exc))
+    editing = st.session_state.get('inspection_followup_edit') == case_id and record['status'] != '조치 완료'
+    if not editing and record['status'] != '조치 완료':
+        st.button('조치 결과 등록', type='primary', key='inspection_begin_action:'+case_id,
+                  on_click=inspection_open_actions, args=(case_id,))
+    if editing:
+        st.caption('조치 후 사진과 설명을 등록하면 해당 항목의 조치 완료를 확인할 수 있습니다.')
+    if not editing and not st.checkbox('점검 항목 펼쳐 보기', key='inspection_evidence:'+case_id):
+        return
+    prefix = f'inspection_action:{case_id}:{record["revision"]}'
+    changes = {}
+    for index, item in record['items'].items():
+        index_key = prefix+':'+index
+        label = ('조치 완료' if index in record['confirmed'] else
+                 '확인 전' if item.get('after_files') or item.get('desc_after') else '조치 대기')
+        with st.expander(f'점검 항목 {index} · {label}', expanded=editing and index not in record['confirmed']):
+            before, after = st.columns(2)
+            with before:
+                st.markdown('**조치 전 자료**')
+                st.text(item.get('desc_before') or '기록된 설명이 없습니다.')
+                inspection_render_action_photos(item.get('before_files', []), '조치 전')
+            with after:
+                st.markdown('**조치 후 자료**')
+                description = str(item.get('desc_after') or '')
+                kept = inspection_render_action_photos(item.get('after_files', []), '조치 후',
+                                                       keep_key=index_key if editing else None)
+                if editing:
+                    upload = st.file_uploader(f'항목 {index} 조치 후 사진 추가', type=['jpg', 'jpeg', 'png'],
+                                              accept_multiple_files=True, key=index_key+':photos')
+                    description = st.text_area(f'항목 {index} 조치 결과', value=description, key=index_key+':text')
+                    check_key = index_key+':confirmed'
+                    changed = (
+                        description.strip() != str(item.get('desc_after') or '').strip()
+                        or kept != item.get('after_files', []) or upload)
+                    needs_recheck = index in record['confirmed'] and bool(changed)
+                    can_confirm = bool(description.strip() and (kept or upload)) and not needs_recheck
+                    if not can_confirm or check_key not in st.session_state:
+                        st.session_state[check_key] = index in record['confirmed'] and can_confirm
+                    if needs_recheck:
+                        st.caption('변경한 조치 결과를 저장한 뒤 다시 확인해 주세요.')
+                    checked = st.checkbox(f'항목 {index} 조치 완료 확인', key=check_key,
+                                          disabled=not can_confirm)
+                    changes[index] = (description, kept, upload or [], checked)
+                else:
+                    st.text(description or '기록된 설명이 없습니다.')
+    if editing:
+        if st.button('조치 결과 저장', type='primary', key=prefix+':save', width='stretch'):
+            try:
+                with keco_loading('조치 결과를 저장하고 있습니다', kind='steps'):
+                    status = inspection_save_actions(owner, case_id, record['revision'], changes)
+            except (ValueError, PermissionError, StorageError) as exc:
+                st.error(str(exc))
+            else:
+                st.session_state.inspection_followup_notice = f'조치 결과를 저장했습니다. 현재 상태는 {status}입니다.'
+                if st.session_state.get('dash_action_status') not in ('전체', status):
+                    st.session_state.inspection_followup_status_filter = status
+                st.session_state.inspection_followup_target = case_id
+                st.rerun(scope='fragment')
+
+
+def inspection_open_actions(case_id):
+    st.session_state.inspection_followup_edit = case_id
+
+
+def inspection_link_to_actions(case_id, *, edit=True):
+    st.session_state.inspection_followup_target = case_id
+    st.session_state.inspection_followup_edit = case_id if edit else None
+    st.session_state.inspection_history_menu = '점검 현황'
+    for key in ('dash_dept', 'dash_site', 'dash_period', 'dash_action_status', 'dash_search'):
+        st.session_state.pop(key, None)
+
+
 @st.fragment
 def render_inspection_registration(logged_user_id):
-    if not _perf_actor_allowed(logged_user_id): return
-    st.markdown(puru_intro('사진과 내용을 입력하면 보고서가 만들어집니다',
-                           '① 현장 선택 → ② 사진·내용 입력 → ③ 보고서 만들기 → ④ 이메일 보내기',
+    import uuid
+    if not _perf_actor_allowed(logged_user_id):
+        return
+    if st.session_state.get('inspection_registration_saved'):
+        inspection_render_saved_registration(logged_user_id)
+        return
+    case_id = st.session_state.setdefault('inspection_registration_id', 'SI-'+uuid.uuid4().hex)
+    st.markdown(puru_intro('현장 안전점검 등록',
+                           '① 현장 선택 → ② 사진·내용 입력 → ③ 점검 저장 또는 보고서 만들기',
                            'guide', 'keco-easy-intro'), unsafe_allow_html=True)
     with st.expander('처음 사용하시나요? 사용 방법 보기'):
         st.markdown("""1. **담당 부서와 현장**을 선택하세요.
 2. **조치 전 사진**을 올리고, 어떤 문제가 있는지 적으세요.
 3. 필요하면 **사진의 위험요인 확인**을 눌러 AI의 도움을 받으세요.
 4. 조치했다면 **조치 후 사진과 내용**도 입력하세요. 아직 조치 전이면 비워둘 수 있습니다.
-5. **보고서 만들기**를 누른 뒤, 내려받은 파일을 열어 확인하세요.
-6. 내용이 맞으면 **이메일 보내기**를 누르세요. 한글과 PDF가 함께 첨부됩니다.""")
+5. **점검 저장**을 누르면 기록이 보관됩니다. **보고서 만들기**를 누르면 한글·PDF도 함께 보관됩니다.
+6. 이후 **점검 기록 보기 → 점검 현황**에서 같은 건의 조치 결과를 등록하세요.""")
     st.subheader('1. 어느 현장인가요?')
     col_dept, col_site = st.columns(2)
     with col_dept:
@@ -6935,6 +7373,7 @@ def render_inspection_registration(logged_user_id):
         </div>
     """, unsafe_allow_html=True)
 
+    st.session_state.inspection_registration_location = (selected_dept, selected_site)
     weather_note = render_weather_panel(selected_dept, selected_site) or ""
 
     st.subheader("2. 사진과 내용을 입력하세요")
@@ -6954,7 +7393,7 @@ def render_inspection_registration(logged_user_id):
                 input_mode_b = st.radio(
                     "조치 전 사진을 어떻게 넣을까요?", 
                     ["저장된 사진 선택", "지금 사진 촬영"], 
-                    key=f"mode_b_{idx}",
+                    key=f"mode_b_{idx}:{case_id}",
                     horizontal=True
                 )
             
@@ -6965,7 +7404,7 @@ def render_inspection_registration(logged_user_id):
                         f"#{idx} 조치 전 사진 첨부",
                         type=["jpg", "jpeg", "png"],
                         accept_multiple_files=True,
-                        key=f"before_imgs_{idx}"
+                        key=f"before_imgs_{idx}:{case_id}"
                     )
                     if uploaded_files:
                         before_img_files.extend(uploaded_files)
@@ -6973,7 +7412,7 @@ def render_inspection_registration(logged_user_id):
                     st.caption("휴대폰에서 촬영 버튼을 누르세요. 카메라가 열리지 않으면 기본 카메라로 찍은 뒤 ‘저장된 사진 선택’을 이용하세요.")
                     cam_file = native_high_quality_camera(
                         f"#{idx} 조치 전 고화질 촬영",
-                        key=f"before_cam_{idx}"
+                        key=f"before_cam_{idx}:{case_id}"
                     )
                     if cam_file is not None:
                         before_img_files.append(cam_file)
@@ -6981,9 +7420,9 @@ def render_inspection_registration(logged_user_id):
                 desc_before = st.text_area(
                     f"항목 {idx} · 어떤 문제가 있었나요?",
                     placeholder="예: 바닥 구멍 주변에 안전난간이 없습니다.",
-                    key=f"desc_before_{idx}", height=120)
+                    key=f"desc_before_{idx}:{case_id}", height=120)
                 photo_fingerprint = tuple(hashlib.sha256(inspection_file_bytes(f)).hexdigest() for f in before_img_files)
-                fingerprint_key = f"before_analysis_fingerprint_{idx}"
+                fingerprint_key = f"before_analysis_fingerprint_{idx}:{case_id}"
                 if st.session_state.get(fingerprint_key) != photo_fingerprint:
                     st.session_state.ai_results.pop(idx, None)
                     st.session_state[fingerprint_key] = photo_fingerprint
@@ -6994,12 +7433,12 @@ def render_inspection_registration(logged_user_id):
                         with cols[img_i % 2]:
                             st.image(_perf_photo(inspection_file_bytes(img_f), 1000, 88)[0], caption=f"조치 전 #{img_i+1}", width="stretch")
                 
-                    analyze_clicked = st.button("사진의 위험요인 확인 (AI 도움)", key=f"btn_ai_{idx}", width="stretch")
+                    analyze_clicked = st.button("사진의 위험요인 확인 (AI 도움)", key=f"btn_ai_{idx}:{case_id}", width="stretch")
                     refresh_clicked = False
                     if st.session_state.ai_results.get(idx):
                         with st.expander('AI 결과를 새로 받고 싶을 때'):
                             st.caption('같은 사진은 기존 분석을 사용합니다. 새 결과가 필요하면 아래 버튼을 누르세요.')
-                            refresh_clicked = st.button('같은 사진 새로 분석', key=f'btn_ai_refresh_{idx}')
+                            refresh_clicked = st.button('같은 사진 새로 분석', key=f'btn_ai_refresh_{idx}:{case_id}')
                     if analyze_clicked or refresh_clicked:
                         started = time.perf_counter()
                         with keco_loading('사진의 위험요인을 분석하고 있습니다', kind='helmet') as loading:
@@ -7025,7 +7464,7 @@ def render_inspection_registration(logged_user_id):
                 input_mode_a = st.radio(
                     "조치 후 사진을 어떻게 넣을까요?", 
                     ["저장된 사진 선택", "지금 사진 촬영"], 
-                    key=f"mode_a_{idx}",
+                    key=f"mode_a_{idx}:{case_id}",
                     horizontal=True
                 )
             
@@ -7036,7 +7475,7 @@ def render_inspection_registration(logged_user_id):
                         f"#{idx} 조치 후 사진 첨부",
                         type=["jpg", "jpeg", "png"],
                         accept_multiple_files=True,
-                        key=f"after_imgs_{idx}"
+                        key=f"after_imgs_{idx}:{case_id}"
                     )
                     if uploaded_after:
                         after_img_files.extend(uploaded_after)
@@ -7044,7 +7483,7 @@ def render_inspection_registration(logged_user_id):
                     st.caption("휴대폰에서 촬영 버튼을 누르세요. 카메라가 열리지 않으면 기본 카메라로 찍은 뒤 ‘저장된 사진 선택’을 이용하세요.")
                     cam_file_after = native_high_quality_camera(
                         f"#{idx} 조치 후 고화질 촬영",
-                        key=f"after_cam_{idx}"
+                        key=f"after_cam_{idx}:{case_id}"
                     )
                     if cam_file_after is not None:
                         after_img_files.append(cam_file_after)
@@ -7059,7 +7498,7 @@ def render_inspection_registration(logged_user_id):
                 desc_after = st.text_area(
                     f"항목 {idx} · 어떻게 조치했나요?",
                     placeholder="예: 안전난간을 설치하고 출입을 막았습니다. 아직 조치 전이면 비워두세요.",
-                    key=f"desc_after_{idx}", height=120)
+                    key=f"desc_after_{idx}:{case_id}", height=120)
                 st.caption('아직 조치 전이면 사진과 내용을 비워두어도 됩니다.')
 
             if before_img_files or after_img_files or desc_before.strip() or desc_after.strip():
@@ -7089,124 +7528,51 @@ def render_inspection_registration(logged_user_id):
     if st.session_state.item_count > 1:
         with st.expander('마지막 점검 항목 지우기'):
             last_idx = st.session_state.item_count
-            remove_confirmed = st.checkbox(f'항목 {last_idx}의 사진과 내용을 지웁니다.', key=f'easy_remove_{last_idx}')
+            remove_confirmed = st.checkbox(f'항목 {last_idx}의 사진과 내용을 지웁니다.', key=f'easy_remove_{last_idx}:{case_id}')
             if st.button('마지막 항목 지우기', disabled=not remove_confirmed):
                 st.session_state.ai_results.pop(last_idx, None)
                 for prefix in ('desc_before_', 'desc_after_', 'before_imgs_', 'after_imgs_',
                                'before_cam_', 'after_cam_', 'mode_b_', 'mode_a_', 'before_analysis_fingerprint_'):
-                    st.session_state.pop(f'{prefix}{last_idx}', None)
-                st.session_state.pop(f'easy_remove_{last_idx}', None)
+                    st.session_state.pop(f'{prefix}{last_idx}:{case_id}', None)
+                st.session_state.pop(f'easy_remove_{last_idx}:{case_id}', None)
                 st.session_state.item_count -= 1
                 st.rerun(scope="fragment")
 
     st.markdown("---")
 
-    st.subheader("3. 보고서를 만들고 확인하세요")
-    st.caption("사진과 입력 내용을 한글 파일과 출력용 PDF로 정리합니다. 보고서에 추가할 항목을 선택하세요.")
-    st.write(f"현재 작성한 점검 항목: **{len(form_data)}개**")
+    st.subheader("3. 점검 저장 및 보고서")
+    st.caption("점검만 저장하거나 한글·PDF를 함께 만들 수 있습니다.")
+    st.write(f"현재 작성한 점검 항목 **{len(form_data)}개**")
     include_ai = st.checkbox("AI 분석 결과", value=True, key="inspection_report_include_ai")
     include_weather = st.checkbox("금일 작업과 기상특보를 고려한 안전점검사항", value=True,
                                   key="inspection_report_include_weather")
     report_weather_note = weather_note if include_weather else ""
-    current_report_key = inspection_report_key(selected_dept, selected_site, logged_user_id, form_data,
-                                               weather_note=report_weather_note, include_ai=include_ai)
-    if st.session_state.get("inspection_report_key") != current_report_key:
-        st.session_state.pop("inspection_report_bytes", None)
-        st.session_state.pop("inspection_report_name", None)
-        st.session_state.pop("inspection_pdf_bytes", None)
-    if st.button("보고서 만들기", type="primary", disabled=not form_data, width="stretch"):
-        started = time.perf_counter()
+    save_col, report_col = st.columns(2)
+    save = save_col.button("점검 저장", disabled=not form_data, width="stretch", key='inspection_save_only')
+    make = report_col.button("보고서 만들기", type="primary", disabled=not form_data, width="stretch")
+    if save or make:
+        signature = inspection_report_key(selected_dept, selected_site, logged_user_id, form_data,
+                                          weather_note=report_weather_note, include_ai=include_ai)
+        inspected_at = case_now()
+        files = None
         try:
-            with keco_loading('점검 보고서를 만들고 있습니다', kind='steps', steps=('한글 작성', 'PDF 작성', '사진·보고서 보관')) as status:
-                ready = (st.session_state.get('inspection_report_key') == current_report_key and
-                         st.session_state.get('inspection_report_bytes') and st.session_state.get('inspection_pdf_bytes'))
-                if not ready:
-                    weather_notes = (report_weather_note,) if report_weather_note else ()
-                    status.stage(0)
-                    report_data = generate_inspection_hwpx(selected_dept, selected_site, logged_user_id, form_data,
-                                                           weather_notes=weather_notes, include_ai=include_ai)
-                    status.stage(1)
-                    pdf_data = generate_inspection_pdf(selected_dept, selected_site, logged_user_id, form_data,
-                                                         weather_notes=weather_notes, include_ai=include_ai)
-                    safe_site = re.sub(r'[\\/:*?"<>|\r\n]', "_", str(selected_site))[:60]
-                    report_name = f"안전점검_{safe_site}_{datetime.datetime.now(ZoneInfo('Asia/Seoul')):%Y%m%d_%H%M%S}.hwpx"
-                    st.session_state.inspection_report_bytes = report_data
-                    st.session_state.inspection_pdf_bytes = pdf_data
-                    st.session_state.inspection_report_name = report_name
-                    st.session_state.inspection_report_key = current_report_key
-                    st.session_state.inspection_report_archived_key = None
-                else:
-                    st.write('작성 내용이 같아 이미 만든 한글·PDF를 사용합니다.')
-                if st.session_state.get('inspection_report_archived_key') != current_report_key:
+            with keco_loading('점검 보고서를 만들고 있습니다' if make else '점검을 저장하고 있습니다',
+                              kind='steps', steps=('한글 작성', 'PDF 작성', '사진·보고서 보관') if make else ()) as status:
+                if make:
+                    files = inspection_report_build(selected_dept, selected_site, logged_user_id, form_data,
+                                                    kind=INSPECTION_REPORT_INITIAL, weather_note=report_weather_note,
+                                                    include_ai=include_ai, inspected_at=inspected_at, case_id=case_id,
+                                                    progress=status)
                     status.stage(2)
-                    try:
-                        archive_inspection(selected_dept, selected_site, logged_user_id, form_data,
-                                           st.session_state.inspection_report_bytes, st.session_state.inspection_pdf_bytes,
-                                           weather_note=report_weather_note, include_ai=include_ai)
-                    except ValueError as exc:
-                        status.update(label='보고서 작성 완료 · 휴지통 확인 필요', state='error', expanded=True)
-                        st.warning(str(exc))
-                    except Exception:
-                        status.update(label='보고서 작성 완료 · 저장소 보관 확인 필요', state='error', expanded=True)
-                        st.warning('보고서는 만들었으나 저장소 보관은 완료하지 못했습니다. 아래에서 파일을 내려받고 저장소 연결을 확인한 뒤 다시 만들기를 눌러주세요.')
-                    else:
-                        st.session_state.inspection_report_archived_key = current_report_key
-                if st.session_state.get('inspection_report_archived_key') == current_report_key:
-                    status.update(label='보고서 작성·저장 완료', state='complete', expanded=False)
-                    st.success("리포트를 저장했습니다. ‘점검 기록 보기 → 내 리포트’에서 다시 확인할 수 있습니다.")
-            st.caption(f'보고서 처리 {time.perf_counter()-started:.1f}초')
-        except Exception as exc:
-            st.error(f"보고서 생성 실패: {exc}")
-    report_bytes = st.session_state.get("inspection_report_bytes")
-    report_name = st.session_state.get("inspection_report_name")
-    pdf_bytes = st.session_state.get("inspection_pdf_bytes")
-    if report_bytes:
-        st.html('''<style>
-        .st-key-inspection_report_downloads [data-testid="stHorizontalBlock"] {
-            display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important;
-        }
-        .st-key-inspection_report_downloads [data-testid="stColumn"] {width:100%!important;min-width:0!important;}
-        </style>''')
-        with st.container(key="inspection_report_downloads"):
-            korean, pdf = st.columns(2)
-            korean.download_button("📄 한글파일받기", report_bytes, file_name=report_name,
-                                   mime="application/vnd.hancom.hwpx", width="stretch", on_click="ignore")
-            if pdf_bytes:
-                pdf.download_button("🖨️ PDF파일받기", pdf_bytes, file_name=report_name.replace(".hwpx", ".pdf"),
-                                    mime="application/pdf", width="stretch", on_click="ignore")
-    else:
-        st.info("사진 또는 내용을 입력한 뒤 ‘보고서 만들기’를 누르세요. 입력 내용을 바꾸면 보고서를 다시 만들어야 합니다.")
-
-    st.subheader("4. 보고서를 이메일로 보내세요")
-    st.caption("한글 파일과 PDF가 함께 첨부됩니다.")
-    delivery_key = datetime.datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d") + ":" + current_report_key
-    delivery_state = None
-    if report_bytes and pdf_bytes:
-        delivery_db = inspection_store()
-        try:
-            delivery_state = delivery_db.execute("SELECT status, detail FROM deliveries WHERE id=?", (delivery_key,)).fetchone()
-        finally:
-            delivery_db.close()
-    if delivery_state:
-        st.info('이 점검은 전송 이력이 있어 중복 전송을 막았습니다. 아래에서 처리 결과를 확인하세요.')
-        with st.expander('전송 처리 결과 보기'):
-            st.write(f'{delivery_state[0]} · {delivery_state[1]}')
-    if st.button("이메일 보내기", type="primary", disabled=not (report_bytes and pdf_bytes) or bool(delivery_state), width="stretch"):
-        if not form_data:
-            st.warning("최소 1개 이상의 항목에 사진이나 설명글을 작성해 주세요.")
+                files = archive_inspection(logged_user_id, case_id, selected_dept, selected_site, form_data, signature,
+                                           weather_note=report_weather_note, include_ai=include_ai,
+                                           inspected_at=inspected_at, files=files)
+        except (ValueError, PermissionError, StorageError) as exc:
+            st.error(str(exc))
+        except Exception:
+            st.error('점검을 저장하거나 보고서를 만들지 못했습니다. 사진과 저장소 연결을 확인해 주세요.')
         else:
-            with keco_loading('보고서 첨부·이메일 전송 중입니다…', kind='helmet'):
-                try:
-                    email_success,email_msg=send_inspection_email(selected_dept,selected_site,logged_user_id,form_data,report_bytes,report_name,pdf_bytes,delivery_key)
-                except StorageError as exc:
-                    st.error("이메일 처리 결과 확인 필요: "+str(exc))
-                else:
-                    if email_success:
-                        st.success(f"[{selected_dept} {selected_site}] 담당자 메일({mapped_email}) 발송을 메일 서버가 접수했습니다.")
-                        st.info(email_msg)
-                        st.caption("수신 메일에 첨부파일이 보이지 않으면 발신 계정의 보낸메일에서도 확인해 주세요.")
-                    else:
-                        st.warning("보고서는 저장되어 있습니다. 이메일 처리 결과: "+email_msg)
+            inspection_registration_saved(case_id, files)
 
 
 @st.fragment
@@ -7242,7 +7608,7 @@ from html import escape as dashboard_escape
 
 
 def dashboard_frame(records):
-    columns = ['기록ID','날짜','점검 부서','점검 현장','항목수','AI분석','지적 분류','작성자','사진경로','자료 상태']
+    columns = ['기록ID','날짜','점검 부서','점검 현장','항목수','AI분석','지적 분류','작성자','사진경로','자료 상태','조치 상태']
     df = pd.DataFrame(records, columns=columns).fillna('')
     df['기록번호'] = range(1,len(df)+1)
     def parse_day(value):
@@ -7314,11 +7680,12 @@ def render_inspection_dashboard():
     except (PermissionError,StorageError,ValueError) as exc:
         st.error(str(exc));return
     st.caption('조회 저장소: '+('NHN Cloud' if nhn_storage_backend() is not None else '로컬 폴더 · NHN 연결 확인 필요'))
-    notice = st.session_state.pop('inspection_import_notice:'+actor, None)
-    if notice:
-        st.success(notice)
+    for key in ('inspection_import_notice:'+actor, 'inspection_followup_notice'):
+        notice = st.session_state.pop(key, None)
+        if notice:
+            st.success(notice)
     if not records:
-        st.info('아직 저장한 점검 기록이 없습니다. 안전 점검 등록에서 보고서를 만들거나 기존 안전 점검 자료를 등록하면 이력에 반영됩니다.')
+        st.info('아직 저장한 점검 기록이 없습니다. 안전 점검 등록에서 점검을 저장하거나 기존 안전점검 자료를 등록해 주세요.')
     render_report_history_import(actor, inspection=True)
     if not records:
         return
@@ -7337,7 +7704,12 @@ def render_inspection_dashboard():
         site = cb.selectbox('현장', sites, key='dash_site')
         cc, cd = st.columns(2)
         period = cc.selectbox('조회 기간', ['전체 기간', '최근 30일', '최근 90일', '직접 지정'], key='dash_period')
-        search = cd.text_input('기록 검색', placeholder='현장명·작성자·점검 내용', key='dash_search')
+        search = cd.text_input('기록 검색', placeholder='점검번호·현장명·작성자·점검 내용', key='dash_search')
+        next_status = st.session_state.pop('inspection_followup_status_filter', None)
+        if next_status:
+            st.session_state.dash_action_status = next_status
+        action_status = st.radio('조치 상태', ['전체', *INSPECTION_STATES, '기존 자료', '확인 필요'],
+                                 horizontal=True, key='dash_action_status')
         start = end = None
         today = datetime.datetime.now(ZoneInfo('Asia/Seoul')).date()
         if period == '직접 지정':
@@ -7348,13 +7720,13 @@ def render_inspection_dashboard():
             start, end = dates
         elif period != '전체 기간':
             start, end = today-datetime.timedelta(days=29 if period == '최근 30일' else 89), today
-        view = scoped.copy()
+        view = scoped if action_status == '전체' else scoped[scoped['조치 상태'] == action_status]
         if site != '전체 현장':
             view = view[view['점검 현장'] == site]
         if start:
             view = view[(view['일시'] >= pd.Timestamp(start)) & (view['일시'] < pd.Timestamp(end)+pd.Timedelta(days=1))]
         if search.strip():
-            haystack = view[['점검 현장', '작성자', '지적 분류', 'AI분석']].astype(str).agg(' '.join, axis=1)
+            haystack = view[['기록ID', '점검 현장', '작성자', '지적 분류', 'AI분석']].astype(str).agg(' '.join, axis=1)
             view = view[haystack.str.contains(search.strip(), case=False, regex=False)]
         st.caption('모든 수치와 차트는 위 조회 조건을 따릅니다. 집계 단위는 저장된 원본 점검 기록이며 실제 사고 건수가 아닙니다.')
     if view.empty:
@@ -7427,20 +7799,29 @@ def render_inspection_dashboard():
     ordered['점검 일시'] = ordered['일시'].dt.strftime('%Y-%m-%d %H:%M').fillna('날짜 확인 필요')
     date_only=ordered['날짜'].astype(str).str.fullmatch(r'\d{4}-\d{2}-\d{2}')
     ordered.loc[date_only,'점검 일시']=ordered.loc[date_only,'날짜']+' (시간 미기록)'
-    visible = ordered[['기록번호','점검 일시','점검 부서','점검 현장','항목수','작성자','AI 분석','자료 상태']]
-    visible=visible.rename(columns={'점검 일시':'기록 저장 일시'})
-    st.caption('원본 점검은 보고서를 저장한 날짜 기준입니다. 저장한 시각이 없는 예전 기록은 시간을 임의로 표시하지 않습니다.')
+    visible = ordered[['기록번호','점검 일시','점검 부서','점검 현장','항목수','작성자','AI 분석','조치 상태','자료 상태']]
+    visible = visible.rename(columns={'점검 일시':'기록 저장 일시'})
+    st.caption('기록 저장 일시는 최초 저장 기준입니다.')
     st.dataframe(visible, hide_index=True, width='stretch')
-    options = ordered.index.tolist()
-    record_index = st.selectbox('자세히 볼 점검 기록', options,
-        format_func=lambda idx:f'{ordered.loc[idx,"점검 일시"]} | {ordered.loc[idx,"점검 부서"]} | {ordered.loc[idx,"점검 현장"]} | 기록 {ordered.loc[idx,"기록번호"]}', key='dash_detail')
-    record=ordered.loc[record_index]
-    with st.expander('선택 기록의 점검 내용 · AI 분석', expanded=True):
+    by_id = ordered.set_index('기록ID', drop=False)
+    options = list(by_id.index)
+    detail_key = 'dash_detail_case'
+    target = st.session_state.pop('inspection_followup_target', None)
+    if target in options:
+        st.session_state[detail_key] = target
+    elif st.session_state.get(detail_key) not in options:
+        st.session_state[detail_key] = options[0]
+    selected = st.selectbox('자세히 볼 점검 기록', options,
+        format_func=lambda rid: f'{by_id.at[rid,"점검 일시"]} | {by_id.at[rid,"점검 현장"]} | {by_id.at[rid,"조치 상태"]} | {rid[-12:]}',
+        key=detail_key)
+    record = by_id.loc[selected]
+    if record['작성자'] == actor and record['조치 상태'] in INSPECTION_STATES:
+        inspection_render_actions(actor, selected)
+    with st.expander('선택 기록의 점검 내용 · AI 분석'):
         st.markdown('**점검 내용 요약**')
         st.text(str(record['지적 분류']) or '기록된 요약이 없습니다.')
         st.markdown('**AI 분석 원문**')
         st.text(str(record['AI분석']) or '기록된 분석이 없습니다.')
-        st.caption('조치 완료 여부는 이 기록의 요약만으로 판단할 수 없습니다. 보고서와 현장 조치 결과를 확인하세요.')
     content_issues=int(df['자료 상태'].astype(str).str.len().gt(0).sum())
     if content_issues:st.caption(f'점검 내용 형식 확인 필요 {content_issues}건: 해당 기록의 원본 백업을 확인해 주세요.')
     issues = int(df['일시'].isna().sum())
@@ -7480,7 +7861,8 @@ def render_inspection_history_panel(logged_user_id):
             if "inspection_batch_selection" in st.session_state:
                 st.session_state.inspection_batch_selection = [rid for rid in st.session_state.inspection_batch_selection if rid in records]
             selected_reports = st.multiselect("취합할 점검 보고서", list(records), format_func=lambda key: f"{records[key][3]} | {records[key][1]} | {records[key][2]} | {key[-6:]}", key="inspection_batch_selection")
-            batch_key = hashlib.sha256(json.dumps(sorted(selected_reports)).encode()).hexdigest()
+            batch_key = hashlib.sha256(json.dumps(
+                [(rid, records[rid][4]) for rid in sorted(selected_reports)], ensure_ascii=False).encode()).hexdigest()
             if st.session_state.get("batch_key") != batch_key:
                 st.session_state.pop("batch_output", None)
             if st.button("선택한 점검 건 취합", disabled=not selected_reports):
