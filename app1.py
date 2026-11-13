@@ -320,7 +320,7 @@ def render_loading_foundation():
 render_loading_foundation()
 
 # Apply the desktop shell before any login or main-screen elements are sent.
-WORKSTATION_CSS = '<style>\n.st-key-workstation_route_frame,[class*="st-key-keco_tab_home_control_"] {display:none!important}\n/* BaseWeb positions the selection indicator separately from the tab buttons. */\n.st-key-keco_main_menu [data-baseweb="tab-highlight"],\n.st-key-keco_main_menu [data-baseweb="tab-border"] {display:none!important;height:0!important;background:transparent!important;border:0!important}\n.ws-brand,.st-key-workstation_home,.st-key-workstation_return {display:none!important}\n@media(min-width:769px){\n .stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"],[data-testid="stHeader"] {background:#eee7d7!important}\n [data-testid="block-container"],.stMainBlockContainer {max-width:1240px!important;padding-top:4rem!important}\n [data-testid="stElementContainer"]:has(.keco-header),[data-testid="stElementContainer"]:has(.top-status-bar),[data-testid="stElementContainer"]:has(.mascot-banner) {display:none!important}\n .ws-brand {display:flex!important;align-items:center;justify-content:space-between;gap:24px;padding:4px 4px 24px;border-bottom:1px solid #d9d3c4;margin-bottom:4px}\n .ws-brand-main {display:flex;align-items:center;gap:14px}\n .ws-brand .ws-logo {width:52px!important;height:46px!important;object-fit:contain;mix-blend-mode:multiply;background:transparent!important;border:0!important;box-shadow:none!important}\n .ws-brand strong {display:block;font-size:22px;font-weight:700;color:#183d2d!important}\n .ws-brand small {display:block;font-size:13px;color:#64766c!important;margin-top:3px}\n .ws-profile {font-size:13px;color:#64766c!important;text-align:right;line-height:1.8}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6)) {gap:8px!important;padding:12px 0 18px!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;border-bottom:1px solid #d9d3c4!important;background:transparent!important;border-radius:0!important;box-shadow:none!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] {min-height:52px!important;height:52px!important;padding:10px 8px!important;border:0!important;border-radius:9px!important;background:#fff!important;box-shadow:none!important;transform:none!important;transition:none!important;flex-direction:row!important;gap:0!important;color:#486356!important;-webkit-text-fill-color:#486356!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] p,.st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] span {font-size:15px!important;color:#486356!important;-webkit-text-fill-color:#486356!important;font-weight:600!important;white-space:nowrap!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]::before,\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]::after {display:none!important;content:none!important;animation:none!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>div:not([role="tab"]) {display:none!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] {background:#087f57!important;color:#fff!important;-webkit-text-fill-color:#fff!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] p,.st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] span {color:#fff!important;-webkit-text-fill-color:#fff!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]:hover:not([aria-selected="true"]) {background:#eef7f2!important}\n .st-key-workstation_home {display:flex!important;gap:18px!important}\n .st-key-workstation_home [data-testid="stMarkdownContainer"] {margin-bottom:0!important}\n .st-key-workstation_registration {display:none!important}\n .st-key-workstation_return {display:flex!important}\n .ws-context {display:flex;justify-content:space-between;align-items:center;gap:20px;margin:12px 0 4px;color:#65796c!important;font-size:13px}\n .ws-context span {color:#65796c!important}\n .st-key-workstation_home [data-testid="stHorizontalBlock"] {gap:18px!important;align-items:stretch!important}\n .st-key-workstation_welcome {background:#087f57!important;border-radius:18px!important;padding:28px!important;min-height:268px!important;height:100%;box-sizing:border-box}\n .st-key-workstation_welcome .ws-eyebrow {color:#c5ead6!important;-webkit-text-fill-color:#c5ead6!important;font-size:12px;letter-spacing:1px;margin-bottom:12px}\n .st-key-workstation_welcome h2,.st-key-workstation_welcome h2 * {font-size:30px!important;line-height:1.5!important;color:#fff!important;-webkit-text-fill-color:#fff!important;margin:0!important;padding:0!important;font-weight:700!important}\n .st-key-workstation_welcome p,.st-key-workstation_welcome p * {color:#e1f2e9!important;-webkit-text-fill-color:#e1f2e9!important;font-size:14px!important;margin:12px 0 15px!important;line-height:1.8!important}\n .st-key-workstation_home [data-testid="stButton"]>button {background:#edf7f1!important;background-image:none!important;border:0!important;border-radius:9px!important;box-shadow:none!important;transform:none!important;color:#08734e!important;min-height:44px!important;padding:9px 18px!important;width:auto!important}\n .st-key-workstation_home [data-testid="stButton"]>button p,.st-key-workstation_home [data-testid="stButton"]>button span {font-size:14px!important;font-weight:600!important;color:#08734e!important;-webkit-text-fill-color:#08734e!important;margin:0!important}\n .st-key-workstation_home [data-testid="stButton"]>button:hover {background:#dcefe4!important}\n .st-key-workstation_welcome [data-testid="stButton"]>button {background:#fff!important;min-height:46px!important}\n .ws-site-metric {display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px 20px;border:1px solid #dfeae3;border-radius:15px;background:#fff;min-height:78px;box-sizing:border-box}\n .ws-site-metric strong {display:block;font-size:16px;color:#173d2a!important}\n .ws-number {font-size:32px;line-height:1.4;font-weight:700;color:#173d2a!important;font-variant-numeric:tabular-nums}\n .ws-number small {font-size:13px;font-weight:400;margin-left:5px;color:#65796c!important}\n .ws-note {font-size:12px;line-height:1.7;color:#6a7e70!important}\n .st-key-workstation_monthly,.st-key-workstation_calendar {border:1px solid #dfeae3;border-radius:15px;padding:18px 20px;background:#fff;box-sizing:border-box;min-width:0}\n .st-key-workstation_monthly {min-height:324px}\n .st-key-workstation_calendar {height:100%}\n .st-key-workstation_monthly h3,.st-key-workstation_calendar h3,.ws-banner h3,.ws-banner h3 * {font-size:17px!important;color:#173d2a!important;-webkit-text-fill-color:#173d2a!important;margin:0!important;padding:0!important;font-weight:700!important;line-height:1.5!important}\n .ws-cal-grid {width:100%;table-layout:fixed;border-collapse:collapse;color:#254637}\n .ws-cal-grid th,.ws-cal-grid td {border:1px solid #e3ede7}\n .ws-cal-grid th {padding:6px 2px;text-align:center;font-size:12px;background:#f6faf7}\n .ws-cal-grid td {height:55px;vertical-align:top;padding:4px;overflow:hidden;background:#fff;line-height:19px}\n .ws-cal-grid .ws-cal-outside {background:#f7f9f7}\n .ws-cal-grid .ws-cal-today {background:#ecf8f1}\n .ws-cal-grid .ws-cal-number {display:inline-grid;place-items:center;min-width:19px;height:19px;font-size:12px;line-height:1;border-radius:50%}\n .ws-cal-grid .ws-cal-today .ws-cal-number {background:#087f57;color:#fff!important;font-weight:700}\n .ws-cal-grid .cal-events {gap:1px;padding:0}\n .ws-cal-grid .cal-event-bar {height:16px;min-height:16px;line-height:16px!important;padding:0 3px;font-size:10px!important}\n .ws-cal-grid .cal-more {line-height:12px!important;padding:0 2px;white-space:nowrap}\n .st-key-workstation_home [class*="st-key-workstation_quick_"] {border:1px solid #dfeae3;border-radius:15px;padding:clamp(12px,1.45vw,20px)!important;background:#fff;height:100%}\n .st-key-workstation_home [class*="st-key-workstation_quick_"] button {max-width:100%!important}\n .st-key-workstation_home .st-key-workstation_quick_2 {height:auto}\n .ws-quick h3,.ws-quick h3 * {font-size:16px!important;font-weight:600!important;color:#173d2a!important;-webkit-text-fill-color:#173d2a!important;margin:0 0 8px!important;padding:0!important}\n .ws-quick p,.ws-quick p * {font-size:13px!important;color:#65796c!important;-webkit-text-fill-color:#65796c!important;line-height:1.8!important;margin:0 0 14px!important}\n}\n\n/* Main menu selection uses its green fill without an underline, at every size. */\n.st-key-keco_main_menu [data-baseweb="tab-highlight"],\n.st-key-keco_main_menu [data-baseweb="tab-border"],\n.st-key-keco_main_menu [data-testid="stTabHighlight"],\n.st-key-keco_main_menu [data-testid="stTabBorder"],\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="presentation"] {\n display:none!important;visibility:hidden!important;height:0!important;\n background:transparent!important;border:0!important;box-shadow:none!important;\n}\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"][aria-selected],\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"][aria-selected]:is(:hover,:active,:focus) {\n border-bottom:0!important;box-shadow:none!important;text-decoration:none!important;\n}\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"]::after {\n content:none!important;display:none!important;height:0!important;\n background:transparent!important;border:0!important;box-shadow:none!important;animation:none!important;\n}\n\n/* React Aria tabs place their selection underline inside the selected tab. */\n[role="tablist"] .react-aria-SelectionIndicator {\n display:none!important;visibility:hidden!important;opacity:0!important;\n height:0!important;background:transparent!important;border:0!important;\n box-shadow:none!important;animation:none!important;transition:none!important;\n}\n</style>'
+WORKSTATION_CSS = '<style>\n.st-key-workstation_route_frame,[class*="st-key-keco_tab_home_control_"],.st-key-ws_brand_dashboard {display:none!important}\n/* BaseWeb positions the selection indicator separately from the tab buttons. */\n.st-key-keco_main_menu [data-baseweb="tab-highlight"],\n.st-key-keco_main_menu [data-baseweb="tab-border"] {display:none!important;height:0!important;background:transparent!important;border:0!important}\n.ws-brand,.st-key-workstation_home,.st-key-workstation_return {display:none!important}\n@media(min-width:769px){\n .stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"],[data-testid="stHeader"] {background:#eee7d7!important}\n [data-testid="block-container"],.stMainBlockContainer {max-width:1240px!important;padding-top:4rem!important}\n [data-testid="stElementContainer"]:has(.keco-header),[data-testid="stElementContainer"]:has(.top-status-bar),[data-testid="stElementContainer"]:has(.mascot-banner) {display:none!important}\n .ws-brand {display:flex!important;align-items:center;justify-content:space-between;gap:24px;padding:4px 4px 24px;border-bottom:1px solid #d9d3c4;margin-bottom:4px}\n .ws-brand-main {display:flex;align-items:center;gap:14px}\n .ws-brand .ws-logo {width:52px!important;height:46px!important;object-fit:contain;mix-blend-mode:multiply;background:transparent!important;border:0!important;box-shadow:none!important}\n .ws-brand strong {display:block;font-size:22px;font-weight:700;color:#183d2d!important}\n .ws-brand small {display:block;font-size:13px;color:#64766c!important;margin-top:3px}\n .ws-profile {font-size:13px;color:#64766c!important;text-align:right;line-height:1.8}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6)) {gap:8px!important;padding:12px 0 18px!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;border-bottom:1px solid #d9d3c4!important;background:transparent!important;border-radius:0!important;box-shadow:none!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] {min-height:52px!important;height:52px!important;padding:10px 8px!important;border:0!important;border-radius:9px!important;background:#fff!important;box-shadow:none!important;transform:none!important;transition:none!important;flex-direction:row!important;gap:0!important;color:#486356!important;-webkit-text-fill-color:#486356!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] p,.st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"] span {font-size:15px!important;color:#486356!important;-webkit-text-fill-color:#486356!important;font-weight:600!important;white-space:nowrap!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]::before,\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]::after {display:none!important;content:none!important;animation:none!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>div:not([role="tab"]) {display:none!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] {background:#087f57!important;color:#fff!important;-webkit-text-fill-color:#fff!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] p,.st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"][aria-selected="true"] span {color:#fff!important;-webkit-text-fill-color:#fff!important}\n .st-key-keco_main_menu [role="tablist"]:has(>[role="tab"]:nth-of-type(6))>[role="tab"]:hover:not([aria-selected="true"]) {background:#eef7f2!important}\n .st-key-workstation_home {display:flex!important;gap:18px!important}\n .st-key-workstation_home [data-testid="stMarkdownContainer"] {margin-bottom:0!important}\n .st-key-workstation_registration {display:none!important}\n .st-key-workstation_return {display:flex!important}\n .ws-context {display:flex;justify-content:space-between;align-items:center;gap:20px;margin:12px 0 4px;color:#65796c!important;font-size:13px}\n .ws-context span {color:#65796c!important}\n .st-key-workstation_home [data-testid="stHorizontalBlock"] {gap:18px!important;align-items:stretch!important}\n .st-key-workstation_home [data-testid="stLayoutWrapper"]:has(> :is(\n    .st-key-workstation_welcome,.st-key-workstation_calendar,.st-key-workstation_monthly,\n    .st-key-workstation_quick_risk,.st-key-workstation_quick_permit)),\n .st-key-workstation_home [data-testid="stLayoutWrapper"]:has(> [data-testid="stHorizontalBlock"] .st-key-workstation_quick_risk):not(:has(.st-key-workstation_welcome)),\n .st-key-workstation_home :is(.st-key-workstation_welcome,.st-key-workstation_calendar,.st-key-workstation_monthly,\n    .st-key-workstation_quick_risk,.st-key-workstation_quick_permit) {flex:1 1 auto}\n .st-key-workstation_home :is(.st-key-workstation_quick_risk,.st-key-workstation_quick_permit) > [data-testid="stElementContainer"]:has([data-testid="stButton"]) {\n    margin-top:auto;\n }\n .st-key-workstation_welcome {background:#087f57!important;border-radius:18px!important;padding:28px!important;min-height:268px!important;box-sizing:border-box}\n .st-key-workstation_welcome .ws-eyebrow {color:#c5ead6!important;-webkit-text-fill-color:#c5ead6!important;font-size:12px;letter-spacing:1px;margin-bottom:12px}\n .st-key-workstation_welcome h2,.st-key-workstation_welcome h2 * {font-size:30px!important;line-height:1.5!important;color:#fff!important;-webkit-text-fill-color:#fff!important;margin:0!important;padding:0!important;font-weight:700!important}\n .st-key-workstation_welcome p,.st-key-workstation_welcome p * {color:#e1f2e9!important;-webkit-text-fill-color:#e1f2e9!important;font-size:14px!important;margin:12px 0 15px!important;line-height:1.8!important}\n .st-key-workstation_home [data-testid="stButton"]>button {background:#edf7f1!important;background-image:none!important;border:0!important;border-radius:9px!important;box-shadow:none!important;transform:none!important;color:#08734e!important;min-height:44px!important;padding:9px 18px!important;width:auto!important}\n .st-key-workstation_home [data-testid="stButton"]>button p,.st-key-workstation_home [data-testid="stButton"]>button span {font-size:14px!important;font-weight:600!important;color:#08734e!important;-webkit-text-fill-color:#08734e!important;margin:0!important}\n .st-key-workstation_home [data-testid="stButton"]>button:hover {background:#dcefe4!important}\n .st-key-workstation_welcome [data-testid="stButton"]>button {background:#fff!important;min-height:46px!important}\n .ws-site-metric {display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px 20px;border:1px solid #dfeae3;border-radius:15px;background:#fff;min-height:78px;box-sizing:border-box}\n .ws-site-metric strong {display:block;font-size:16px;color:#173d2a!important}\n .ws-number {font-size:32px;line-height:1.4;font-weight:700;color:#173d2a!important;font-variant-numeric:tabular-nums}\n .ws-number small {font-size:13px;font-weight:400;margin-left:5px;color:#65796c!important}\n .ws-note {font-size:12px;line-height:1.7;color:#6a7e70!important}\n .st-key-workstation_monthly,.st-key-workstation_calendar {border:1px solid #dfeae3;border-radius:15px;padding:18px 20px;background:#fff;box-sizing:border-box;min-width:0}\n .st-key-workstation_monthly {min-height:324px}\n .st-key-workstation_monthly h3,.st-key-workstation_calendar h3,.ws-banner h3,.ws-banner h3 * {font-size:17px!important;color:#173d2a!important;-webkit-text-fill-color:#173d2a!important;margin:0!important;padding:0!important;font-weight:700!important;line-height:1.5!important}\n .ws-cal-grid {width:100%;table-layout:fixed;border-collapse:collapse;color:#254637}\n .ws-cal-grid th,.ws-cal-grid td {border:1px solid #e3ede7}\n .ws-cal-grid th {padding:6px 2px;text-align:center;font-size:12px;background:#f6faf7}\n .ws-cal-grid td {height:55px;vertical-align:top;padding:4px;overflow:hidden;background:#fff;line-height:19px}\n .ws-cal-grid .ws-cal-outside {background:#f7f9f7}\n .ws-cal-grid .ws-cal-today {background:#ecf8f1}\n .ws-cal-grid .ws-cal-number {display:inline-grid;place-items:center;min-width:19px;height:19px;font-size:12px;line-height:1;border-radius:50%}\n .ws-cal-grid .ws-cal-today .ws-cal-number {background:#087f57;color:#fff!important;font-weight:700}\n .ws-cal-grid .cal-events {gap:1px;padding:0}\n .ws-cal-grid .cal-event-bar {height:16px;min-height:16px;line-height:16px!important;padding:0 3px;font-size:10px!important}\n .ws-cal-grid .cal-more {line-height:12px!important;padding:0 2px;white-space:nowrap}\n .st-key-workstation_home [class*="st-key-workstation_quick_"] {border:1px solid #dfeae3;border-radius:15px;padding:clamp(12px,1.45vw,20px)!important;background:#fff}\n .st-key-workstation_home [class*="st-key-workstation_quick_"] button {max-width:100%!important}\n .ws-quick h3,.ws-quick h3 * {font-size:16px!important;font-weight:600!important;color:#173d2a!important;-webkit-text-fill-color:#173d2a!important;margin:0 0 8px!important;padding:0!important}\n .ws-quick p,.ws-quick p * {font-size:13px!important;color:#65796c!important;-webkit-text-fill-color:#65796c!important;line-height:1.8!important;margin:0 0 14px!important}\n}\n\n\n.st-key-inspection_report_options {\n    display:grid;\n    grid-template-columns:max-content minmax(0,1fr);\n    gap:clamp(10px,2vw,20px);\n    align-items:start;\n}\n.st-key-inspection_report_options > * {min-width:0}\n.st-key-inspection_report_options label p {word-break:keep-all;overflow-wrap:anywhere}\n/* Main menu selection uses its green fill without an underline, at every size. */\n.st-key-keco_main_menu [data-baseweb="tab-highlight"],\n.st-key-keco_main_menu [data-baseweb="tab-border"],\n.st-key-keco_main_menu [data-testid="stTabHighlight"],\n.st-key-keco_main_menu [data-testid="stTabBorder"],\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="presentation"] {\n display:none!important;visibility:hidden!important;height:0!important;\n background:transparent!important;border:0!important;box-shadow:none!important;\n}\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"][aria-selected],\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"][aria-selected]:is(:hover,:active,:focus) {\n border-bottom:0!important;box-shadow:none!important;text-decoration:none!important;\n}\n.st-key-keco_main_menu [role="tablist"]:where(:has(>[role="tab"]:nth-of-type(6))) > [role="tab"]::after {\n content:none!important;display:none!important;height:0!important;\n background:transparent!important;border:0!important;box-shadow:none!important;animation:none!important;\n}\n\n/* React Aria tabs place their selection underline inside the selected tab. */\n[role="tablist"] .react-aria-SelectionIndicator {\n display:none!important;visibility:hidden!important;opacity:0!important;\n height:0!important;background:transparent!important;border:0!important;\n box-shadow:none!important;animation:none!important;transition:none!important;\n}\n</style>'
 
 if st.session_state.get("password_correct", False):
     st.html(WORKSTATION_CSS)
@@ -2928,22 +2928,14 @@ def inspection_save_actions(owner, case_id, revision, changes):
             items = record['items']
             if set(changes) != set(items):
                 raise ValueError('저장할 점검 항목을 다시 확인해 주세요.')
-            for index, (description, keep_photos, new_photos, checked) in changes.items():
+            for index, (_, keep_photos, _) in changes.items():
                 if any(value not in items[index].get('after_files', []) for value in keep_photos):
                     raise ValueError('이 항목에 저장된 조치 후 사진을 다시 확인해 주세요.')
-                if checked and not (description.strip() and (keep_photos or new_photos)):
-                    raise ValueError(f'항목 {index}의 조치 완료를 확인하려면 조치 후 사진과 설명을 모두 등록해 주세요.')
-            confirmed = []
-            for index, (description, keep_photos, new_photos, checked) in changes.items():
-                item = items[index]
-                original_photos = item.get('after_files', [])
+            for index, (description, keep_photos, new_photos) in changes.items():
                 additions = [inspection_photo_pack(file) for file in new_photos]
-                photos = list(dict.fromkeys([*keep_photos, *additions]))
-                changed = photos != original_photos or description.strip() != str(item.get('desc_after') or '').strip()
-                item['after_files'] = photos
-                item['desc_after'] = description.strip()
-                if checked and (index not in record['confirmed'] or not changed):
-                    confirmed.append(index)
+                items[index]['after_files'] = list(dict.fromkeys([*keep_photos, *additions]))
+                items[index]['desc_after'] = description.strip()
+            confirmed = [index for index, item in items.items() if inspection_action_has_evidence(item)]
             payload = json.loads(record['encoded'])
             payload.update(items)
             db.execute('UPDATE reports SET payload=? WHERE id=? AND owner=?',
@@ -2986,7 +2978,7 @@ def inspection_case_make_report(owner, case_id, kind):
     try:
         record = inspection_case_row(db, owner, case_id)
         if kind == INSPECTION_REPORT_COMPLETE and record['status'] != '조치 완료':
-            raise ValueError('모든 항목의 조치 완료를 확인한 뒤 보고서를 만들 수 있습니다.')
+            raise ValueError('모든 항목에 조치 후 사진과 설명을 저장한 뒤 보고서를 만들 수 있습니다.')
         table = 'report_files' if kind == INSPECTION_REPORT_INITIAL else 'inspection_completion_files'
         if table in report_history_tables(db):
             existing = db.execute(f'SELECT hwpx IS NOT NULL AND pdf IS NOT NULL FROM {table} WHERE id=?',
@@ -4318,7 +4310,7 @@ departments = list(department_sites_map.keys())
 # 같은 브라우저에서 계정을 바꿀 때 이전 사용자의 입력을 새 점검으로 저장하지 않음.
 if st.session_state.get('case_active_actor') != str(logged_user_id):
     for key in ('inspection_registration_location', 'inspection_followup_edit', 'inspection_followup_target',
-                'inspection_followup_notice'):
+                'inspection_followup_notice', 'inspection_followup_report'):
         st.session_state.pop(key, None)
     case_new_registration()
     for key in list(st.session_state):
@@ -5513,7 +5505,7 @@ def wx_render_warning_panel(key, location, site, scope, now, nx, ny):
 
 
 def render_weather_panel(dept, site):
-    with st.expander('날씨 확인하기(선택)', expanded=False):
+    with st.expander('날씨 확인하기(선택사항)', expanded=False):
         st.html(WX_WARN_CSS)
         st.html('<div class="wx-warning-intro"><strong>현장 기상특보 확인</strong><b>왜 확인하나요?</b> 건설현장은 옥외 작업이 많고 다양한 중장비와 가설물이 운영되기 때문에 기상특보(호우, 태풍, 강풍, 폭염, 대설 등)에 적절히 대비하지 않으면 대형 인명피해와 안전사고로 이어질 수 있기 때문입니다.</div>')
         st.caption('출처: 기상청 · 시·군·구 대표 위치 기준입니다. 현장 실측이나 작업중지 판정을 대신하지 않습니다.')
@@ -6615,7 +6607,7 @@ MAIN_TAB_HOME_SCRIPT = r'''<script>(() => {
   try { host = window.parent; void host.document.body; } catch (_) { return; }
   const install = function () {
     const w = window;
-    const owner = __OWNER__, version = 'home-click-v8-reuse';
+    const owner = __OWNER__, version = 'home-click-v9-registration';
     const prior = w.__kecoHomeHover;
     if (prior && prior.owner === owner && prior.version === version) { prior.refresh(); return; }
     if (prior?.cleanup) prior.cleanup();
@@ -6641,7 +6633,15 @@ MAIN_TAB_HOME_SCRIPT = r'''<script>(() => {
       state.activation = index < 0 ? null : {index, selected: tab.getAttribute('aria-selected') === 'true'};
     };
     const onKeyDown = event => {
-      if (event.key === 'Enter' || event.key === ' ') rememberSelection(event);
+      if (!event.isTrusted || (event.key !== 'Enter' && event.key !== ' ')) return;
+      rememberSelection(event);
+      if (state.activation?.index === 0) {
+        event.preventDefault();
+        if (event.repeat) return;
+        if (!state.activation.selected) mainTabs()[0].click();
+        state.activation = null;
+        enter(0);
+      }
     };
     const finish = () => {
       state.pending = null;
@@ -6671,6 +6671,10 @@ MAIN_TAB_HOME_SCRIPT = r'''<script>(() => {
       const view = state.views.get(index);
       const current = marker(index);
       const atEntry = current ? current.dataset.entry === 'yes' : view?.entry;
+      if (index === 0 && atEntry && !state.pending && !running()) {
+        w.requestAnimationFrame(scrollHome);
+        return;
+      }
       if (!force && !state.pending && atEntry && view && view.activity === state.activity &&
           (!current || current.dataset.view === view.id) &&
           w.performance.now() - view.loadedAt < maxReuseMs &&
@@ -6691,8 +6695,9 @@ MAIN_TAB_HOME_SCRIPT = r'''<script>(() => {
       const brand = event.target.closest?.('.ws-brand-home');
       if (brand && tabs[0]) {
         event.preventDefault();
+        finish();
         tabs[0].click();
-        enter(0);
+        w.document.querySelector('.st-key-ws_brand_dashboard button')?.click();
         return;
       }
       const tab = event.target.closest?.('[role="tab"]');
@@ -6776,7 +6781,7 @@ def main_tab_home(actor, index, *, select_tab=True):
     if select_tab:
         st.session_state.ws_navigation = dict(index=index, token=token, home=True, refresh_other_tab=True)
     if index==0:
-        st.session_state.ws_registration_open=False
+        workstation_open_registration()
     elif index==1:
         page=st.session_state.get('ra_hub_page','list')
         if page in ('writer','guide') and st.session_state.get('ra_active_record_id') and st.session_state.get('ra_meta'):
@@ -6822,7 +6827,7 @@ def main_tab_home(actor, index, *, select_tab=True):
 def main_tab_is_entry(actor, index):
     state = st.session_state
     if index == 0:
-        return not state.get('ws_registration_open')
+        return bool(state.get('ws_registration_open') and not state.get('inspection_registration_saved'))
     if index == 1:
         defaults = dict(year=str(ra_current_year()), kind='전체', site='전체', name='전체')
         filters = state.get('ra_hub_filters', {})
@@ -6897,12 +6902,22 @@ def ra_hub_cell_label(value):
     return re.sub(r'([\\`*_{}\[\]<>()#+.!|~-])',r'\\\1',str(value))
 
 
+def workstation_open_registration():
+    st.session_state.ws_registration_open = True
+    if st.session_state.get('inspection_registration_saved'):
+        case_new_registration()
+        # The registration form is rendered by a separate fragment.
+        st.session_state.ws_reload_registration = True
+
+
 def workstation_navigate(index):
     import uuid
-    if index in (-1, 0):
-        st.session_state.ws_registration_open = index == 0
+    if index == 0:
+        workstation_open_registration()
+    elif index == -1:
+        st.session_state.ws_registration_open = False
     st.session_state.ws_navigation = dict(index=max(0, index), token=uuid.uuid4().hex,
-                                          refresh_other_tab=index > 0)
+                                          home=index == -1, refresh_other_tab=index > 0)
 
 
 def workstation_open_permit(actor):
@@ -7062,7 +7077,8 @@ def render_workstation_home(actor):
             st.plotly_chart(fig, key='ws_monthly_chart', config={'displayModeBar': False})
             if undated:
                 st.caption(f'작성일 확인 필요 {undated:,}건은 월별 집계에서 제외했습니다.')
-    with trend, st.container(key='workstation_quick_2'):
+    _, guide = st.columns([1.2, 1])
+    with guide, st.container(key='workstation_quick_2'):
         st.markdown('<div class="ws-quick"><h3>AI 안전 가이드</h3><p>현장 상황과 참고자료를 바탕으로 질문합니다.</p></div>', unsafe_allow_html=True)
         st.button(AI_GUIDE_MENU_LABEL, key='ws_quick_2', on_click=workstation_navigate, args=(3,))
     render_safety_slogan_awards()
@@ -7193,52 +7209,62 @@ def inspection_render_case_reports(owner, record):
                     versions[kind] = (table, all(available))
     finally:
         db.close()
-    report_open = st.session_state.get('inspection_report_open_after_build') == case_id
-    with st.expander('보고서 보기 및 내려받기', expanded=report_open):
-        make_initial, make_complete = st.columns(2)
-        requested = None
-        if not versions.get(INSPECTION_REPORT_INITIAL, (None, False))[1] and make_initial.button(
-                '최초 점검 보고서 만들기', key='inspection_make_initial:'+case_id, width='stretch'):
-            requested = INSPECTION_REPORT_INITIAL
-        if record['status'] == '조치 완료' and not versions.get(INSPECTION_REPORT_COMPLETE, (None, False))[1] and make_complete.button(
-                '조치 완료 보고서 만들기', type='primary', key='inspection_make_complete:'+case_id, width='stretch'):
-            requested = INSPECTION_REPORT_COMPLETE
-        if requested:
-            try:
-                with keco_loading('점검 보고서를 만들고 있습니다', kind='steps'):
-                    inspection_case_make_report(owner, case_id, requested)
-            except (ValueError, PermissionError, StorageError) as exc:
-                st.error(str(exc))
-            except Exception:
-                st.error('보고서를 만들지 못했습니다. 저장한 사진과 문서 생성 설정을 확인해 주세요.')
-            else:
-                st.session_state.inspection_followup_notice = requested+'를 저장했습니다.'
-                st.session_state.inspection_report_open_after_build = case_id
-                st.session_state['inspection_version:'+case_id] = requested
-                st.rerun(scope='fragment')
-        if not versions:
-            st.caption('저장된 한글·PDF 보고서가 없습니다.')
-            return
-        kind = st.radio('보고서 종류', list(versions), horizontal=True, key='inspection_version:'+case_id)
-        if not st.checkbox('선택한 보고서 파일 열기', key='inspection_version_open:'+case_id):
-            return
-        db = inspection_store()
+    make_initial, make_complete = st.columns(2)
+    requested = None
+    if not versions.get(INSPECTION_REPORT_INITIAL, (None, False))[1] and make_initial.button(
+            '최초 점검 보고서 만들기', key='inspection_make_initial:'+case_id, width='stretch'):
+        requested = INSPECTION_REPORT_INITIAL
+    if record['status'] == '조치 완료' and not versions.get(INSPECTION_REPORT_COMPLETE, (None, False))[1] and make_complete.button(
+            '조치 완료 보고서 만들기', type='primary', key='inspection_make_complete:'+case_id, width='stretch'):
+        requested = INSPECTION_REPORT_COMPLETE
+    version_key = 'inspection_version:'+case_id
+    if requested:
         try:
-            inspection_case_row(db, owner, case_id)
-            table = versions[kind][0]
-            hwpx, pdf = db.execute(f'SELECT hwpx,pdf FROM {table} WHERE id=?', (case_id,)).fetchone() or (None, None)
-        finally:
-            db.close()
-        stem = inspection_report_filename(kind, record['site'], case_id)
-        left, right = st.columns(2)
-        if hwpx:
-            left.download_button(kind+' 한글 받기', hwpx, stem+'.hwpx', 'application/vnd.hancom.hwpx',
-                                 key='inspection_version_hwpx:'+case_id, on_click='ignore', width='stretch')
-        if pdf:
-            right.download_button(kind+' PDF 받기', pdf, stem+'.pdf', 'application/pdf',
-                                  key='inspection_version_pdf:'+case_id, on_click='ignore', width='stretch')
-        if kind == INSPECTION_REPORT_COMPLETE and hwpx and pdf:
-            inspection_render_email(owner, record, record['items'], hwpx, pdf, stem, case_id+':complete')
+            with keco_loading('점검 보고서를 만들고 있습니다', kind='steps'):
+                inspection_case_make_report(owner, case_id, requested)
+        except (ValueError, PermissionError, StorageError) as exc:
+            st.error(str(exc))
+        except Exception:
+            st.error('보고서를 만들지 못했습니다. 저장한 사진과 문서 생성 설정을 확인해 주세요.')
+        else:
+            st.session_state.inspection_followup_notice = requested+'를 저장했습니다.'
+            st.session_state[version_key] = requested
+            st.rerun(scope='fragment')
+    if not versions:
+        return False
+    if len(versions) == 1:
+        kind = next(iter(versions))
+    else:
+        kind = st.radio('보고서 종류', list(versions), horizontal=True, key=version_key)
+    db = inspection_store()
+    try:
+        inspection_case_row(db, owner, case_id)
+        table = versions[kind][0]
+        hwpx, pdf = db.execute(f'SELECT hwpx,pdf FROM {table} WHERE id=?', (case_id,)).fetchone() or (None, None)
+    finally:
+        db.close()
+    stem = inspection_report_filename(kind, record['site'], case_id)
+    left, right = st.columns(2)
+    if hwpx:
+        left.download_button(kind+' 한글 받기', hwpx, stem+'.hwpx', 'application/vnd.hancom.hwpx',
+                             key='inspection_version_hwpx:'+case_id, on_click='ignore', width='stretch')
+    preview = False
+    if pdf:
+        right.download_button(kind+' PDF 받기', pdf, stem+'.pdf', 'application/pdf',
+                              key='inspection_version_pdf:'+case_id, on_click='ignore', width='stretch')
+        page_key = f'inspection_version_page:{case_id}:{kind}'
+        try:
+            picture, total, page = report_history_pdf_page(pdf, st.session_state.get(page_key, 1))
+        except Exception:
+            st.warning('PDF 미리보기를 만들지 못했습니다. 파일을 내려받아 확인해 주세요.')
+        else:
+            if total > 1:
+                st.number_input('PDF 페이지', min_value=1, max_value=total, step=1, key=page_key)
+            st.image(picture, caption=f'PDF {page} / {total}페이지', width='stretch')
+            preview = True
+    if kind == INSPECTION_REPORT_COMPLETE and hwpx and pdf:
+        inspection_render_email(owner, record, record['items'], hwpx, pdf, stem, case_id+':complete')
+    return preview
 
 
 def inspection_render_action_photos(refs, label, *, keep_key=None):
@@ -7254,34 +7280,13 @@ def inspection_render_action_photos(refs, label, *, keep_key=None):
     return kept
 
 
-def inspection_render_actions(owner, case_id):
-    try:
-        record = inspection_case_load(owner, case_id)
-    except (ValueError, PermissionError, StorageError) as exc:
-        st.error(str(exc))
-        return
-    st.markdown('#### 조치 결과 등록' if record['status'] != '조치 완료' else '#### 조치 결과 및 보고서')
-    st.caption(f'{record["dept"]} · {record["site"]} · 점검일 {str(record["created"])[:10]} · {record["status"]}')
-    st.caption(f'점검번호 {case_id}')
-    try:
-        inspection_render_case_reports(owner, record)
-    except (ValueError, PermissionError, StorageError) as exc:
-        st.error(str(exc))
-    editing = st.session_state.get('inspection_followup_edit') == case_id and record['status'] != '조치 완료'
-    if not editing and record['status'] != '조치 완료':
-        st.button('조치 결과 등록', type='primary', key='inspection_begin_action:'+case_id,
-                  on_click=inspection_open_actions, args=(case_id,))
-    if editing:
-        st.caption('조치 후 사진과 설명을 등록하면 해당 항목의 조치 완료를 확인할 수 있습니다.')
-    if not editing and not st.checkbox('점검 항목 펼쳐 보기', key='inspection_evidence:'+case_id):
-        return
-    prefix = f'inspection_action:{case_id}:{record["revision"]}'
+def inspection_render_action_items(record, *, editing=False):
     changes = {}
     for index, item in record['items'].items():
-        index_key = prefix+':'+index
+        index_key = f'inspection_action:{record["id"]}:{record["revision"]}:{index}'
         label = ('조치 완료' if index in record['confirmed'] else
-                 '확인 전' if item.get('after_files') or item.get('desc_after') else '조치 대기')
-        with st.expander(f'점검 항목 {index} · {label}', expanded=editing and index not in record['confirmed']):
+                 '일부 조치' if item.get('after_files') or item.get('desc_after') else '조치 대기')
+        with st.expander(f'점검 항목 {index} · {label}', expanded=not editing or index not in record['confirmed']):
             before, after = st.columns(2)
             with before:
                 st.markdown('**조치 전 자료**')
@@ -7296,23 +7301,32 @@ def inspection_render_actions(owner, case_id):
                     upload = st.file_uploader(f'항목 {index} 조치 후 사진 추가', type=['jpg', 'jpeg', 'png'],
                                               accept_multiple_files=True, key=index_key+':photos')
                     description = st.text_area(f'항목 {index} 조치 결과', value=description, key=index_key+':text')
-                    check_key = index_key+':confirmed'
-                    changed = (
-                        description.strip() != str(item.get('desc_after') or '').strip()
-                        or kept != item.get('after_files', []) or upload)
-                    needs_recheck = index in record['confirmed'] and bool(changed)
-                    can_confirm = bool(description.strip() and (kept or upload)) and not needs_recheck
-                    if not can_confirm or check_key not in st.session_state:
-                        st.session_state[check_key] = index in record['confirmed'] and can_confirm
-                    if needs_recheck:
-                        st.caption('변경한 조치 결과를 저장한 뒤 다시 확인해 주세요.')
-                    checked = st.checkbox(f'항목 {index} 조치 완료 확인', key=check_key,
-                                          disabled=not can_confirm)
-                    changes[index] = (description, kept, upload or [], checked)
+                    changes[index] = (description, kept, upload or [])
                 else:
                     st.text(description or '기록된 설명이 없습니다.')
+    return changes
+
+
+def inspection_toggle_case_report(case_id):
+    st.session_state.inspection_followup_report = (
+        None if st.session_state.get('inspection_followup_report') == case_id else case_id)
+
+
+def inspection_render_actions(owner, case_id):
+    try:
+        record = inspection_case_load(owner, case_id)
+    except (ValueError, PermissionError, StorageError) as exc:
+        st.error(str(exc))
+        return
+    st.markdown('#### 조치 결과 등록' if record['status'] != '조치 완료' else '#### 조치 결과 및 보고서')
+    st.caption(f'{record["dept"]} · {record["site"]} · 점검일 {str(record["created"])[:10]} · {record["status"]}')
+    st.caption(f'점검번호 {case_id}')
+    editing = st.session_state.get('inspection_followup_edit') == case_id and record['status'] != '조치 완료'
     if editing:
-        if st.button('조치 결과 저장', type='primary', key=prefix+':save', width='stretch'):
+        st.caption('조치 후 사진과 설명을 모두 저장한 항목은 완료로 표시됩니다.')
+        changes = inspection_render_action_items(record, editing=True)
+        save_key = f'inspection_action:{case_id}:{record["revision"]}:save'
+        if st.button('조치 결과 저장', type='primary', key=save_key, width='stretch'):
             try:
                 with keco_loading('조치 결과를 저장하고 있습니다', kind='steps'):
                     status = inspection_save_actions(owner, case_id, record['revision'], changes)
@@ -7324,6 +7338,22 @@ def inspection_render_actions(owner, case_id):
                     st.session_state.inspection_followup_status_filter = status
                 st.session_state.inspection_followup_target = case_id
                 st.rerun(scope='fragment')
+    elif record['status'] != '조치 완료':
+        st.button('조치 결과 등록', type='primary', key='inspection_begin_action:'+case_id,
+                  on_click=inspection_open_actions, args=(case_id,), width=320)
+    report_open = st.session_state.get('inspection_followup_report') == case_id
+    st.button('점검 항목 접기' if report_open else '점검 항목 펼쳐 보기',
+              key='inspection_case_report:'+case_id, on_click=inspection_toggle_case_report, args=(case_id,),
+              width='stretch')
+    if report_open:
+        with st.container(border=True):
+            try:
+                preview = inspection_render_case_reports(owner, record)
+            except (ValueError, PermissionError, StorageError) as exc:
+                st.error(str(exc))
+            else:
+                if not preview and not editing:
+                    inspection_render_action_items(record)
 
 
 def inspection_open_actions(case_id):
@@ -7541,11 +7571,12 @@ def render_inspection_registration(logged_user_id):
     st.markdown("---")
 
     st.subheader("3. 점검 저장 및 보고서")
-    st.caption("점검만 저장하거나 한글·PDF를 함께 만들 수 있습니다.")
     st.write(f"현재 작성한 점검 항목 **{len(form_data)}개**")
-    include_ai = st.checkbox("AI 분석 결과", value=True, key="inspection_report_include_ai")
-    include_weather = st.checkbox("금일 작업과 기상특보를 고려한 안전점검사항", value=True,
-                                  key="inspection_report_include_weather")
+    st.caption("보고서에 포함될 내용을 체크해 주세요")
+    with st.container(key="inspection_report_options"):
+        include_ai = st.checkbox("AI 분석 결과", value=True, key="inspection_report_include_ai")
+        include_weather = st.checkbox("금일 작업과 기상특보를 고려한 안전점검사항", value=True,
+                                      key="inspection_report_include_weather")
     report_weather_note = weather_note if include_weather else ""
     save_col, report_col = st.columns(2)
     save = save_col.button("점검 저장", disabled=not form_data, width="stretch", key='inspection_save_only')
@@ -7579,6 +7610,8 @@ def render_inspection_registration(logged_user_id):
 def render_workstation_dashboard_panel(actor):
     if not _perf_actor_allowed(actor):
         return
+    if st.session_state.pop('ws_reload_registration', False):
+        st.rerun()
     navigation = st.session_state.get('ws_navigation')
     if navigation and navigation.pop('refresh_other_tab', False):
         # Dashboard shortcuts prepare a different section's view before selecting it.
@@ -7592,6 +7625,7 @@ def render_workstation_dashboard_panel(actor):
     st.markdown('<div id="keco-workstation-view" data-registration="' + ('yes' if opened else 'no') + '" style="display:none"></div>', unsafe_allow_html=True)
     with st.container(key="workstation_return"):
         st.button('← 업무 대시보드', key='ws_return_home', on_click=workstation_navigate, args=(-1,))
+    st.button('업무 대시보드로 이동', key='ws_brand_dashboard', on_click=workstation_navigate, args=(-1,))
     render_main_tab_home_control(actor, 0)
     if navigation and navigation['index'] == 0:
         render_workstation_route()
