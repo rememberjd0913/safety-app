@@ -11,5 +11,5 @@ llama-index-embeddings-google-genai
 streamlit-autorefresh
 fpdf2
 reportlab
-python-hwpx
+python-hwpx==6.12.0
 boto3>=1.36,<2
